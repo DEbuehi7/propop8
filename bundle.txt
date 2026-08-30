@@ -1,0 +1,3210 @@
+<<<FILE app/audit/page.tsx>>>
+'use client';
+
+/**
+ * app/audit/page.tsx  —  Tally version
+ * ----------------------------------------------------------------------------
+ * Replaces the custom React form. The form itself is Tally's; everything around
+ * it is yours, so the page still reads as PropOps8 rather than as a bare
+ * third-party embed on a slate background.
+ *
+ * The one piece of real work here: carrying the calculator's numbers into the
+ * form. A prospect who ran the diagnostic arrives at
+ *   /audit?days=27&exposure=1890&totalDays=31&total=2170
+ * and those go into Tally hidden fields, so the submission that reaches your
+ * webhook already knows what they saw. Without this the two halves of the
+ * funnel don't talk and you lose the single strongest qualifying signal you
+ * have.
+ *
+ * Set TALLY_FORM_ID below (or NEXT_PUBLIC_TALLY_FORM_ID in the environment).
+ */
+
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  PALETTE,
+  MONO,
+  DISPLAY,
+  hexA,
+  money,
+  shellStyle,
+  bodyStyle,
+  panelStyle,
+  cardStyle,
+  utilityLabel,
+  eyebrowTab,
+  headingStyle,
+  sharedCss,
+} from '@/lib/chaosTokens';
+
+const TALLY_FORM_ID = process.env.NEXT_PUBLIC_TALLY_FORM_ID ?? 'YOUR_TALLY_FORM_ID';
+
+const DELIVERABLES = [
+  'Operational vs. leasing vacancy split, per unit',
+  'Make-ready bottleneck analysis against your own median',
+  'Repeat-callback detection — same unit, same system',
+  'Vendor concentration and spend benchmark',
+  'Cost anomalies flagged for human review',
+  'Prioritised findings report',
+  '30-minute review call',
+];
+
+interface Snapshot {
+  days?: number;
+  exposure?: number;
+  totalDays?: number;
+  total?: number;
+}
+
+export default function AuditPage() {
+  const [snapshot, setSnapshot] = useState<Snapshot>({});
+  const [ready, setReady] = useState(false);
+
+  // Read after mount — no useSearchParams, so no Suspense boundary and no
+  // build failure, and the page stays statically renderable.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search);
+    const n = (k: string) => {
+      const v = Number(q.get(k));
+      return Number.isFinite(v) && v > 0 ? Math.round(v) : undefined;
+    };
+    setSnapshot({
+      days: n('days'),
+      exposure: n('exposure'),
+      totalDays: n('totalDays'),
+      total: n('total'),
+    });
+    setReady(true);
+  }, []);
+
+  /**
+   * Tally hidden fields are populated by query string. The parameter name must
+   * match the hidden field name in the form exactly — see TALLY-SETUP.md §2.
+   */
+  const embedSrc = useMemo(() => {
+    const p = new URLSearchParams({
+      alignLeft: '1',
+      hideTitle: '1',
+      transparentBackground: '1',
+      dynamicHeight: '1',
+    });
+    if (snapshot.days !== undefined) p.set('days', String(snapshot.days));
+    if (snapshot.exposure !== undefined) p.set('exposure', String(snapshot.exposure));
+    if (snapshot.totalDays !== undefined) p.set('total_days', String(snapshot.totalDays));
+    if (snapshot.total !== undefined) p.set('total_exposure', String(snapshot.total));
+    return `https://tally.so/embed/${TALLY_FORM_ID}?${p.toString()}`;
+  }, [snapshot]);
+
+  const hasSnapshot = snapshot.days !== undefined || snapshot.exposure !== undefined;
+
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        background: PALETTE.void,
+        padding: '48px 16px',
+        fontFamily: DISPLAY,
+      }}
+    >
+      <style>{sharedCss}</style>
+
+      <div className="w-full mx-auto overflow-hidden" style={{ ...shellStyle, maxWidth: 760 }}>
+        <div className="p-5 sm:p-7" style={bodyStyle}>
+          <div className="inline-flex items-center" style={eyebrowTab}>
+            PropOps8 // Operations audit
+          </div>
+
+          <h1 className="uppercase" style={{ ...headingStyle, margin: '18px 0 10px' }}>
+            Find out where your property is losing money
+          </h1>
+          <p
+            style={{
+              fontSize: 15.5,
+              lineHeight: 1.55,
+              color: hexA('#ffffff', 0.66),
+              margin: '0 0 22px',
+            }}
+          >
+            Send your existing work-order and turn exports. You get back a prioritised breakdown
+            of where make-ready time, repeat maintenance and vendor spend are draining NOI — and
+            which problems deserve attention first.
+          </p>
+
+          {/* ------------------------------------------- imported snapshot */}
+          {hasSnapshot && (
+            <div
+              className="p-4 sm:p-5"
+              style={{
+                ...panelStyle,
+                borderColor: hexA(PALETTE.pink, 0.3),
+                background: `linear-gradient(180deg, ${hexA(PALETTE.pink, 0.08)} 0%, ${PALETTE.panel} 70%)`,
+                marginBottom: 18,
+              }}
+            >
+              <div style={{ ...utilityLabel, fontSize: 10 }}>Your diagnostic, carried over</div>
+              <div className="flex flex-wrap items-baseline" style={{ gap: 18, marginTop: 12 }}>
+                {snapshot.days !== undefined && (
+                  <span style={{ fontFamily: MONO, fontSize: 13, color: hexA('#ffffff', 0.8) }}>
+                    Operational delay:{' '}
+                    <strong style={{ color: PALETTE.pink }}>{snapshot.days} days</strong>
+                  </span>
+                )}
+                {snapshot.exposure !== undefined && (
+                  <span style={{ fontFamily: MONO, fontSize: 13, color: hexA('#ffffff', 0.8) }}>
+                    Recoverable exposure:{' '}
+                    <strong style={{ color: PALETTE.pink }}>{money(snapshot.exposure)}</strong>
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  ...utilityLabel,
+                  fontSize: 10,
+                  letterSpacing: '0.12em',
+                  marginTop: 12,
+                  color: hexA('#ffffff', 0.4),
+                }}
+              >
+                That was one unit. The audit runs it across the portfolio — and these figures
+                travel with your submission.
+              </div>
+            </div>
+          )}
+
+          {/* -------------------------------------------------- the form */}
+          <div className="overflow-hidden" style={{ ...panelStyle, padding: '8px 8px 4px' }}>
+            {ready ? (
+              <iframe
+                src={embedSrc}
+                title="PropOps8 operations audit intake"
+                width="100%"
+                height="720"
+                loading="lazy"
+                style={{ border: 0, display: 'block', width: '100%', minHeight: 720 }}
+              />
+            ) : (
+              <div
+                style={{
+                  minHeight: 720,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  ...utilityLabel,
+                }}
+              >
+                Loading form&hellip;
+              </div>
+            )}
+          </div>
+
+          <p
+            style={{
+              ...utilityLabel,
+              fontSize: 10,
+              letterSpacing: '0.12em',
+              textAlign: 'center',
+              marginTop: 16,
+              color: hexA('#ffffff', 0.45),
+              lineHeight: 1.7,
+            }}
+          >
+            $497 &middot; 48-hour turnaround &middot; De-identified data accepted &middot; No
+            software subscription required
+          </p>
+
+          {/* --------------------------------------------- what you receive */}
+          <div className="p-5 sm:p-6" style={{ ...cardStyle, marginTop: 16 }}>
+            <div style={utilityLabel}>What you&rsquo;ll receive</div>
+            <ul style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
+              {DELIVERABLES.map((d) => (
+                <li
+                  key={d}
+                  className="flex items-start gap-3"
+                  style={{
+                    fontFamily: DISPLAY,
+                    fontSize: 14.5,
+                    lineHeight: 1.5,
+                    color: '#dbe5f5',
+                    marginBottom: 11,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ color: PALETTE.mint, flexShrink: 0, marginTop: 1 }}>
+                    &#10003;
+                  </span>
+                  {d}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ------------------------------------------------------ privacy */}
+          <div className="p-5" style={{ ...cardStyle, marginTop: 16 }}>
+            <div style={utilityLabel}>Data handling</div>
+            <p
+              style={{
+                fontFamily: MONO,
+                fontSize: 11,
+                lineHeight: 1.85,
+                letterSpacing: '0.03em',
+                color: hexA('#ffffff', 0.6),
+                margin: '12px 0 0',
+              }}
+            >
+              Upload de-identified operational data only. Do not include resident names, Social
+              Security numbers, financial account information, medical information, or other
+              sensitive personal information. Unit identifiers, dates, categories, vendors and
+              costs are all the analysis needs.
+              <br />
+              <br />
+              Files go to private storage reachable only by a link issued to you, and source
+              files are deleted at the end of the stated retention window. Payment is processed
+              by Tally&rsquo;s payment provider; card details never touch this site.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+<<<FILE app/globals.css>>>
+/* ---------------------------------------------------------------------------
+ * app/globals.css
+ * ---------------------------------------------------------------------------
+ * TAILWIND VERSION MATTERS HERE. Check yours:
+ *
+ *     grep tailwindcss package.json
+ *
+ * v4 (^4.x) — the line below is correct, leave it.
+ * v3 (^3.x) — delete it and use these three instead:
+ *
+ *     @tailwind base;
+ *     @tailwind components;
+ *     @tailwind utilities;
+ *
+ * Getting this wrong is the silent failure: no error, no warning, every
+ * Tailwind class in the landing page simply does nothing and the grid
+ * collapses into a single stacked column. If the page renders but the layout
+ * looks like an unstyled document, this line is why.
+ * ------------------------------------------------------------------------- */
+
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * Dark base.
+ *
+ * The pages set their own background, but html and body sit underneath. Left
+ * white, you get a white flash on load and white bars when a short page or an
+ * overscroll bounce exposes the edges — which on iOS Safari is most scrolls.
+ * ------------------------------------------------------------------------- */
+
+html,
+body {
+  background-color: #070b14;
+  color: #e6edf7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  /* Matches DISPLAY in lib/chaosTokens.ts. Change both or neither. */
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Nothing should ever scroll sideways on a phone. If something does, this
+   contains the symptom — but find the offender: it is almost always a fixed
+   width or a negative margin wider than its parent. */
+html {
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Dark form controls. Without this, date and select inputs render as light
+   widgets on the dark panels and look broken. */
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color-scheme: dark;
+}
+
+/* Visible focus, always. The pages set their own cyan ring via .chaos-focus;
+   this is the floor for anything that doesn't. */
+:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+<<<FILE app/ingest/page.tsx>>>
+import LedgerCheck from '@/components/LedgerCheck';
+
+export const metadata = {
+  title: 'Ledger screening',
+  description: 'Screen a rent-roll export in your browser. Nothing is transmitted.',
+};
+
+export default function IngestPage() {
+  return <LedgerCheck ctaHref="/audit" />;
+}
+
+<<<FILE app/layout.tsx>>>
+/**
+ * app/layout.tsx
+ * ----------------------------------------------------------------------------
+ * Header and footer live here rather than in each page, so every route gets
+ * them automatically — including /audit/thank-you and /upload/[token], which
+ * otherwise leave a visitor with nothing but the browser back button.
+ *
+ * FONTS VIA <link>, NOT next/font — deliberate. chaosTokens.ts declares its
+ * stacks as the literal strings 'Inter' and 'JetBrains Mono'. next/font
+ * generates a hashed family name, so those literals would never match and
+ * every page would silently fall back to system fonts. A plain stylesheet link
+ * registers the real family names, so the tokens work with zero edits. If you
+ * later switch to next/font for self-hosting, change both halves together or
+ * you get system fonts and no error to tell you why.
+ *
+ * metadataBase matters more than it looks: without it the relative OG paths in
+ * each page stay relative, and LinkedIn requires absolute URLs. A missing
+ * metadataBase is the most common cause of a blank preview card.
+ */
+
+import type { Metadata, Viewport } from 'next';
+import SiteHeader from '@/components/SiteHeader';
+import SiteFooter from '@/components/SiteFooter';
+import './globals.css';
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://propops8.com'),
+  title: {
+    default: 'PropOps8 — find out where your property is losing money',
+    template: '%s — PropOps8',
+  },
+  description:
+    'Operational vacancy vs. leasing vacancy, repeat callbacks, vendor concentration. Free diagnostic, no signup.',
+  openGraph: {
+    siteName: 'PropOps8',
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: { card: 'summary_large_image' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#070b14',
+  width: 'device-width',
+  initialScale: 1,
+  // Not maximumScale: 1 — locking zoom breaks the page for anyone who needs
+  // it, and the mono type on these cards is small.
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      {/* Column layout so the footer sits at the bottom on short pages
+          (thank-you, 404) instead of floating mid-screen. */}
+      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <SiteHeader />
+        <div id="main" style={{ flex: '1 0 auto' }}>
+          {children}
+        </div>
+        <SiteFooter />
+      </body>
+    </html>
+  );
+}
+
+<<<FILE app/page.tsx>>>
+/**
+ * app/page.tsx
+ * ----------------------------------------------------------------------------
+ * The landing page. Server Component — no hooks, no state, no client bundle
+ * beyond what the browser needs to paint. Every interactive thing on this page
+ * is a link.
+ *
+ * USES THE ASSETS YOU ALREADY UPLOADED:
+ *   /assets/lounge-demolition.webp   hero, full bleed
+ *   /assets/money-pit-room.webp      the operational-vs-leasing section
+ *   /assets/money-pit-stack.webp     closing section
+ *   /widgets/*.png                   the eight diagnostic cards
+ *   /og/calculator.png               link preview
+ *
+ * IMAGES ARE PLAIN <img>, NOT next/image. Deliberate: next/image on Netlify
+ * needs @netlify/plugin-nextjs configured for image optimisation, and a broken
+ * image on first deploy is a worse outcome than an unoptimised one. Every image
+ * carries explicit width/height (so nothing shifts as it loads) and lazy
+ * loading below the fold. Swap to next/image once the deploy is green.
+ *
+ * The widget PNGs here are the social exports. The live React widgets in
+ * components/widgets/ are a different thing and are not used on this page —
+ * they are for the report and for screenshots.
+ */
+
+import type { Metadata } from 'next';
+import {
+  PALETTE,
+  MONO,
+  DISPLAY,
+  hexA,
+  cardStyle,
+  utilityLabel,
+  eyebrowTab,
+  ctaStyle,
+  ghostCtaStyle,
+  sharedCss,
+} from '@/lib/chaosTokens';
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://propops8.com'),
+  title: 'PropOps8 — find out where your property is losing money',
+  description:
+    'Most vacancy reports show one number. PropOps8 separates the days your unit spent waiting for operations from the days it spent waiting for a tenant.',
+  openGraph: {
+    title: 'Find out where your property is losing money',
+    description:
+      'Operational vacancy vs. leasing vacancy, repeat callbacks, vendor concentration. Free diagnostic, no signup.',
+    url: 'https://propops8.com',
+    siteName: 'PropOps8',
+    images: [{ url: '/og/calculator.png', width: 1200, height: 630 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Find out where your property is losing money',
+    description: 'Free operational vacancy diagnostic. Runs in your browser.',
+    images: ['/og/calculator.png'],
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Content                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const CALCULATOR = '/tools/vacancy-calculator';
+const AUDIT = '/audit';
+
+/** Slugs match /public/widgets/*.png exactly. Lines are the widgets' own copy. */
+const DIAGNOSTICS = [
+  {
+    slug: 'vacancy-black-hole',
+    name: 'Vacancy Black Hole',
+    line: "The unit wasn't waiting for a tenant. It was waiting for operations.",
+  },
+  {
+    slug: 'callback-nightmare',
+    name: 'Callback Nightmare',
+    line: "The work order was closed. The problem wasn't.",
+  },
+  {
+    slug: 'vendor-money-pit',
+    name: 'Vendor Money Pit',
+    line: "One vendor holds 71% of spend, and nobody has benchmarked them.",
+  },
+  {
+    slug: 'deadline-graveyard',
+    name: 'Deadline Graveyard',
+    line: 'Nothing looked like an emergency until everything became one.',
+  },
+  {
+    slug: 'automation-graveyard',
+    name: 'Automation Graveyard',
+    line: "The automation didn't crash. It stopped doing the thing you thought it did.",
+  },
+  {
+    slug: 'asset-health-nightmare',
+    name: 'Asset Health Nightmare',
+    line: 'A property rarely becomes expensive overnight.',
+  },
+  {
+    slug: 'utility-energy-bleed',
+    name: 'Utility Energy Bleed',
+    line: 'The utility bill arrived. Nobody investigated the variance.',
+  },
+  {
+    slug: 'operations-chaos-index',
+    name: 'Operations Chaos Index',
+    line: "Your problem isn't one bad work order. It's the accumulation.",
+  },
+];
+
+const SEGMENTS = [
+  {
+    title: 'Institutional & endowment portfolios',
+    body: 'Turn-time and callback data rolled into the NOI conversation your asset managers are already having, with the arithmetic shown so analysts can check it.',
+  },
+  {
+    title: 'SRO operators',
+    body: 'Older buildings, tight margins, long turns. The audit separates the days lost to scope and procurement from the days lost to demand.',
+  },
+  {
+    title: 'Affordable housing organisations',
+    body: 'Compliance-driven operations. Findings framed around inspection readiness and documented response time, not NOI upside.',
+  },
+];
+
+const LADDER = [
+  {
+    price: 'Free',
+    name: 'Vacancy diagnostic',
+    body: 'Your own numbers, in ten seconds, in the browser. Nothing transmits.',
+    href: CALCULATOR,
+    cta: 'Run it now',
+    featured: false,
+  },
+  {
+    price: '$39',
+    name: 'Maintenance Leak Workbook',
+    body: 'The self-audit framework: what to export, what to measure, which thresholds matter.',
+    href: CALCULATOR,
+    cta: 'See the workbook',
+    featured: false,
+  },
+  {
+    price: '$99',
+    name: 'Intelligence Kit',
+    body: 'Workbook plus calculation templates, red-flag rules, and the vendor benchmark sheet.',
+    href: CALCULATOR,
+    cta: 'See the kit',
+    featured: false,
+  },
+  {
+    price: '$497',
+    name: 'Operations Audit',
+    body: 'Send your export. Get back a prioritised findings report in 48 hours, plus a 30-minute review call.',
+    href: AUDIT,
+    cta: 'Start my audit',
+    featured: true,
+  },
+];
+
+/* -------------------------------------------------------------------------- */
+/*  Page                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export default function LandingPage() {
+  return (
+    <main
+      style={{
+        background: PALETTE.void,
+        color: PALETTE.body,
+        fontFamily: DISPLAY,
+        overflowX: 'hidden',
+      }}
+    >
+      <style>{sharedCss}</style>
+
+      {/* ==================================================== HERO ========= */}
+      <section
+        className="relative"
+        style={{ minHeight: 'min(88vh, 760px)', display: 'flex', alignItems: 'center' }}
+      >
+        <img
+          src="/assets/lounge-demolition.webp"
+          alt=""
+          aria-hidden="true"
+          width={2560}
+          height={1280}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(180deg, ${hexA(PALETTE.void, 0.72)} 0%, ${hexA(PALETTE.void, 0.82)} 45%, ${PALETTE.void} 100%)`,
+          }}
+        />
+
+        <div
+          className="relative w-full mx-auto px-5 sm:px-8"
+          style={{ maxWidth: 1120, paddingTop: 72, paddingBottom: 72 }}
+        >
+          <span className="inline-flex items-center" style={eyebrowTab}>
+            PropOps8 // Operations intelligence
+          </span>
+
+          <h1
+            style={{
+              fontFamily: DISPLAY,
+              fontWeight: 900,
+              fontSize: 'clamp(2.1rem, 6.4vw, 4rem)',
+              lineHeight: 1.03,
+              letterSpacing: '-0.03em',
+              color: PALETTE.bright,
+              margin: '22px 0 0',
+              maxWidth: '18ch',
+            }}
+          >
+            Find out where your property is losing money
+          </h1>
+
+          <p
+            style={{
+              fontSize: 'clamp(1.02rem, 2.2vw, 1.3rem)',
+              lineHeight: 1.55,
+              color: hexA('#ffffff', 0.72),
+              margin: '22px 0 0',
+              maxWidth: '46ch',
+            }}
+          >
+            Most reports show one number: the unit was empty 31 days. They don&rsquo;t tell you
+            that 27 of those days were operations, and only 4 were demand.
+          </p>
+
+          <div className="flex flex-wrap gap-3" style={{ marginTop: 30 }}>
+            <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+              Run the free diagnostic
+              <span aria-hidden="true" style={{ fontSize: 15 }}>
+                &rarr;
+              </span>
+            </a>
+            <a href={AUDIT} className="chaos-ghost inline-flex items-center" style={ghostCtaStyle()}>
+              See the $497 audit
+            </a>
+          </div>
+
+          <p style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.14em', marginTop: 20 }}>
+            No signup &middot; Runs in your browser &middot; Nothing transmits
+          </p>
+        </div>
+      </section>
+
+      {/* ============================================== DIAGNOSTICS ======== */}
+      <section className="mx-auto px-5 sm:px-8" style={{ maxWidth: 1120, padding: '64px 20px' }}>
+        <span style={utilityLabel}>The Ugly8</span>
+        <h2
+          style={{
+            fontFamily: DISPLAY,
+            fontWeight: 800,
+            fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
+            letterSpacing: '-0.025em',
+            lineHeight: 1.1,
+            color: PALETTE.bright,
+            margin: '14px 0 10px',
+            maxWidth: '22ch',
+          }}
+        >
+          Eight ways a portfolio leaks money quietly
+        </h2>
+        <p
+          style={{
+            fontSize: 16,
+            lineHeight: 1.6,
+            color: hexA('#ffffff', 0.6),
+            margin: '0 0 34px',
+            maxWidth: '58ch',
+          }}
+        >
+          None of these show up as a line item. They show up as NOI that keeps underperforming a
+          portfolio that looks fine on paper.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {DIAGNOSTICS.map((d) => (
+            <a
+              key={d.slug}
+              href={CALCULATOR}
+              className="chaos-tile chaos-focus block overflow-hidden"
+              style={{ ...cardStyle, textDecoration: 'none' }}
+            >
+              <img
+                src={`/widgets/${d.slug}.png`}
+                alt={`${d.name} diagnostic card`}
+                width={1200}
+                height={1200}
+                loading="lazy"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+              <div style={{ padding: '16px 16px 18px' }}>
+                <div
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 11.5,
+                    letterSpacing: '0.13em',
+                    textTransform: 'uppercase',
+                    color: PALETTE.cyan,
+                  }}
+                >
+                  {d.name}
+                </div>
+                <p
+                  style={{
+                    fontSize: 13.5,
+                    lineHeight: 1.5,
+                    color: hexA('#ffffff', 0.66),
+                    margin: '9px 0 0',
+                  }}
+                >
+                  {d.line}
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* ============================================ THE ARGUMENT ========= */}
+      <section style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}>
+        <div
+          className="mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center"
+          style={{ maxWidth: 1120, padding: '72px 20px' }}
+        >
+          <div className="overflow-hidden" style={{ borderRadius: 16 }}>
+            <img
+              src="/assets/money-pit-room.webp"
+              alt="Illustration: a unit sitting empty while operations stall"
+              width={1200}
+              height={1200}
+              loading="lazy"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+          </div>
+
+          <div>
+            <span style={utilityLabel}>The distinction nobody reports</span>
+            <h2
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 800,
+                fontSize: 'clamp(1.5rem, 3.6vw, 2.2rem)',
+                letterSpacing: '-0.025em',
+                lineHeight: 1.15,
+                color: PALETTE.bright,
+                margin: '14px 0 18px',
+              }}
+            >
+              Operational vacancy is not leasing vacancy
+            </h2>
+            <p style={{ fontSize: 16.5, lineHeight: 1.65, color: hexA('#ffffff', 0.72), margin: 0 }}>
+              When a unit sits empty, your software logs one number and treats the whole span as a
+              leasing problem. But most of that time usually passes before the unit is even
+              showable &mdash; waiting on inspection, scope, procurement, a contractor, a final
+              clean.
+            </p>
+
+            <div
+              className="grid grid-cols-2 gap-4"
+              style={{ margin: '26px 0', maxWidth: 420 }}
+            >
+              <div style={{ ...cardStyle, padding: '18px 18px 20px' }}>
+                <div style={{ ...utilityLabel, fontSize: 10 }}>Make-ready</div>
+                <div
+                  style={{
+                    fontFamily: DISPLAY,
+                    fontWeight: 900,
+                    fontSize: 34,
+                    lineHeight: 1,
+                    letterSpacing: '-0.03em',
+                    color: PALETTE.pink,
+                    marginTop: 10,
+                  }}
+                >
+                  27 days
+                </div>
+              </div>
+              <div style={{ ...cardStyle, padding: '18px 18px 20px' }}>
+                <div style={{ ...utilityLabel, fontSize: 10 }}>Leasing</div>
+                <div
+                  style={{
+                    fontFamily: DISPLAY,
+                    fontWeight: 900,
+                    fontSize: 34,
+                    lineHeight: 1,
+                    letterSpacing: '-0.03em',
+                    color: PALETTE.cyan,
+                    marginTop: 10,
+                  }}
+                >
+                  4 days
+                </div>
+              </div>
+            </div>
+
+            <p
+              style={{
+                fontSize: 15,
+                lineHeight: 1.6,
+                color: hexA('#ffffff', 0.55),
+                margin: '0 0 24px',
+              }}
+            >
+              At $2,100/month, those 27 operational days are $1,890 you could have recovered. The
+              other four were the market. Sample figures &mdash; put your own dates in the
+              calculator.
+            </p>
+
+            <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+              Split your last turn
+              <span aria-hidden="true" style={{ fontSize: 15 }}>
+                &rarr;
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================ SEGMENTS ========= */}
+      <section className="mx-auto px-5 sm:px-8" style={{ maxWidth: 1120, padding: '68px 20px' }}>
+        <span style={utilityLabel}>Who this is for</span>
+        <h2
+          style={{
+            fontFamily: DISPLAY,
+            fontWeight: 800,
+            fontSize: 'clamp(1.5rem, 3.6vw, 2.2rem)',
+            letterSpacing: '-0.025em',
+            lineHeight: 1.15,
+            color: PALETTE.bright,
+            margin: '14px 0 34px',
+          }}
+        >
+          Same diagnosis. Different consequence.
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {SEGMENTS.map((s) => (
+            <div key={s.title} style={{ ...cardStyle, padding: '24px 22px 26px' }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 3,
+                  borderRadius: 999,
+                  background: PALETTE.cyan,
+                  boxShadow: `0 0 12px ${hexA(PALETTE.cyan, 0.7)}`,
+                  marginBottom: 18,
+                }}
+              />
+              <h3
+                style={{
+                  fontFamily: DISPLAY,
+                  fontWeight: 700,
+                  fontSize: 17,
+                  lineHeight: 1.3,
+                  color: PALETTE.bright,
+                  margin: '0 0 10px',
+                }}
+              >
+                {s.title}
+              </h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.6, color: hexA('#ffffff', 0.62), margin: 0 }}>
+                {s.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ================================================== LADDER ========= */}
+      <section style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}>
+        <div className="mx-auto px-5 sm:px-8" style={{ maxWidth: 1120, padding: '68px 20px' }}>
+          <span style={utilityLabel}>Start anywhere</span>
+          <h2
+            style={{
+              fontFamily: DISPLAY,
+              fontWeight: 800,
+              fontSize: 'clamp(1.5rem, 3.6vw, 2.2rem)',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.15,
+              color: PALETTE.bright,
+              margin: '14px 0 34px',
+            }}
+          >
+            Do it yourself, or send me the export
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {LADDER.map((t) => (
+              <div
+                key={t.name}
+                className="flex flex-col"
+                style={{
+                  ...cardStyle,
+                  padding: '24px 22px 26px',
+                  border: t.featured
+                    ? `1px solid ${hexA(PALETTE.cyan, 0.45)}`
+                    : `1px solid ${hexA('#ffffff', 0.05)}`,
+                  boxShadow: t.featured ? `0 0 32px ${hexA(PALETTE.cyan, 0.14)}` : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: DISPLAY,
+                    fontWeight: 900,
+                    fontSize: 30,
+                    lineHeight: 1,
+                    letterSpacing: '-0.03em',
+                    color: t.featured ? PALETTE.cyan : PALETTE.bright,
+                  }}
+                >
+                  {t.price}
+                </div>
+                <div
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 11,
+                    letterSpacing: '0.13em',
+                    textTransform: 'uppercase',
+                    color: hexA('#ffffff', 0.6),
+                    margin: '12px 0 12px',
+                  }}
+                >
+                  {t.name}
+                </div>
+                <p
+                  style={{
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    color: hexA('#ffffff', 0.62),
+                    margin: '0 0 20px',
+                    flex: '1 1 auto',
+                  }}
+                >
+                  {t.body}
+                </p>
+                <a
+                  href={t.href}
+                  className={t.featured ? 'chaos-cta inline-flex items-center justify-center' : 'chaos-ghost inline-flex items-center justify-center'}
+                  style={t.featured ? ctaStyle() : ghostCtaStyle()}
+                >
+                  {t.cta}
+                </a>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.14em', marginTop: 24 }}>
+            48-hour turnaround &middot; De-identified data accepted &middot; No software
+            subscription required
+          </p>
+        </div>
+      </section>
+
+      {/* =================================================== CLOSE ========= */}
+      <section className="relative overflow-hidden">
+        <img
+          src="/assets/money-pit-stack.webp"
+          alt=""
+          aria-hidden="true"
+          width={1200}
+          height={1500}
+          loading="lazy"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center 30%',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(180deg, ${PALETTE.void} 0%, ${hexA(PALETTE.void, 0.78)} 40%, ${PALETTE.void} 100%)`,
+          }}
+        />
+        <div
+          className="relative mx-auto px-5 sm:px-8 text-center"
+          style={{ maxWidth: 720, padding: '96px 20px' }}
+        >
+          <p
+            style={{
+              fontFamily: DISPLAY,
+              fontSize: 'clamp(1.3rem, 3.4vw, 1.9rem)',
+              fontWeight: 600,
+              lineHeight: 1.4,
+              color: PALETTE.bright,
+              margin: '0 0 28px',
+            }}
+          >
+            A property rarely becomes expensive overnight. The warning signs arrive one work order
+            at a time.
+          </p>
+          <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+            Run the free diagnostic
+            <span aria-hidden="true" style={{ fontSize: 15 }}>
+              &rarr;
+            </span>
+          </a>
+        </div>
+      </section>
+
+      {/* ================================================== FOOTER ========= */}
+      <footer
+        style={{
+          borderTop: `1px solid ${hexA('#ffffff', 0.06)}`,
+          background: PALETTE.void,
+        }}
+      >
+        <div
+          className="mx-auto px-5 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          style={{ maxWidth: 1120, padding: '26px 20px' }}
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {['n8n', 'supabase', 'postgres', 'propops8_core'].map((tag, i) => (
+              <span key={tag} className="flex items-center gap-3">
+                {i > 0 && <span style={{ color: PALETTE.track }}>&middot;</span>}
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 11,
+                    letterSpacing: '0.14em',
+                    color: i === 0 ? PALETTE.body : PALETTE.label,
+                    textTransform: i === 0 ? 'none' : 'uppercase',
+                  }}
+                >
+                  {tag}
+                </span>
+              </span>
+            ))}
+          </div>
+          <span style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.13em' }}>
+            PropOps8 &middot; Daniel Ebuehi
+          </span>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+<<<FILE app/tools/vacancy-calculator/VacancyBlackHole.tsx>>>
+'use client';
+
+/**
+ * VacancyBlackHole — free diagnostic calculator
+ * ----------------------------------------------------------------------------
+ * Top of the PropOps8 funnel. Deploy at /tools/vacancy-calculator and point
+ * every LinkedIn post and outbound message at it.
+ *
+ * WHAT CHANGED FROM THE DRAFT VERSION
+ *
+ * 1. Skin. The draft was amber-on-zinc, which matches nothing else you've
+ *    built. Now on chaosTokens, so it is visibly the same product as the
+ *    eight cards.
+ *
+ * 2. The headline number. The draft led with total exposure. This leads with
+ *    the make-ready portion, because that is the only part you can sell a fix
+ *    for — and it labels it "recoverable", which the mockup card did not.
+ *    Total exposure is still shown, one tier down, so nothing is hidden.
+ *
+ * 3. Date maths. `new Date('2026-06-01')` parses as UTC midnight while other
+ *    Date calls are local, which is a class of bug that surfaces as an
+ *    off-by-one day for anyone west of Greenwich — i.e. every one of your
+ *    Southern California prospects. Day counts now go through UTC day numbers.
+ *
+ * 4. Validation. The draft clamped negative spans to zero with Math.max, so a
+ *    rent-ready date before the move-out date silently reported 0 days. Now it
+ *    says what's wrong and suppresses the figures rather than showing a
+ *    confident wrong answer to a prospect.
+ *
+ * 5. Prefill + share. Reads rent and dates from the query string, and can copy
+ *    a prefilled link back out. That is the outreach play in your plan: send a
+ *    prospect a URL that already contains their unit's numbers, so the first
+ *    thing they see is their own leak, not an empty form.
+ *
+ * 6. CTA routing. Params now carry into the intake step rather than jumping
+ *    straight to the audit page, matching the pipeline you mapped.
+ *
+ * No dependencies beyond React. All maths is synchronous and local; nothing is
+ * sent anywhere.
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  PALETTE,
+  MONO,
+  DISPLAY,
+  hexA,
+  money,
+  daysBetween,
+  dayNumber,
+  shellStyle,
+  bodyStyle,
+  panelStyle,
+  cardStyle,
+  utilityLabel,
+  eyebrowTab,
+  headingStyle,
+  figureStyle,
+  ctaStyle,
+  sharedCss,
+} from '@/lib/chaosTokens';
+
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface VacancyBlackHoleProps {
+  defaultRent?: number;
+  defaultMoveOut?: string;
+  defaultReadyDate?: string;
+  defaultLeaseDate?: string;
+  /** Divisor for the daily rate. 30 is the PM convention; 30.44 is calendar-exact. */
+  daysPerMonth?: number;
+  /** Lead capture route. Query params are appended. */
+  intakeHref?: string;
+  ctaLabel?: string;
+  /** Set false if you host this somewhere the query string shouldn't be trusted. */
+  readUrlParams?: boolean;
+  currency?: string;
+}
+
+interface Metrics {
+  operationalDays: number;
+  leasingDays: number;
+  totalDays: number;
+  dailyRent: number;
+  operationalExposure: number;
+  leasingExposure: number;
+  totalExposure: number;
+  operationalPercent: number;
+  leasingPercent: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Field                                                                      */
+/* -------------------------------------------------------------------------- */
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label style={{ display: 'block' }}>
+      <span style={{ ...utilityLabel, fontSize: 10.5, display: 'block', marginBottom: 7 }}>
+        {label}
+      </span>
+      {children}
+      {hint && (
+        <span
+          style={{
+            display: 'block',
+            marginTop: 6,
+            fontFamily: MONO,
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            color: hexA(PALETTE.pink, 0.9),
+          }}
+        >
+          {hint}
+        </span>
+      )}
+    </label>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: hexA('#060b16', 0.85),
+  border: `1px solid ${hexA('#ffffff', 0.12)}`,
+  borderRadius: 8,
+  padding: '11px 13px',
+  color: PALETTE.bright,
+  fontFamily: MONO,
+  fontSize: 14,
+  letterSpacing: '0.03em',
+  colorScheme: 'dark',
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Component                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export default function VacancyBlackHole({
+  defaultRent = 2100,
+  defaultMoveOut = '2026-06-01',
+  defaultReadyDate = '2026-06-28',
+  defaultLeaseDate = '2026-07-02',
+  daysPerMonth = 30,
+  intakeHref = '/audit',
+  ctaLabel = 'Find my make-ready bottleneck',
+  readUrlParams = true,
+  currency = '$',
+}: VacancyBlackHoleProps) {
+  // Rent is held as a string so an empty field stays empty instead of snapping
+  // to 0 while someone is mid-edit.
+  const [rentInput, setRentInput] = useState<string>(String(defaultRent));
+  const [moveOutDate, setMoveOutDate] = useState<string>(defaultMoveOut);
+  const [readyDate, setReadyDate] = useState<string>(defaultReadyDate);
+  const [leaseDate, setLeaseDate] = useState<string>(defaultLeaseDate);
+  const [copied, setCopied] = useState(false);
+
+  // Prefill from the query string after mount — no hydration mismatch, and it
+  // works without pulling in next/navigation or a Suspense boundary.
+  useEffect(() => {
+    if (!readUrlParams || typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search);
+    const rent = q.get('rent');
+    const out = q.get('moveOut');
+    const ready = q.get('ready');
+    const lease = q.get('lease');
+    if (rent && Number.isFinite(Number(rent))) setRentInput(rent);
+    if (out && dayNumber(out) !== null) setMoveOutDate(out);
+    if (ready && dayNumber(ready) !== null) setReadyDate(ready);
+    if (lease && dayNumber(lease) !== null) setLeaseDate(lease);
+  }, [readUrlParams]);
+
+  const monthlyRent = useMemo(() => {
+    const n = Number(rentInput);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [rentInput]);
+
+  const errors = useMemo(() => {
+    const e: Record<string, string> = {};
+    if (monthlyRent <= 0) e.rent = 'Enter a monthly rent above zero.';
+    const opSpan = daysBetween(moveOutDate, readyDate);
+    const leaseSpan = daysBetween(readyDate, leaseDate);
+    if (opSpan === null) e.ready = 'Check this date.';
+    else if (opSpan < 0) e.ready = 'Rent-ready date falls before move-out.';
+    if (leaseSpan === null) e.lease = 'Check this date.';
+    else if (leaseSpan < 0) e.lease = 'Lease-signed date falls before rent-ready.';
+    return e;
+  }, [monthlyRent, moveOutDate, readyDate, leaseDate]);
+
+  const valid = Object.keys(errors).length === 0;
+
+  const metrics: Metrics | null = useMemo(() => {
+    if (!valid) return null;
+    const operationalDays = daysBetween(moveOutDate, readyDate) ?? 0;
+    const leasingDays = daysBetween(readyDate, leaseDate) ?? 0;
+    const totalDays = operationalDays + leasingDays;
+    const dailyRent = monthlyRent / daysPerMonth;
+    const operationalExposure = Math.round(operationalDays * dailyRent);
+    const totalExposure = Math.round(totalDays * dailyRent);
+    return {
+      operationalDays,
+      leasingDays,
+      totalDays,
+      dailyRent: Math.round(dailyRent),
+      operationalExposure,
+      leasingExposure: totalExposure - operationalExposure,
+      totalExposure,
+      operationalPercent: totalDays > 0 ? (operationalDays / totalDays) * 100 : 0,
+      leasingPercent: totalDays > 0 ? (leasingDays / totalDays) * 100 : 0,
+    };
+  }, [valid, monthlyRent, moveOutDate, readyDate, leaseDate, daysPerMonth]);
+
+  const shareUrl = useMemo(() => {
+    const q = new URLSearchParams({
+      rent: String(monthlyRent),
+      moveOut: moveOutDate,
+      ready: readyDate,
+      lease: leaseDate,
+    });
+    if (typeof window === 'undefined') return `?${q.toString()}`;
+    return `${window.location.origin}${window.location.pathname}?${q.toString()}`;
+  }, [monthlyRent, moveOutDate, readyDate, leaseDate]);
+
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }, [shareUrl]);
+
+  const ctaHref = metrics
+    ? `${intakeHref}?type=vacancy&days=${metrics.operationalDays}&exposure=${metrics.operationalExposure}&total=${metrics.totalExposure}`
+    : intakeHref;
+
+  return (
+    <div className="w-full mx-auto overflow-hidden" style={shellStyle}>
+      <style>{sharedCss}</style>
+
+      <div className="p-5 sm:p-7" style={bodyStyle}>
+        <div className="inline-flex items-center" style={eyebrowTab}>
+          PropOps8 // Vacancy recovery audit
+        </div>
+
+        <h2 className="uppercase" style={{ ...headingStyle, margin: '18px 0 8px' }}>
+          The vacancy black hole
+        </h2>
+        <p
+          style={{
+            fontFamily: DISPLAY,
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: hexA('#ffffff', 0.62),
+            margin: '0 0 20px',
+            maxWidth: '40rem',
+          }}
+        >
+          How many rent-paying days disappeared before the unit was actually ready to show?
+        </p>
+
+        {/* --------------------------------------------------------- inputs */}
+        <div className="p-5 sm:p-6" style={panelStyle}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Monthly rent" hint={errors.rent}>
+              <input
+                className="chaos-input"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={25}
+                value={rentInput}
+                onChange={(e) => setRentInput(e.target.value)}
+                style={inputStyle}
+                aria-invalid={Boolean(errors.rent)}
+              />
+            </Field>
+
+            <Field label="Move-out date">
+              <input
+                className="chaos-input"
+                type="date"
+                value={moveOutDate}
+                onChange={(e) => setMoveOutDate(e.target.value)}
+                style={inputStyle}
+              />
+            </Field>
+
+            <Field label="Rent-ready date" hint={errors.ready}>
+              <input
+                className="chaos-input"
+                type="date"
+                value={readyDate}
+                onChange={(e) => setReadyDate(e.target.value)}
+                style={inputStyle}
+                aria-invalid={Boolean(errors.ready)}
+              />
+            </Field>
+
+            <Field label="Lease signed date" hint={errors.lease}>
+              <input
+                className="chaos-input"
+                type="date"
+                value={leaseDate}
+                onChange={(e) => setLeaseDate(e.target.value)}
+                style={inputStyle}
+                aria-invalid={Boolean(errors.lease)}
+              />
+            </Field>
+          </div>
+        </div>
+
+        {/* -------------------------------------------------------- results */}
+        <div className="p-5 sm:p-6" style={{ ...cardStyle, marginTop: 16 }}>
+          {!metrics ? (
+            <p
+              style={{
+                fontFamily: MONO,
+                fontSize: 12.5,
+                letterSpacing: '0.08em',
+                color: hexA(PALETTE.pink, 0.9),
+                margin: 0,
+              }}
+            >
+              Fix the highlighted fields to see the calculation.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <div style={utilityLabel}>Recoverable exposure &mdash; make-ready delay</div>
+                  <div style={{ ...figureStyle(PALETTE.pink), marginTop: 10 }}>
+                    {money(metrics.operationalExposure, currency)}
+                  </div>
+                  <div
+                    style={{
+                      ...utilityLabel,
+                      fontSize: 10.5,
+                      letterSpacing: '0.13em',
+                      marginTop: 10,
+                      color: hexA('#ffffff', 0.45),
+                    }}
+                  >
+                    {metrics.operationalDays} days &times; {money(metrics.dailyRent, currency)}/day
+                  </div>
+                </div>
+
+                <div>
+                  <div style={utilityLabel}>Total vacancy</div>
+                  <div style={{ ...figureStyle(PALETTE.bright), marginTop: 10 }}>
+                    {metrics.totalDays} days
+                  </div>
+                  <div
+                    style={{
+                      ...utilityLabel,
+                      fontSize: 10.5,
+                      letterSpacing: '0.13em',
+                      marginTop: 10,
+                      color: hexA('#ffffff', 0.45),
+                    }}
+                  >
+                    {money(metrics.totalExposure, currency)} gross rent lost
+                  </div>
+                </div>
+              </div>
+
+              {/* split bar — operational vs leasing, torn apart */}
+              <div style={{ marginTop: 26 }}>
+                <div
+                  className="flex items-center justify-between"
+                  style={{ marginBottom: 10, gap: 12, flexWrap: 'wrap' }}
+                >
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: PALETTE.pink,
+                    }}
+                  >
+                    {metrics.operationalDays} days &middot; Make-ready
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: PALETTE.cyan,
+                    }}
+                  >
+                    {metrics.leasingDays} days &middot; Leasing
+                  </span>
+                </div>
+
+                <div className="flex" style={{ gap: 6, height: 34 }}>
+                  <div
+                    className="chaos-anim"
+                    style={{
+                      width: `${metrics.operationalPercent}%`,
+                      minWidth: metrics.operationalDays > 0 ? 6 : 0,
+                      borderRadius: 6,
+                      background: `linear-gradient(180deg, #ff4d80 0%, ${PALETTE.pink} 60%, #e01050 100%)`,
+                      boxShadow: `0 0 18px ${hexA(PALETTE.pink, 0.6)}`,
+                      transition: 'width 500ms cubic-bezier(.2,.8,.2,1)',
+                    }}
+                  />
+                  <div
+                    className="chaos-anim"
+                    style={{
+                      width: `${metrics.leasingPercent}%`,
+                      minWidth: metrics.leasingDays > 0 ? 6 : 0,
+                      borderRadius: 6,
+                      background: `linear-gradient(180deg, #5ef0ff 0%, ${PALETTE.cyan} 60%, #0fb6d4 100%)`,
+                      boxShadow: `0 0 18px ${hexA(PALETTE.cyan, 0.6)}`,
+                      transition: 'width 500ms cubic-bezier(.2,.8,.2,1)',
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    ...utilityLabel,
+                    fontSize: 10,
+                    letterSpacing: '0.13em',
+                    marginTop: 12,
+                    color: hexA('#ffffff', 0.42),
+                  }}
+                >
+                  {Math.round(metrics.operationalPercent)}% of the vacancy was operations, not
+                  demand
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ---------------------------------------------------------- quote */}
+        <p
+          style={{
+            fontFamily: DISPLAY,
+            fontSize: 'clamp(1rem, 2vw, 1.2rem)',
+            lineHeight: 1.45,
+            color: '#dbe5f5',
+            margin: '20px 0 0',
+            paddingLeft: 16,
+            borderLeft: `2px solid ${PALETTE.pink}`,
+          }}
+        >
+          The unit wasn&rsquo;t waiting for a tenant. It was waiting for operations.
+        </p>
+
+        {/* ------------------------------------------------------------ CTA */}
+        <div
+          className="flex flex-col sm:flex-row sm:items-center gap-3"
+          style={{ marginTop: 22 }}
+        >
+          <a
+            href={ctaHref}
+            className="chaos-cta inline-flex items-center justify-between gap-3 flex-1"
+            style={ctaStyle()}
+            aria-disabled={!metrics}
+          >
+            <span>{ctaLabel}</span>
+            <span aria-hidden="true" style={{ fontSize: 15 }}>
+              &rarr;
+            </span>
+          </a>
+
+          <button
+            type="button"
+            onClick={copyLink}
+            className="chaos-focus"
+            style={{
+              fontFamily: MONO,
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: copied ? PALETTE.mint : hexA('#ffffff', 0.7),
+              background: 'transparent',
+              border: `1px solid ${hexA('#ffffff', 0.16)}`,
+              borderRadius: 9,
+              padding: '13px 18px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {copied ? 'Link copied' : 'Copy prefilled link'}
+          </button>
+        </div>
+
+        <p
+          style={{
+            ...utilityLabel,
+            fontSize: 10,
+            letterSpacing: '0.12em',
+            marginTop: 14,
+            color: hexA('#ffffff', 0.38),
+            lineHeight: 1.6,
+          }}
+        >
+          Deterministic calculation. Daily rate = monthly rent &divide; {daysPerMonth}. Runs
+          entirely in your browser &mdash; nothing is submitted or stored.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+<<<FILE app/tools/vacancy-calculator/vacancy-calculator-page.tsx>>>
+/**
+ * app/tools/vacancy-calculator/page.tsx
+ * ----------------------------------------------------------------------------
+ * OVERWRITE the existing file at this path completely. What's there now is
+ * corrupted — `from 'react'i` with a stray character, and a function signature
+ * reading `VacancyCalculaexport d) {`. Something mangled it mid-write. It is
+ * not worth reading; replace the whole file.
+ *
+ * This is the URL published in every LinkedIn post and all three emails, so it
+ * has to resolve and it has to be the real calculator — the one that splits
+ * operational vacancy from leasing vacancy, not a generic loss estimator.
+ */
+
+import type { Metadata } from 'next';
+import VacancyBlackHole from './VacancyBlackHole';
+
+export const metadata: Metadata = {
+  title: 'Vacancy diagnostic',
+  description:
+    'How many of your vacant days were operations, and how many were demand? Runs in your browser. Nothing is transmitted.',
+  openGraph: {
+    title: 'The Vacancy Black Hole — free diagnostic',
+    description:
+      'Separate make-ready delay from leasing delay in ten seconds. No signup.',
+    images: [{ url: '/og/calculator.png', width: 1200, height: 630 }],
+  },
+};
+
+export default function VacancyCalculatorPage() {
+  return <VacancyBlackHole />;
+}
+
+<<<FILE components/CostCalculator.tsx>>>
+'use client';
+
+/**
+ * components/CostCalculator.tsx
+ * C.O.S.T. — The Cost Of Silent Time
+ *
+ * REPLACES the earlier draft, which computed:
+ *
+ *     units × turnDays × 45        // 100 × 31 × 45 = $139,500
+ *
+ * That formula had two defects. It multiplied EVERY unit by the turn
+ * length, which asserts the whole portfolio was vacant simultaneously
+ * — there was no turnover rate in it at all. And $45/day was a magic
+ * constant that silently assumed $1,369/month rent, so every operator
+ * whose rents differ got a wrong answer with no way to see why.
+ *
+ * Corrected method, all of it visible on screen:
+ *
+ *     daily   = (monthly rent × 12) ÷ 365
+ *     perTurn = daily × vacancy days
+ *     turns   = units × annual turnover rate
+ *     annual  = perTurn × turns
+ *
+ * Same 100-unit portfolio at $2,100 and 42% turnover returns $89,891,
+ * not $139,500. The alternate 30-day-month method is shown too, so a
+ * prospect who computes it differently sees the spread named rather
+ * than catching you out on it.
+ *
+ * Runs entirely client-side. No network, no storage, no analytics.
+ */
+
+import { useMemo, useState } from 'react';
+
+const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+
+function Slider({
+  id, label, hint, min, max, step = 1, value, display, accent = 'cyan', onChange,
+}: {
+  id: string; label: string; hint?: string;
+  min: number; max: number; step?: number;
+  value: number; display: string;
+  accent?: 'cyan' | 'red';
+  onChange: (v: number) => void;
+}) {
+  const thumb =
+    accent === 'red'
+      ? '[&::-webkit-slider-thumb]:border-rose-500 [&::-moz-range-thumb]:border-rose-500'
+      : '[&::-webkit-slider-thumb]:border-cyan-400 [&::-moz-range-thumb]:border-cyan-400';
+
+  return (
+    <div className="mb-5 last:mb-0">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="font-mono text-[11px] uppercase tracking-[0.09em] text-slate-400">
+          {label}
+        </label>
+        <span className="font-mono text-base font-semibold tabular-nums text-slate-100">{display}</span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className={[
+          'block h-[22px] w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none',
+          '[&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded [&::-webkit-slider-runnable-track]:bg-slate-700',
+          '[&::-moz-range-track]:h-[2px] [&::-moz-range-track]:rounded [&::-moz-range-track]:bg-slate-700',
+          '[&::-webkit-slider-thumb]:-mt-[5.5px] [&::-webkit-slider-thumb]:h-[13px] [&::-webkit-slider-thumb]:w-[13px]',
+          '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+          '[&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-slate-950',
+          '[&::-moz-range-thumb]:h-[13px] [&::-moz-range-thumb]:w-[13px] [&::-moz-range-thumb]:rounded-full',
+          '[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:bg-slate-950',
+          thumb,
+        ].join(' ')}
+      />
+      {hint && <p className="mt-1.5 font-mono text-[10px] tracking-wide text-slate-600">{hint}</p>}
+    </div>
+  );
+}
+
+export default function CostCalculator({ ctaHref }: { ctaHref: string }) {
+  const [units, setUnits] = useState(120);
+  const [rent, setRent] = useState(2100);
+  const [total, setTotal] = useState(31);
+  const [mrRaw, setMrRaw] = useState(27);
+  const [turnover, setTurnover] = useState(42);
+
+  const mr = Math.min(mrRaw, total);
+  const leaseDays = total - mr;
+
+  const c = useMemo(() => {
+    const daily = (rent * 12) / 365;
+    const perTurn = daily * total;
+    const turns = units * (turnover / 100);
+    return {
+      daily,
+      perTurn,
+      turns,
+      annual: perTurn * turns,
+      ops: daily * mr * turns,
+      lease: daily * leaseDays * turns,
+      alt: (rent / 30) * total * turns,
+    };
+  }, [units, rent, total, mr, leaseDays, turnover]);
+
+  const opsPct = total ? Math.round((mr / total) * 100) : 0;
+
+  return (
+    <div className="rounded-[5px] border border-cyan-500/25 bg-slate-950/85 p-6 backdrop-blur-md md:p-8">
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-400">
+            C.O.S.T. — The Cost Of Silent Time
+          </p>
+          <h1 className="mt-2 text-[clamp(22px,4.4vw,32px)] font-extrabold uppercase leading-none tracking-[-0.03em]">
+            Vacant is a duration.
+            <span className="block font-light text-slate-400">Rent-ready is a date.</span>
+          </h1>
+        </div>
+        <span className="rounded-[2px] border border-amber-500/40 bg-amber-500/[0.07] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-amber-500">
+          Your inputs · not a verified result
+        </span>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[300px_1fr] lg:gap-10">
+        <div>
+          <Slider id="units" label="Units in portfolio" min={10} max={500} step={5}
+                  value={units} display={String(units)} onChange={setUnits} />
+          <Slider id="rent" label="Average monthly rent" min={700} max={4500} step={25}
+                  value={rent} display={money(rent)} onChange={setRent} />
+          <Slider id="total" label="Average vacancy days" hint="Move-out to lease signed."
+                  min={5} max={90} value={total} display={String(total)} onChange={setTotal} />
+          <Slider id="mr" label="Of that, make-ready days" hint="The part leasing never owned."
+                  min={0} max={total} value={mr} display={String(mr)} accent="red" onChange={setMrRaw} />
+          <Slider id="turn" label="Annual turnover rate" hint="Sets how many turns the estimate covers."
+                  min={5} max={80} value={turnover} display={`${turnover}%`} onChange={setTurnover} />
+        </div>
+
+        <div>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="block text-[clamp(38px,9vw,62px)] font-extrabold leading-none tracking-[-0.038em] tabular-nums text-[#FF2D6F]">
+                {money(c.annual)}
+              </span>
+              <span className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                Annual gross rent forgone
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="block text-[clamp(19px,4vw,25px)] font-bold tabular-nums tracking-[-0.02em]">
+                {money(c.perTurn)}
+              </span>
+              <span className="mt-1.5 block font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                Per turn
+              </span>
+            </div>
+          </div>
+
+          {/* Day strip — one tick per vacancy day */}
+          <div
+            role="img"
+            aria-label={`${total} vacancy days: ${mr} make-ready, ${leaseDays} leasing`}
+            className="flex h-[68px] items-end gap-[2px] overflow-hidden rounded-[3px] border border-slate-800 bg-slate-900/80 px-3 pb-2.5 pt-3"
+          >
+            {Array.from({ length: total }).map((_, i) => (
+              <span
+                key={i}
+                className={
+                  i < mr
+                    ? 'h-full min-w-[2px] flex-1 rounded-t-[1px] bg-rose-500'
+                    : 'h-[56%] min-w-[2px] flex-1 rounded-t-[1px] bg-amber-500'
+                }
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-slate-600">
+            <span>Move-out</span><span>Lease signed</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[3px] border border-l-[3px] border-slate-800 border-l-rose-500 bg-slate-900/70 px-3.5 py-3">
+              <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Operations owned</span>
+              <span className="block text-xl font-bold tabular-nums tracking-[-0.02em] text-rose-500">{money(c.ops)}</span>
+              <span className="mt-1 block font-mono text-[11px] text-slate-500">{mr} days · {opsPct}%</span>
+            </div>
+            <div className="rounded-[3px] border border-l-[3px] border-slate-800 border-l-amber-500 bg-slate-900/70 px-3.5 py-3">
+              <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Leasing owned</span>
+              <span className="block text-xl font-bold tabular-nums tracking-[-0.02em] text-amber-500">{money(c.lease)}</span>
+              <span className="mt-1 block font-mono text-[11px] text-slate-500">{leaseDays} days · {100 - opsPct}%</span>
+            </div>
+          </div>
+
+          <p className="mt-5 border-t border-slate-800 pt-4 font-mono text-[11px] leading-relaxed text-slate-500">
+            ({money(rent)} × 12 ÷ 365) = ${c.daily.toFixed(2)}/day · × {total} vacancy days = {money(c.perTurn)}/turn
+            · × {c.turns.toFixed(1)} turns/yr ({units} units × {turnover}%) = {money(c.annual)}.
+            Using rent ÷ 30 instead gives {money(c.alt)} — a method spread, not a finding.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-start gap-3 rounded-r-[3px] border-l-[3px] border-cyan-400 bg-cyan-400/5 px-4 py-3.5">
+        <span className="whitespace-nowrap pt-0.5 font-mono text-[10px] tracking-[0.15em] text-cyan-400">LOCAL</span>
+        <p className="text-[13px] leading-relaxed text-slate-400">
+          Computed in your browser. Nothing is sent to a server or stored. Gross rent forgone is not
+          lost profit — it excludes concessions, turn cost, and any period the unit could not have been
+          leased regardless. It identifies a timeline worth opening, and assigns no fault.
+        </p>
+      </div>
+
+      <div className="mt-6 text-center">
+        <p className="mx-auto mb-5 max-w-[40ch] text-[clamp(16px,3vw,21px)] font-bold leading-tight tracking-[-0.018em]">
+          When was the unit actually rent-ready — and what happened between move-out and that date?
+        </p>
+        <a
+          href={ctaHref}
+          className="inline-block rounded-[3px] bg-[#FF2D6F] px-6 py-4 font-mono text-xs font-semibold uppercase tracking-[0.13em] text-white
+                     transition hover:-translate-y-px hover:shadow-[0_8px_26px_rgba(255,45,111,.34)]
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2D6F]"
+        >
+          Get the make-ready timeline kit →
+        </a>
+      </div>
+    </div>
+  );
+}
+
+<<<FILE components/HeroCanvas.tsx>>>
+'use client';
+
+/**
+ * components/HeroCanvas.tsx
+ *
+ * One wrapper, two modes — because your three assets are not the
+ * same kind of object and cannot take the same treatment.
+ *
+ *   mode="poster"  The asset already contains its own headline,
+ *                  figures, and CTA button. It gets framed at its
+ *                  native aspect ratio and is NEVER cropped, and
+ *                  nothing is layered on top of it. UI sits beside
+ *                  it. Use for: house-on-car, room-and-vortex.
+ *
+ *   mode="plate"   The asset is pure environment with no text.
+ *                  Safe as a true background: object-cover, gradient
+ *                  scaffolding, UI layered on z-20 as per the
+ *                  original blueprint. Use for: lounge/demolition.
+ *
+ * Why this split matters: two of the three posters contain a painted
+ * "GET VENDOR PERFORMANCE SCORECARD" button. Overlaying a real CTA
+ * gives the visitor two buttons, one of which is an image and does
+ * nothing — sighted users click the bigger painted one first, and
+ * screen readers never see it at all.
+ */
+
+import { type ReactNode } from 'react';
+
+type Common = {
+  tag: string;
+  children: ReactNode;
+  footer?: string;
+};
+
+type PosterProps = Common & {
+  mode: 'poster';
+  src: string;
+  alt: string;
+  /** Native aspect ratio of the asset, e.g. '4/5' or '1/1'. Locking
+   *  this is what keeps any pin coordinates on the same pixels at
+   *  every viewport width. */
+  ratio: string;
+  caption?: string;
+  pins?: Array<{ x: string; y: string; tone: 'red' | 'amber' | 'cyan'; label: string }>;
+};
+
+type PlateProps = Common & {
+  mode: 'plate';
+  src: string;
+  alt: string;
+};
+
+type Props = PosterProps | PlateProps;
+
+const TONES = {
+  red: { ring: 'border-rose-500/50', dot: 'bg-rose-500' },
+  amber: { ring: 'border-amber-500/50', dot: 'bg-amber-500' },
+  cyan: { ring: 'border-cyan-400/50', dot: 'bg-cyan-400' },
+} as const;
+
+function Chrome({ tag, footer }: { tag: string; footer?: string }) {
+  return { tag, footer };
+}
+
+export default function HeroCanvas(props: Props) {
+  const { tag, children, footer = 'PropOps8 · Demonstration · Method shown on page' } = props;
+
+  /* ─────────────────────────── PLATE ───────────────────────────
+     The blueprint's three-layer stack, used only where it is safe:
+     an asset with no baked-in text to compete with.
+     ─────────────────────────────────────────────────────────── */
+  if (props.mode === 'plate') {
+    return (
+      <section className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-slate-100">
+        {/* z-0 — graphic canvas */}
+        <div className="absolute inset-0 z-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={props.src}
+            alt={props.alt}
+            className="h-full w-full object-cover object-center"
+          />
+        </div>
+
+        {/* z-10 — contrast scaffolding.
+            Heavier at the bottom where body copy sits, transparent
+            through the middle so the artwork keeps its depth. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/35"
+        />
+
+        {/* z-20 — real DOM UI */}
+        <div className="relative z-20 mx-auto flex min-h-screen max-w-[1200px] flex-col justify-between px-5 py-6 md:px-8 md:py-10">
+          <header className="flex items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-400">{tag}</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              Prop<b className="font-semibold text-[#FF2D6F]">Ops8</b>
+            </span>
+          </header>
+
+          <main className="my-auto w-full py-10">{children}</main>
+
+          <footer className="border-t border-slate-800/80 pt-4 font-mono text-[10px] uppercase tracking-[0.19em] text-slate-600">
+            {footer}
+          </footer>
+        </div>
+      </section>
+    );
+  }
+
+  /* ────────────────────────── POSTER ───────────────────────────
+     Framed, uncropped, nothing overlaid on the art itself.
+     UI sits alongside. On mobile: copy, then tool, then art —
+     so the tool is reachable without scrolling past a full poster.
+     ─────────────────────────────────────────────────────────── */
+  const { src, alt, ratio, caption, pins = [] } = props;
+
+  return (
+    <section className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-slate-100">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0
+                   bg-[linear-gradient(rgba(34,224,232,.026)_1px,transparent_1px),linear-gradient(90deg,rgba(34,224,232,.026)_1px,transparent_1px)]
+                   bg-[size:64px_64px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-10
+                   bg-[radial-gradient(900px_520px_at_78%_22%,rgba(255,45,111,.10),transparent_68%)]"
+      />
+
+      <div className="relative z-20 mx-auto flex min-h-screen max-w-[1200px] flex-col px-5 py-6 md:px-8 md:py-10">
+        <header className="flex items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-400">{tag}</span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            Prop<b className="font-semibold text-[#FF2D6F]">Ops8</b>
+          </span>
+        </header>
+
+        <div className="my-auto grid w-full gap-9 py-10 lg:grid-cols-[1fr_minmax(0,520px)] lg:items-center lg:gap-12">
+          {/* UI beside the art — never on it */}
+          <div className="order-1">{children}</div>
+
+          <figure className="order-2 m-0">
+            <div
+              style={{ aspectRatio: ratio }}
+              className="relative w-full overflow-hidden rounded-[5px] border border-slate-800 bg-slate-900"
+            >
+              {/* object-contain: the painted headline and figures stay whole */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={alt}
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+
+              {pins.map((p) => {
+                const t = TONES[p.tone];
+                return (
+                  <span
+                    key={p.label}
+                    style={{ left: p.x, top: p.y }}
+                    className={`absolute z-10 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-2
+                                whitespace-nowrap rounded-full border ${t.ring} bg-slate-950/90 px-3 py-1.5
+                                font-mono text-[9px] uppercase tracking-[0.09em] text-slate-100
+                                backdrop-blur-sm sm:text-[10.5px]`}
+                  >
+                    <span className={`relative h-1.5 w-1.5 shrink-0 rounded-full ${t.dot}`}>
+                      <span className={`absolute -inset-1 rounded-full ${t.dot} opacity-40 motion-safe:animate-ping`} />
+                    </span>
+                    {p.label}
+                  </span>
+                );
+              })}
+            </div>
+
+            {caption && (
+              <figcaption className="mt-3 flex flex-wrap justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.15em] text-slate-600">
+                <span>{caption}</span>
+                <span className="text-amber-500">Demonstration</span>
+              </figcaption>
+            )}
+          </figure>
+        </div>
+
+        <footer className="border-t border-slate-800/80 pt-4 font-mono text-[10px] uppercase tracking-[0.19em] text-slate-600">
+          {footer}
+        </footer>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   USAGE
+
+   app/audit/page.tsx — poster, has a painted CTA, so the page's
+   own CTA is the only clickable one and it sits in the children.
+
+     <HeroCanvas
+       mode="poster"
+       tag="Operations Chaos Index"
+       src="/assets/money-pit-stack.png"
+       alt="Vendor spend concentration: 71% with one vendor, $130,782 versus $53,418 across all others, $184,200 annual spend."
+       ratio="4/5"
+       caption="Vendor concentration · synthetic portfolio"
+       pins={[{ x: '22%', y: '27%', tone: 'red', label: '71% concentration' }]}
+     >
+       <ChaosIndexCopy />
+     </HeroCanvas>
+
+   app/calculator/page.tsx — plate, no baked text, safe to layer on.
+
+     <HeroCanvas
+       mode="plate"
+       tag="Vacancy Timeline Diagnostic"
+       src="/assets/lounge-demolition.png"
+       alt="Neon-lit lounge set into a broken concrete wall."
+     >
+       <VacancyCalculator />
+     </HeroCanvas>
+   ───────────────────────────────────────────────────────────── */
+
+<<<FILE components/LedgerCheck.tsx>>>
+'use client';
+
+/**
+ * components/LedgerCheck.tsx
+ * Deterministic ledger screening — runs entirely in the browser.
+ *
+ * REPLACES the react-dropzone → n8n webhook / Supabase Storage draft.
+ *
+ * A work-order or vendor export from a live portfolio carries unit
+ * numbers, resident names, vendor invoice detail, and sometimes
+ * payment history. Accepting that on a public marketing page means
+ * you are holding other people's personal data: you then owe a
+ * privacy notice, a retention schedule, encryption at rest, access
+ * control, and a breach-notification path. None of that is worth
+ * carrying for a free top-of-funnel tool.
+ *
+ * So the file never leaves the browser. Papa Parse runs locally, the
+ * screening runs locally, and "nothing uploads" becomes the strongest
+ * line on the page rather than a compliance liability.
+ *
+ * Paid Snapshot is where files legitimately change hands — under a
+ * signed scope, a named retention window, and deletion on delivery.
+ *
+ * Install: npm i papaparse && npm i -D @types/papaparse
+ * (react-dropzone is not needed; native DnD is ~15 lines.)
+ */
+
+import Papa from 'papaparse';
+import { useCallback, useRef, useState } from 'react';
+
+/* ── header aliasing: PMS exports never agree on column names ── */
+const ALIASES: Record<string, string[]> = {
+  workOrderId: ['woid', 'wo', 'workorderid', 'workorder', 'workordernumber', 'wonumber', 'ticketid', 'ticket', 'id'],
+  unit:        ['unit', 'unitid', 'unitnumber', 'unitno', 'apt', 'apartment', 'space'],
+  vendor:      ['vendor', 'vendorname', 'contractor', 'supplier', 'payee', 'company'],
+  cost:        ['cost', 'amount', 'total', 'totalcost', 'invoiceamount', 'invoicetotal', 'charge', 'spend'],
+  opened:      ['opened', 'opendate', 'dateopened', 'created', 'createdat', 'datecreated', 'requestdate'],
+  closed:      ['closed', 'closedate', 'dateclosed', 'completed', 'completedat', 'datecompleted'],
+  issue:       ['issue', 'issuetype', 'description', 'category', 'problem', 'summary', 'requesttype', 'notes'],
+};
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const toNumber = (v: unknown) => {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : NaN;
+};
+
+type Tone = 'ok' | 'warn' | 'flag' | 'idle';
+type Badge = { tone: Tone; label: string; n?: string };
+
+type Result = {
+  fileName: string;
+  rows: number;
+  matched: string[];
+  missing: string[];
+  badges: Badge[];
+  concentration: { vendor: string; share: number; total: number } | null;
+  repeatUnits: number;
+};
+
+const TONE_CLASS: Record<Tone, string> = {
+  ok:   'text-emerald-400 border-emerald-400/35 bg-emerald-400/[0.07]',
+  warn: 'text-amber-500 border-amber-500/35 bg-amber-500/[0.07]',
+  flag: 'text-rose-500 border-rose-500/35 bg-rose-500/[0.07]',
+  idle: 'text-slate-500 border-slate-700 bg-transparent',
+};
+
+const DOT_CLASS: Record<Tone, string> = {
+  ok: 'bg-emerald-400', warn: 'bg-amber-500', flag: 'bg-rose-500', idle: 'bg-slate-600',
+};
+
+function screen(fileName: string, rows: Record<string, unknown>[], headers: string[]): Result {
+  const map: Record<string, string> = {};
+  for (const [field, aliases] of Object.entries(ALIASES)) {
+    const hit = headers.find((h) => aliases.includes(norm(h)));
+    if (hit) map[field] = hit;
+  }
+
+  const matched = Object.keys(map);
+  const missing = Object.keys(ALIASES).filter((f) => !map[f]);
+  const badges: Badge[] = [
+    { tone: 'ok', label: 'Valid CSV' },
+    { tone: matched.length >= 4 ? 'ok' : 'warn', label: 'Headers matched', n: `${matched.length}/${Object.keys(ALIASES).length}` },
+  ];
+
+  /* blank costs */
+  let blankCost = 0;
+  let total = 0;
+  const byVendor = new Map<string, number>();
+  if (map.cost) {
+    for (const r of rows) {
+      const n = toNumber(r[map.cost]);
+      if (!Number.isFinite(n)) { blankCost++; continue; }
+      total += n;
+      if (map.vendor) {
+        const v = String(r[map.vendor] ?? '').trim() || '(unnamed)';
+        byVendor.set(v, (byVendor.get(v) ?? 0) + n);
+      }
+    }
+    badges.push({
+      tone: blankCost === 0 ? 'ok' : 'warn',
+      label: blankCost === 0 ? 'Cost column parsed' : 'Blank or unparsed cost',
+      n: blankCost ? String(blankCost) : '100%',
+    });
+  } else {
+    badges.push({ tone: 'idle', label: 'No cost column found' });
+  }
+
+  /* vendor concentration */
+  let concentration: Result['concentration'] = null;
+  if (byVendor.size > 0 && total > 0) {
+    const [vendor, amount] = [...byVendor.entries()].sort((a, b) => b[1] - a[1])[0];
+    const share = (amount / total) * 100;
+    concentration = { vendor, share, total };
+    badges.push({
+      tone: share >= 60 ? 'flag' : share >= 40 ? 'warn' : 'ok',
+      label: 'Top vendor share',
+      n: `${share.toFixed(0)}%`,
+    });
+  }
+
+  /* repeat work orders per unit — descriptive count, not a verdict */
+  let repeatUnits = 0;
+  if (map.unit) {
+    const byUnit = new Map<string, number>();
+    for (const r of rows) {
+      const u = String(r[map.unit] ?? '').trim();
+      if (u) byUnit.set(u, (byUnit.get(u) ?? 0) + 1);
+    }
+    repeatUnits = [...byUnit.values()].filter((c) => c >= 3).length;
+    badges.push({
+      tone: repeatUnits > 0 ? 'warn' : 'ok',
+      label: 'Units with 3+ work orders',
+      n: String(repeatUnits),
+    });
+  }
+
+  /* exact duplicate rows */
+  const seen = new Set<string>();
+  let dupes = 0;
+  for (const r of rows) {
+    const key = JSON.stringify(r);
+    if (seen.has(key)) dupes++;
+    else seen.add(key);
+  }
+  badges.push({
+    tone: dupes === 0 ? 'ok' : 'warn',
+    label: dupes === 0 ? 'No duplicate rows' : 'Duplicate rows',
+    n: dupes ? String(dupes) : undefined,
+  });
+
+  /* date range */
+  if (map.opened) {
+    const ds = rows
+      .map((r) => new Date(String(r[map.opened])))
+      .filter((d) => !isNaN(d.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime());
+    if (ds.length) {
+      const days = Math.round((ds[ds.length - 1].getTime() - ds[0].getTime()) / 86400000);
+      badges.push({ tone: 'ok', label: 'Date range', n: `${days}d` });
+    }
+  }
+
+  badges.push({ tone: 'idle', label: 'Interpretation not run' });
+
+  return { fileName, rows: rows.length, matched, missing, badges, concentration, repeatUnits };
+}
+
+export default function LedgerCheck({ ctaHref }: { ctaHref: string }) {
+  const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handle = useCallback((file?: File) => {
+    if (!file) return;
+    if (!/\.(csv|tsv|txt)$/i.test(file.name)) {
+      setError('That file type cannot be read here. Export your work orders or vendor ledger as CSV and try again.');
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    Papa.parse<Record<string, unknown>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (out) => {
+        setBusy(false);
+        const rows = out.data ?? [];
+        if (!rows.length) {
+          setError('No data rows were found. Check that the first line of the file is the header row.');
+          return;
+        }
+        setResult(screen(file.name, rows, out.meta.fields ?? []));
+      },
+      error: () => {
+        setBusy(false);
+        setError('The file could not be read. It may be open in another program, or not valid CSV.');
+      },
+    });
+  }, []);
+
+  return (
+    <div className="rounded-[5px] border border-slate-800 bg-slate-950/85 p-6 backdrop-blur-md md:p-8">
+      <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan-400">
+        W.O.R.K. — Was Our Repair Kept?
+      </p>
+      <h1 className="mb-3 mt-2 text-[clamp(22px,4.4vw,32px)] font-extrabold uppercase leading-none tracking-[-0.03em]">
+        A painted window
+        <span className="block font-light text-slate-400">photographs like a window.</span>
+      </h1>
+      <p className="mb-6 max-w-[54ch] text-slate-400">
+        Drop a work-order or vendor export. Deterministic screening runs first and tells you what the
+        file actually contains — before anything interprets it.
+      </p>
+
+      {/* drop zone — native DnD, no dependency */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Choose or drop a CSV file to screen"
+        onClick={() => fileRef.current?.click()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files?.[0]); }}
+        className={`cursor-pointer rounded-[4px] border-2 border-dashed px-6 py-10 text-center transition
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400
+                    ${drag ? 'border-cyan-400 bg-cyan-950/30' : 'border-slate-700 bg-slate-900/60 hover:border-cyan-500'}`}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,.tsv,.txt,text/csv"
+          className="sr-only"
+          onChange={(e) => handle(e.target.files?.[0])}
+        />
+        <p className="font-mono text-sm font-semibold uppercase tracking-[0.12em] text-cyan-400">
+          {busy ? 'Screening…' : 'Drop a CSV, or choose a file'}
+        </p>
+        <p className="mt-2 font-mono text-[11px] text-slate-500">
+          Work orders · vendor ledger · turn log
+        </p>
+      </div>
+
+      {error && (
+        <div className="mt-4 rounded-r-[3px] border-l-[3px] border-rose-500 bg-rose-500/[0.07] px-4 py-3">
+          <p className="text-[13px] text-slate-300">{error}</p>
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-6">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-b border-slate-800 pb-3">
+            <span className="break-all font-mono text-xs text-slate-200">{result.fileName}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+              {result.rows.toLocaleString()} rows screened
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            {result.badges.map((b) => (
+              <span
+                key={b.label}
+                className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2
+                            font-mono text-[10.5px] uppercase tracking-[0.09em] ${TONE_CLASS[b.tone]}`}
+              >
+                <i className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_CLASS[b.tone]}`} />
+                {b.label}
+                {b.n && <span className="tabular-nums opacity-70">{b.n}</span>}
+              </span>
+            ))}
+          </div>
+
+          {result.concentration && (
+            <p className="mt-5 border-t border-slate-800 pt-4 font-mono text-[11px] leading-relaxed text-slate-500">
+              Top vendor by parsed spend: <span className="text-slate-300">{result.concentration.vendor}</span> at{' '}
+              {result.concentration.share.toFixed(1)}% of ${Math.round(result.concentration.total).toLocaleString()}.
+              Concentration is not proof of overbilling. One vendor being expensive and one vendor being
+              the only one who answers look identical here. It is a reason to check pricing, SLAs, and
+              dependency — nothing more.
+            </p>
+          )}
+
+          {result.missing.length > 0 && (
+            <p className="mt-3 font-mono text-[11px] leading-relaxed text-slate-600">
+              Not found in this export: {result.missing.join(', ')}. Those checks were skipped rather
+              than estimated.
+            </p>
+          )}
+
+          <div className="mt-6 text-center">
+            <a
+              href={ctaHref}
+              className="inline-block rounded-[3px] bg-[#FF2D6F] px-6 py-4 font-mono text-xs font-semibold uppercase tracking-[0.13em] text-white
+                         transition hover:-translate-y-px hover:shadow-[0_8px_26px_rgba(255,45,111,.34)]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF2D6F]"
+            >
+              Get the maintenance leak workbook →
+            </a>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 flex items-start gap-3 rounded-r-[3px] border-l-[3px] border-cyan-400 bg-cyan-400/5 px-4 py-3.5">
+        <span className="whitespace-nowrap pt-0.5 font-mono text-[10px] tracking-[0.15em] text-cyan-400">LOCAL</span>
+        <p className="text-[13px] leading-relaxed text-slate-400">
+          Your file is read in this browser tab and never transmitted. Nothing is uploaded, stored, or
+          logged. Close the tab and it is gone. Every badge above was set by a rule against your rows —
+          none of it is a finding, and none of it assigns fault.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+<<<FILE components/SiteFooter.tsx>>>
+/**
+ * components/SiteFooter.tsx
+ * ----------------------------------------------------------------------------
+ * Rendered from app/layout.tsx, so it lands on every route.
+ *
+ * A visitor who has scrolled to the bottom of a page has finished reading and
+ * needs somewhere to go. Without this, the only exit from /audit or /ingest is
+ * the browser back button — which people on phones use far less than you'd
+ * expect. Every route is one tap from here.
+ *
+ * Server Component: no hooks, no interactivity, no client bundle.
+ */
+
+import Link from 'next/link';
+import { PALETTE, MONO, DISPLAY, hexA, utilityLabel } from '@/lib/chaosTokens';
+
+const LINKS = [
+  { href: '/', label: 'Home' },
+  { href: '/tools/vacancy-calculator', label: 'Vacancy calculator' },
+  { href: '/ingest', label: 'Ledger screening' },
+  { href: '/audit', label: 'Operations audit' },
+];
+
+const STACK = ['n8n', 'supabase', 'postgres', 'propops8_core'];
+
+export default function SiteFooter() {
+  return (
+    <footer
+      style={{
+        borderTop: `1px solid ${hexA('#ffffff', 0.07)}`,
+        background: PALETTE.void,
+        marginTop: 'auto',
+      }}
+    >
+      <div
+        className="mx-auto px-4 sm:px-8"
+        style={{ maxWidth: 1120, paddingTop: 32, paddingBottom: 32 }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between" style={{ gap: 28 }}>
+          <div>
+            <Link
+              href="/"
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 900,
+                fontSize: 15,
+                letterSpacing: '0.04em',
+                color: PALETTE.bright,
+                textDecoration: 'none',
+              }}
+            >
+              PROPOPS<span style={{ color: PALETTE.cyan }}>8</span>
+            </Link>
+            <p
+              style={{
+                fontFamily: DISPLAY,
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                color: hexA('#ffffff', 0.5),
+                margin: '10px 0 0',
+                maxWidth: '32ch',
+              }}
+            >
+              Operational intelligence for multifamily portfolios. Find out where the money is
+              going before the year-end financials tell you.
+            </p>
+          </div>
+
+          <nav aria-label="Footer">
+            <div style={{ ...utilityLabel, fontSize: 10, marginBottom: 12 }}>Navigate</div>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {LINKS.map((l) => (
+                <li key={l.href} style={{ marginBottom: 9 }}>
+                  <Link
+                    href={l.href}
+                    className="chaos-focus"
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 12,
+                      letterSpacing: '0.08em',
+                      color: hexA('#ffffff', 0.66),
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+
+        <div
+          className="flex flex-col sm:flex-row sm:items-center justify-between"
+          style={{
+            gap: 12,
+            marginTop: 28,
+            paddingTop: 20,
+            borderTop: `1px solid ${hexA('#ffffff', 0.06)}`,
+          }}
+        >
+          <div className="flex flex-wrap items-center" style={{ gap: 10 }}>
+            {STACK.map((tag, i) => (
+              <span key={tag} className="flex items-center" style={{ gap: 10 }}>
+                {i > 0 && <span style={{ color: PALETTE.track }}>&middot;</span>}
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 10.5,
+                    letterSpacing: '0.14em',
+                    color: i === 0 ? hexA('#ffffff', 0.7) : PALETTE.label,
+                    textTransform: i === 0 ? 'none' : 'uppercase',
+                  }}
+                >
+                  {tag}
+                </span>
+              </span>
+            ))}
+          </div>
+
+          <span style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.13em' }}>
+            PropOps8 &middot; Daniel Ebuehi
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+<<<FILE components/SiteHeader.tsx>>>
+'use client';
+
+/**
+ * components/SiteHeader.tsx
+ * ----------------------------------------------------------------------------
+ * Sticky nav, rendered from app/layout.tsx so it appears on every route.
+ *
+ * Client component because it reads usePathname to mark the active link. That
+ * is the whole reason — a visitor three pages deep needs to know where they
+ * are, not just where they can go.
+ *
+ * No hamburger. Four items in compact mono fit inside 375px with room to
+ * spare, and a menu that has to be opened to be read is worse navigation than
+ * one that is simply visible.
+ */
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { PALETTE, MONO, DISPLAY, hexA } from '@/lib/chaosTokens';
+
+const LINKS = [
+  { href: '/tools/vacancy-calculator', label: 'Calculator' },
+  { href: '/ingest', label: 'Ingest' },
+  { href: '/audit', label: 'Audit' },
+];
+
+export default function SiteHeader() {
+  const pathname = usePathname() ?? '/';
+
+  return (
+    <>
+      {/* Keyboard users land here first. Invisible until focused. */}
+      <a
+        href="#main"
+        style={{
+          position: 'absolute',
+          left: -9999,
+          top: 0,
+          zIndex: 100,
+          background: PALETTE.cyan,
+          color: '#06202a',
+          padding: '10px 16px',
+          borderRadius: 8,
+          fontFamily: MONO,
+          fontSize: 12,
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '12px';
+          e.currentTarget.style.top = '12px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Skip to content
+      </a>
+
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          background: hexA(PALETTE.void, 0.82),
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: `1px solid ${hexA('#ffffff', 0.07)}`,
+        }}
+      >
+        <nav
+          className="mx-auto flex items-center justify-between gap-3 px-4 sm:px-8"
+          style={{ maxWidth: 1120, height: 56 }}
+          aria-label="Primary"
+        >
+          <Link
+            href="/"
+            style={{
+              fontFamily: DISPLAY,
+              fontWeight: 900,
+              fontSize: 15,
+              letterSpacing: '0.04em',
+              color: PALETTE.bright,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            PROPOPS<span style={{ color: PALETTE.cyan }}>8</span>
+          </Link>
+
+          <div className="flex items-center" style={{ gap: 'clamp(10px, 3vw, 22px)' }}>
+            {LINKS.map((l) => {
+              const active = pathname === l.href || pathname.startsWith(l.href + '/');
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  aria-current={active ? 'page' : undefined}
+                  className="chaos-focus"
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 10.5,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                    color: active ? PALETTE.cyan : hexA('#ffffff', 0.6),
+                    paddingBottom: 3,
+                    borderBottom: active
+                      ? `1.5px solid ${PALETTE.cyan}`
+                      : '1.5px solid transparent',
+                    textShadow: active ? `0 0 14px ${hexA(PALETTE.cyan, 0.6)}` : 'none',
+                    transition: 'color .16s ease',
+                  }}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </header>
+    </>
+  );
+}
+
+<<<FILE lib/chaosHooks.ts>>>
+'use client';
+
+/**
+ * lib/chaosHooks.ts
+ * ----------------------------------------------------------------------------
+ * The client half of the design system. Split out of chaosTokens.ts so Server
+ * Components can import tokens without pulling React and these hooks into the
+ * client bundle.
+ *
+ * Import in client components only:
+ *     import { usePrefersReducedMotion, useCountUp } from '@/lib/chaosHooks';
+ */
+
+import { useEffect, useRef, useState } from 'react';
+
+/** True when the visitor has asked their OS to reduce motion. Respect it. */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReduced(mq.matches);
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, []);
+  return reduced;
+}
+
+/** Eased count-up from 0 → target on mount. Pass enabled=false to skip. */
+export function useCountUp(target: number, duration = 1200, enabled = true): number {
+  const [value, setValue] = useState(enabled ? 0 : target);
+  const frame = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!enabled) {
+      setValue(target);
+      return;
+    }
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      setValue(target * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) frame.current = requestAnimationFrame(tick);
+    };
+    frame.current = requestAnimationFrame(tick);
+    return () => {
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+    };
+  }, [target, duration, enabled]);
+
+  return value;
+}
+
+<<<FILE lib/chaosTokens.ts>>>
+/**
+ * lib/chaosTokens.ts
+ * ----------------------------------------------------------------------------
+ * Design system. Single source of truth for the whole PropOps8 line.
+ *
+ * NOTE ON THE SPLIT: this file no longer carries a 'use client' directive.
+ * The React hooks moved to lib/chaosHooks.ts. That matters because Server
+ * Components — app/page.tsx, app/audit/thank-you/page.tsx — need these tokens,
+ * and importing a 'use client' module into a Server Component drags React and
+ * both hooks into the client bundle for pages that render no interactivity at
+ * all. Tokens are strings; they should cost nothing.
+ *
+ * If you have already wired VacancyBlackHole.tsx or UploadClient.tsx, change
+ * their hook imports to:
+ *     import { usePrefersReducedMotion, useCountUp } from '@/lib/chaosHooks';
+ * Everything else they import stays here.
+ *
+ * Colour meaning is fixed and is not improvised per surface:
+ *   pink  — breached, overdue, over baseline, the thing that costs money
+ *   cyan  — needs attention, and the only colour used for actions
+ *   mint  — settled, closed, healthy
+ *
+ * Because cyan is the action colour, never render a CTA in pink. Pink is the
+ * alarm; if the alarm and the exit are the same colour, neither reads.
+ */
+
+/* -------------------------------------------------------------------------- */
+/*  Palette                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export const PALETTE = {
+  void: '#070b14',
+  shell: '#0b1220',
+  panel: '#111a2b',
+  card: '#161f33',
+  track: '#232d42',
+  hairline: 'rgba(34, 211, 238, 0.14)',
+  label: '#7f8ea8',
+  body: '#e6edf7',
+  bright: '#f4f8ff',
+  pink: '#ff2d6b',
+  cyan: '#22d3ee',
+  mint: '#4ade80',
+} as const;
+
+export const MONO =
+  "ui-monospace, 'JetBrains Mono', 'IBM Plex Mono', SFMono-Regular, Menlo, monospace";
+
+export const DISPLAY =
+  "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+/* -------------------------------------------------------------------------- */
+/*  Colour helpers                                                             */
+/* -------------------------------------------------------------------------- */
+
+export function hexA(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+export function glow(color: string, a = 0.55, b = 0.3): string {
+  return `drop-shadow(0 0 7px ${hexA(color, a)}) drop-shadow(0 0 22px ${hexA(color, b)})`;
+}
+
+export function textGlow(color: string, a = 0.5): string {
+  return `0 0 26px ${hexA(color, a)}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Deterministic randomness — SSR-safe, same seed means same output           */
+/* -------------------------------------------------------------------------- */
+
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Formatting                                                                 */
+/* -------------------------------------------------------------------------- */
+
+export function money(v: number, currency = '$'): string {
+  return `${currency}${Math.round(v).toLocaleString()}`;
+}
+
+export function pct(v: number, digits = 1): string {
+  return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(digits)}%`;
+}
+
+/** Date-only day count. UTC arithmetic so DST never shifts a result. */
+export function dayNumber(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const ms = Date.UTC(Number(y), Number(mo) - 1, Number(d));
+  return Number.isNaN(ms) ? null : ms / 86400000;
+}
+
+export function daysBetween(fromIso: string, toIso: string): number | null {
+  const a = dayNumber(fromIso);
+  const b = dayNumber(toIso);
+  if (a === null || b === null) return null;
+  return b - a;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Bands                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface Band {
+  min: number;
+  label: string;
+  color: string;
+}
+
+export function bandFor(value: number, bands: Band[]): Band {
+  return bands.find((b) => value >= b.min) ?? bands[bands.length - 1];
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Shared surfaces                                                            */
+/* -------------------------------------------------------------------------- */
+
+export const shellStyle: React.CSSProperties = {
+  maxWidth: 980,
+  background: PALETTE.void,
+  borderRadius: 18,
+  border: `1px solid ${PALETTE.hairline}`,
+  boxShadow: `0 30px 80px -30px ${hexA('#000000', 0.9)}`,
+  color: PALETTE.body,
+};
+
+export const bodyStyle: React.CSSProperties = {
+  background: `radial-gradient(120% 90% at 12% 0%, ${PALETTE.shell} 0%, ${PALETTE.void} 100%)`,
+};
+
+export const panelStyle: React.CSSProperties = {
+  background: PALETTE.panel,
+  borderRadius: 14,
+  border: `1px solid ${hexA('#ffffff', 0.05)}`,
+};
+
+export const cardStyle: React.CSSProperties = {
+  background: PALETTE.card,
+  borderRadius: 14,
+  border: `1px solid ${hexA('#ffffff', 0.05)}`,
+};
+
+export const utilityLabel: React.CSSProperties = {
+  fontFamily: MONO,
+  letterSpacing: '0.18em',
+  color: PALETTE.label,
+  fontSize: 11,
+  textTransform: 'uppercase',
+};
+
+export const eyebrowTab: React.CSSProperties = {
+  ...utilityLabel,
+  color: PALETTE.cyan,
+  padding: '7px 14px',
+  borderRadius: 8,
+  background: hexA(PALETTE.cyan, 0.06),
+  border: `1px solid ${hexA(PALETTE.cyan, 0.22)}`,
+};
+
+export const headingStyle: React.CSSProperties = {
+  fontFamily: DISPLAY,
+  fontWeight: 900,
+  fontSize: 'clamp(1.7rem, 4.4vw, 2.6rem)',
+  letterSpacing: '-0.02em',
+  lineHeight: 1.05,
+  color: PALETTE.bright,
+};
+
+export function figureStyle(color: string = PALETTE.pink): React.CSSProperties {
+  return {
+    fontFamily: DISPLAY,
+    fontWeight: 900,
+    fontSize: 'clamp(2.2rem, 5.5vw, 3.2rem)',
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+    color,
+    textShadow: textGlow(color, color === PALETTE.bright ? 0.2 : 0.5),
+  };
+}
+
+/** Actions are always cyan. See the note at the top of this file. */
+export function ctaStyle(): React.CSSProperties {
+  return {
+    fontFamily: MONO,
+    fontSize: 11.5,
+    letterSpacing: '0.1em',
+    lineHeight: 1.4,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    textDecoration: 'none',
+    color: '#06202a',
+    background: PALETTE.cyan,
+    borderRadius: 9,
+    padding: '13px 18px',
+    boxShadow: `0 0 18px ${hexA(PALETTE.cyan, 0.6)}, 0 0 45px ${hexA(PALETTE.cyan, 0.22)}`,
+  };
+}
+
+/** Secondary action — outline. Never pink. */
+export function ghostCtaStyle(): React.CSSProperties {
+  return {
+    fontFamily: MONO,
+    fontSize: 11.5,
+    letterSpacing: '0.1em',
+    lineHeight: 1.4,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    textDecoration: 'none',
+    color: PALETTE.bright,
+    background: 'transparent',
+    borderRadius: 9,
+    padding: '13px 18px',
+    border: `1px solid ${hexA('#ffffff', 0.22)}`,
+  };
+}
+
+/** Drop once per page. Covers hover, focus rings, and reduced motion. */
+export const sharedCss = `
+  .chaos-cta { transition: transform .18s ease, box-shadow .18s ease; }
+  .chaos-cta:hover { transform: translateY(-1px); box-shadow: 0 0 26px ${hexA(PALETTE.cyan, 0.85)}, 0 0 60px ${hexA(PALETTE.cyan, 0.3)}; }
+  .chaos-cta:focus-visible, .chaos-focus:focus-visible { outline: 2px solid ${PALETTE.cyan}; outline-offset: 3px; }
+  .chaos-ghost { transition: border-color .18s ease, background .18s ease; }
+  .chaos-ghost:hover { border-color: ${hexA(PALETTE.cyan, 0.5)}; background: ${hexA(PALETTE.cyan, 0.05)}; }
+  .chaos-input { transition: border-color .16s ease, box-shadow .16s ease; }
+  .chaos-input:focus { outline: none; border-color: ${PALETTE.cyan}; box-shadow: 0 0 0 3px ${hexA(PALETTE.cyan, 0.16)}; }
+  .chaos-tile { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .chaos-tile:hover { transform: translateY(-3px); border-color: ${hexA(PALETTE.cyan, 0.35)}; box-shadow: 0 18px 40px -22px #000; }
+  @media (prefers-reduced-motion: reduce) {
+    .chaos-anim, .chaos-cta, .chaos-ghost, .chaos-tile, .chaos-pulse { transition: none !important; animation: none !important; }
+  }
+`;
+
+<<<FILE lib/email.ts>>>
+/**
+ * lib/email.ts
+ * ----------------------------------------------------------------------------
+ * All outbound email, in one place. Previously each route carried its own copy
+ * of the send logic — three copies of the same fetch call meant three places to
+ * change when the provider did. Now the provider swap is this file only.
+ *
+ * RESEND FREE TIER, WHICH BITES DIFFERENTLY THAN THE HEADLINE SUGGESTS:
+ *   3,000 emails/month, but capped at 100/day, one verified domain.
+ *   The daily cap is the real ceiling — a 3,000-email month averages exactly
+ *   100/day, so the monthly figure only holds if traffic arrives perfectly
+ *   evenly, which it never does. Every To/CC/BCC recipient counts separately.
+ *
+ * At two audits a month you are nowhere near it. Worth knowing before you wire
+ * a nurture sequence into the same key.
+ *
+ * `from` must be on a domain verified in Resend. An unverified sender is
+ * rejected at the API, not silently dropped — you will see it.
+ */
+
+const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+
+const UPLOAD_WINDOW_DAYS = 14;
+
+interface SendArgs {
+  to: string;
+  subject: string;
+  text: string;
+  /**
+   * Optional. Guards against a webhook retry sending the same message twice.
+   * Harmless if the API ignores it — an unknown header costs nothing.
+   */
+  idempotencyKey?: string;
+}
+
+export async function sendEmail({ to, subject, text, idempotencyKey }: SendArgs): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM ?? 'PropOps8 <daniel@propops8.com>';
+
+  if (!key) throw new Error('RESEND_API_KEY is not configured');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${key}`,
+  };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+
+  const res = await fetch(RESEND_ENDPOINT, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ from, to: [to], subject, text }),
+  });
+
+  if (!res.ok) {
+    // Include the body — Resend's errors are specific (unverified domain,
+    // rate limit, malformed address) and the message is the whole diagnosis.
+    throw new Error(`Resend ${res.status}: ${await res.text()}`);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Messages                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Sent once, after payment is confirmed. Carries the private upload link. */
+export async function sendUploadInstructions(
+  name: string,
+  email: string,
+  token: string,
+  idempotencyKey?: string
+): Promise<void> {
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+  const link = `${base}/upload/${token}`;
+  const firstName = name.split(' ')[0] || 'there';
+
+  const text = [
+    `${firstName},`,
+    '',
+    'Your PropOps8 Operations Audit is booked.',
+    '',
+    `Upload your export here (private to you, valid ${UPLOAD_WINDOW_DAYS} days):`,
+    link,
+    '',
+    'What to send — whichever of these you can export:',
+    '  • Work orders (unit, date opened, date completed, category, vendor, cost)',
+    '  • Vacancy / turn data (move-out, rent-ready, lease-signed, monthly rent)',
+    '  • Vendor invoices (vendor, date, amount, category)',
+    '',
+    'CSV or XLSX. Straight out of your PMS is fine — normalising it is my job.',
+    '',
+    'Please send de-identified operational data only. Strip resident names,',
+    'SSNs, financial account numbers and any medical information before',
+    'uploading. Unit numbers and dates are all I need.',
+    '',
+    'Turnaround is 48 hours from upload. You get a written findings report and',
+    'a 30-minute call to walk through it.',
+    '',
+    'Reply to this email if anything is unclear about the export.',
+    '',
+    'Daniel Ebuehi',
+    'PropOps8',
+  ].join('\n');
+
+  await sendEmail({
+    to: email,
+    subject: 'Your PropOps8 audit is booked — secure upload link inside',
+    text,
+    idempotencyKey,
+  });
+}
+
+/**
+ * Internal notice. Never throws into the caller's happy path — a failed
+ * notification to you must not fail a customer's request.
+ */
+export async function notifyOwner(subject: string, body: string): Promise<void> {
+  const to = process.env.AUDIT_NOTIFY_EMAIL ?? process.env.RESEND_FROM;
+  if (!to) return;
+
+  try {
+    await sendEmail({ to: stripDisplayName(to), subject, text: body });
+  } catch (err) {
+    console.error('[email] owner notification failed', err);
+  }
+}
+
+/** Sent to you when a customer finishes uploading. Starts the 48-hour clock. */
+export async function notifyFilesReceived(
+  company: string,
+  name: string,
+  intakeId: string,
+  files: { original_name: string; size_bytes: number }[]
+): Promise<void> {
+  const body = [
+    `${company} (${name}) has submitted their audit export.`,
+    '',
+    `Intake: ${intakeId}`,
+    `Files: ${files.length}`,
+    ...files.map((f) => `  • ${f.original_name} (${Math.round(f.size_bytes / 1024)} KB)`),
+    '',
+    '48-hour clock starts now.',
+  ].join('\n');
+
+  await sendEmail({
+    to: stripDisplayName(process.env.AUDIT_NOTIFY_EMAIL ?? process.env.RESEND_FROM ?? ''),
+    subject: `Audit export received — ${company}`,
+    text: body,
+  });
+}
+
+/** `PropOps8 <daniel@propops8.com>` → `daniel@propops8.com` */
+function stripDisplayName(addr: string): string {
+  const m = /<([^>]+)>/.exec(addr);
+  return (m ? m[1] : addr).trim();
+}
+
+<<<FILE lib/uploadTokens.ts>>>
+/**
+ * lib/uploadTokens.ts
+ * ----------------------------------------------------------------------------
+ * Issuing and revoking upload tokens. One module so the webhook, any reissue
+ * script, and a future admin action all go through the same path — a token
+ * minted two different ways is a token you can't reason about.
+ *
+ * The partial unique index in upload-schema.sql permits only one un-revoked
+ * token per intake, so issuing always revokes first. That's the point: a
+ * reissued link invalidates the old one, including any copy that was forwarded
+ * or ended up in a shared inbox.
+ */
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  { auth: { persistSession: false } }
+);
+
+export const UPLOAD_WINDOW_DAYS = 14;
+
+/**
+ * Revokes any live token for this intake and mints a fresh one.
+ * Returns the raw token to put in the link.
+ */
+export async function issueUploadToken(
+  intakeId: string,
+  windowDays: number = UPLOAD_WINDOW_DAYS
+): Promise<string> {
+  const { error: revokeError } = await supabase
+    .from('upload_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('intake_id', intakeId)
+    .is('revoked_at', null);
+
+  if (revokeError) throw revokeError;
+
+  const expiresAt = new Date(Date.now() + windowDays * 86_400_000).toISOString();
+
+  const { data, error } = await supabase
+    .from('upload_tokens')
+    .insert({ intake_id: intakeId, expires_at: expiresAt })
+    .select('token')
+    .single();
+
+  if (error || !data?.token) {
+    throw error ?? new Error('Token insert returned no row');
+  }
+
+  return data.token as string;
+}
+
+/** Kills every live link for an intake — refunds, disputes, wrong recipient. */
+export async function revokeUploadTokens(intakeId: string): Promise<void> {
+  const { error } = await supabase
+    .from('upload_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('intake_id', intakeId)
+    .is('revoked_at', null);
+
+  if (error) throw error;
+}
+

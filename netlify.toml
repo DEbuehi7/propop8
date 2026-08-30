@@ -1,0 +1,76 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Required for App Router SSR and API routes. Without this, Netlify serves the
+# static output and every /api/* route 404s — including the Tally webhook, which
+# means no upload token is ever issued.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ---------------------------------------------------------------------------
+# API routes must never be cached. Tally posts a signed body here; a cached
+# response would break signature verification and could replay a stale result.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+
+# ---------------------------------------------------------------------------
+# Upload pages are token-scoped. Caching them anywhere shared would leak one
+# customer's session to another, and the noindex keeps the URL out of search.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/upload/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+    X-Robots-Tag = "noindex, nofollow"
+
+# ---------------------------------------------------------------------------
+# Static art. A week, plus stale-while-revalidate so a repeat visitor gets an
+# instant paint while the new file downloads in the background.
+#
+# Deliberately not a year: these filenames aren't content-hashed, so a visitor
+# who cached money-pit-room.webp would keep the old one until it expired. If
+# you replace an image, either rename it or purge the CDN.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/widgets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/og/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+# ---------------------------------------------------------------------------
+# Next's own bundles are content-hashed, so they can be cached permanently —
+# a new build produces new filenames.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ---------------------------------------------------------------------------
+# Baseline security headers. None of these cost anything and all of them are
+# things a buyer's IT department may check before approving a $497 purchase
+# from an unfamiliar domain.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"

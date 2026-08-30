@@ -1,26 +1,87 @@
+/* ---------------------------------------------------------------------------
+ * app/globals.css
+ * ---------------------------------------------------------------------------
+ * TAILWIND VERSION MATTERS HERE. Check yours:
+ *
+ *     grep tailwindcss package.json
+ *
+ * v4 (^4.x) — the line below is correct, leave it.
+ * v3 (^3.x) — delete it and use these three instead:
+ *
+ *     @tailwind base;
+ *     @tailwind components;
+ *     @tailwind utilities;
+ *
+ * Getting this wrong is the silent failure: no error, no warning, every
+ * Tailwind class in the landing page simply does nothing and the grid
+ * collapses into a single stacked column. If the page renders but the layout
+ * looks like an unstyled document, this line is why.
+ * ------------------------------------------------------------------------- */
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ---------------------------------------------------------------------------
+ * Dark base.
+ *
+ * The pages set their own background, but html and body sit underneath. Left
+ * white, you get a white flash on load and white bars when a short page or an
+ * overscroll bounce exposes the edges — which on iOS Safari is most scrolls.
+ * ------------------------------------------------------------------------- */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background-color: #070b14;
+  color: #e6edf7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100%;
+  /* Matches DISPLAY in lib/chaosTokens.ts. Change both or neither. */
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Nothing should ever scroll sideways on a phone. If something does, this
+   contains the symptom — but find the offender: it is almost always a fixed
+   width or a negative margin wider than its parent. */
+html {
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Dark form controls. Without this, date and select inputs render as light
+   widgets on the dark panels and look broken. */
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color-scheme: dark;
+}
+
+/* Visible focus, always. The pages set their own cyan ring via .chaos-focus;
+   this is the floor for anything that doesn't. */
+:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
