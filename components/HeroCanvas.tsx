@@ -201,7 +201,7 @@ export default function HeroCanvas(props: Props) {
      <HeroCanvas
        mode="poster"
        tag="Operations Chaos Index"
-       src="/assets/money-pit-stack.png"
+       src="/assets/money-pit-stack.webp"
        alt="Vendor spend concentration: 71% with one vendor, $130,782 versus $53,418 across all others, $184,200 annual spend."
        ratio="4/5"
        caption="Vendor concentration · synthetic portfolio"
@@ -215,7 +215,7 @@ export default function HeroCanvas(props: Props) {
      <HeroCanvas
        mode="plate"
        tag="Vacancy Timeline Diagnostic"
-       src="/assets/lounge-demolition.png"
+       src="/assets/lounge-demolition.webp"
        alt="Neon-lit lounge set into a broken concrete wall."
      >
        <VacancyCalculator />

@@ -43,3 +43,6 @@ next-env.d.ts
 # Local Netlify folder
 .netlify
 .DS_Store
+env.local
+bundle.txt
+*.bak
