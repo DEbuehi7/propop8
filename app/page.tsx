@@ -1,26 +1,34 @@
 /**
  * app/page.tsx
  * ----------------------------------------------------------------------------
- * The landing page. Server Component — no hooks, no state, no client bundle
- * beyond what the browser needs to paint. Every interactive thing on this page
- * is a link.
+ * The landing page. Server Component — no hooks, no state. Every interactive
+ * thing here is a link.
  *
- * USES THE ASSETS YOU ALREADY UPLOADED:
- *   /assets/lounge-demolition.webp   hero, full bleed
- *   /assets/money-pit-room.webp      the operational-vs-leasing section
- *   /assets/money-pit-stack.webp     closing section
- *   /widgets/*.png                   the eight diagnostic cards
- *   /og/calculator.png               link preview
+ * FOUR CORRECTIONS IN THIS VERSION
+ *
+ * 1. The ladder reads from lib/products.ts instead of a local array. It said
+ *    "$39 — Maintenance Leak Workbook", a product that does not exist under
+ *    that name; the real one is "$49 — Property Operations Automation Kit".
+ *    A price on the page that differs from the price at checkout is the kind
+ *    of thing a careful buyer treats as a warning sign.
+ *
+ * 2. The $39 and $99 buttons both pointed at the calculator. Someone clicking
+ *    "See the workbook" landed on a vacancy calculator. They now go to the
+ *    actual Gumroad listings.
+ *
+ * 3. Widget images load from /widgets/sm/ — 600px versions of cards that were
+ *    shipping at 1200px to render at ~260px wide. Roughly a 4x reduction on
+ *    the heaviest part of the page, which matters because most LinkedIn
+ *    traffic is on phones.
+ *
+ * 4. The footer is gone. SiteFooter renders from app/layout.tsx now, so
+ *    keeping this one produced two stacked footers on the home page.
  *
  * IMAGES ARE PLAIN <img>, NOT next/image. Deliberate: next/image on Netlify
- * needs @netlify/plugin-nextjs configured for image optimisation, and a broken
- * image on first deploy is a worse outcome than an unoptimised one. Every image
- * carries explicit width/height (so nothing shifts as it loads) and lazy
- * loading below the fold. Swap to next/image once the deploy is green.
- *
- * The widget PNGs here are the social exports. The live React widgets in
- * components/widgets/ are a different thing and are not used on this page —
- * they are for the report and for screenshots.
+ * needs the plugin configured for image optimisation, and a broken image on
+ * deploy is worse than an unoptimised one. Explicit width/height everywhere so
+ * nothing shifts as it loads; lazy below the fold; fetchPriority high on the
+ * hero, which is the LCP element.
  */
 
 import type { Metadata } from 'next';
@@ -36,9 +44,9 @@ import {
   ghostCtaStyle,
   sharedCss,
 } from '@/lib/chaosTokens';
+import { PROPOPS8_LADDER, CALCULATOR, AUDIT } from '@/lib/products';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://propops8.com'),
   title: 'PropOps8 — find out where your property is losing money',
   description:
     'Most vacancy reports show one number. PropOps8 separates the days your unit spent waiting for operations from the days it spent waiting for a tenant.',
@@ -47,12 +55,9 @@ export const metadata: Metadata = {
     description:
       'Operational vacancy vs. leasing vacancy, repeat callbacks, vendor concentration. Free diagnostic, no signup.',
     url: 'https://propops8.com',
-    siteName: 'PropOps8',
     images: [{ url: '/og/calculator.png', width: 1200, height: 630 }],
-    type: 'website',
   },
   twitter: {
-    card: 'summary_large_image',
     title: 'Find out where your property is losing money',
     description: 'Free operational vacancy diagnostic. Runs in your browser.',
     images: ['/og/calculator.png'],
@@ -63,10 +68,7 @@ export const metadata: Metadata = {
 /*  Content                                                                    */
 /* -------------------------------------------------------------------------- */
 
-const CALCULATOR = '/tools/vacancy-calculator';
-const AUDIT = '/audit';
-
-/** Slugs match /public/widgets/*.png exactly. Lines are the widgets' own copy. */
+/** Slugs match /public/widgets/sm/*.png. Lines are the widgets' own copy. */
 const DIAGNOSTICS = [
   {
     slug: 'vacancy-black-hole',
@@ -81,7 +83,7 @@ const DIAGNOSTICS = [
   {
     slug: 'vendor-money-pit',
     name: 'Vendor Money Pit',
-    line: "One vendor holds 71% of spend, and nobody has benchmarked them.",
+    line: 'One vendor holds 71% of spend, and nobody has benchmarked them.',
   },
   {
     slug: 'deadline-graveyard',
@@ -125,41 +127,6 @@ const SEGMENTS = [
   },
 ];
 
-const LADDER = [
-  {
-    price: 'Free',
-    name: 'Vacancy diagnostic',
-    body: 'Your own numbers, in ten seconds, in the browser. Nothing transmits.',
-    href: CALCULATOR,
-    cta: 'Run it now',
-    featured: false,
-  },
-  {
-    price: '$39',
-    name: 'Maintenance Leak Workbook',
-    body: 'The self-audit framework: what to export, what to measure, which thresholds matter.',
-    href: CALCULATOR,
-    cta: 'See the workbook',
-    featured: false,
-  },
-  {
-    price: '$99',
-    name: 'Intelligence Kit',
-    body: 'Workbook plus calculation templates, red-flag rules, and the vendor benchmark sheet.',
-    href: CALCULATOR,
-    cta: 'See the kit',
-    featured: false,
-  },
-  {
-    price: '$497',
-    name: 'Operations Audit',
-    body: 'Send your export. Get back a prioritised findings report in 48 hours, plus a 30-minute review call.',
-    href: AUDIT,
-    cta: 'Start my audit',
-    featured: true,
-  },
-];
-
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
@@ -179,7 +146,7 @@ export default function LandingPage() {
       {/* ==================================================== HERO ========= */}
       <section
         className="relative"
-        style={{ minHeight: 'min(88vh, 760px)', display: 'flex', alignItems: 'center' }}
+        style={{ minHeight: 'min(84vh, 720px)', display: 'flex', alignItems: 'center' }}
       >
         <img
           src="/assets/lounge-demolition.webp"
@@ -187,6 +154,7 @@ export default function LandingPage() {
           aria-hidden="true"
           width={2560}
           height={1280}
+          fetchPriority="high"
           style={{
             position: 'absolute',
             inset: 0,
@@ -207,7 +175,7 @@ export default function LandingPage() {
 
         <div
           className="relative w-full mx-auto px-5 sm:px-8"
-          style={{ maxWidth: 1120, paddingTop: 72, paddingBottom: 72 }}
+          style={{ maxWidth: 1120, paddingTop: 64, paddingBottom: 64 }}
         >
           <span className="inline-flex items-center" style={eyebrowTab}>
             PropOps8 // Operations intelligence
@@ -242,7 +210,11 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-wrap gap-3" style={{ marginTop: 30 }}>
-            <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+            <a
+              href={CALCULATOR}
+              className="chaos-cta inline-flex items-center gap-3"
+              style={ctaStyle()}
+            >
               Run the free diagnostic
               <span aria-hidden="true" style={{ fontSize: 15 }}>
                 &rarr;
@@ -298,10 +270,10 @@ export default function LandingPage() {
               style={{ ...cardStyle, textDecoration: 'none' }}
             >
               <img
-                src={`/widgets/${d.slug}.png`}
+                src={`/widgets/sm/${d.slug}.png`}
                 alt={`${d.name} diagnostic card`}
-                width={1200}
-                height={1200}
+                width={600}
+                height={600}
                 loading="lazy"
                 style={{ width: '100%', height: 'auto', display: 'block' }}
               />
@@ -334,7 +306,9 @@ export default function LandingPage() {
       </section>
 
       {/* ============================================ THE ARGUMENT ========= */}
-      <section style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}>
+      <section
+        style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}
+      >
         <div
           className="mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center"
           style={{ maxWidth: 1120, padding: '72px 20px' }}
@@ -365,17 +339,16 @@ export default function LandingPage() {
             >
               Operational vacancy is not leasing vacancy
             </h2>
-            <p style={{ fontSize: 16.5, lineHeight: 1.65, color: hexA('#ffffff', 0.72), margin: 0 }}>
+            <p
+              style={{ fontSize: 16.5, lineHeight: 1.65, color: hexA('#ffffff', 0.72), margin: 0 }}
+            >
               When a unit sits empty, your software logs one number and treats the whole span as a
               leasing problem. But most of that time usually passes before the unit is even
               showable &mdash; waiting on inspection, scope, procurement, a contractor, a final
               clean.
             </p>
 
-            <div
-              className="grid grid-cols-2 gap-4"
-              style={{ margin: '26px 0', maxWidth: 420 }}
-            >
+            <div className="grid grid-cols-2 gap-4" style={{ margin: '26px 0', maxWidth: 420 }}>
               <div style={{ ...cardStyle, padding: '18px 18px 20px' }}>
                 <div style={{ ...utilityLabel, fontSize: 10 }}>Make-ready</div>
                 <div
@@ -423,7 +396,11 @@ export default function LandingPage() {
               calculator.
             </p>
 
-            <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+            <a
+              href={CALCULATOR}
+              className="chaos-cta inline-flex items-center gap-3"
+              style={ctaStyle()}
+            >
               Split your last turn
               <span aria-hidden="true" style={{ fontSize: 15 }}>
                 &rarr;
@@ -475,7 +452,9 @@ export default function LandingPage() {
               >
                 {s.title}
               </h3>
-              <p style={{ fontSize: 14.5, lineHeight: 1.6, color: hexA('#ffffff', 0.62), margin: 0 }}>
+              <p
+                style={{ fontSize: 14.5, lineHeight: 1.6, color: hexA('#ffffff', 0.62), margin: 0 }}
+              >
                 {s.body}
               </p>
             </div>
@@ -484,7 +463,9 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================== LADDER ========= */}
-      <section style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}>
+      <section
+        style={{ background: PALETTE.shell, borderTop: `1px solid ${hexA('#ffffff', 0.05)}` }}
+      >
         <div className="mx-auto px-5 sm:px-8" style={{ maxWidth: 1120, padding: '68px 20px' }}>
           <span style={utilityLabel}>Start anywhere</span>
           <h2
@@ -501,64 +482,75 @@ export default function LandingPage() {
             Do it yourself, or send me the export
           </h2>
 
+          {/* Prices, names and links all come from lib/products.ts, which is
+              the same file the rest of the site reads. One place to change. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {LADDER.map((t) => (
-              <div
-                key={t.name}
-                className="flex flex-col"
-                style={{
-                  ...cardStyle,
-                  padding: '24px 22px 26px',
-                  border: t.featured
-                    ? `1px solid ${hexA(PALETTE.cyan, 0.45)}`
-                    : `1px solid ${hexA('#ffffff', 0.05)}`,
-                  boxShadow: t.featured ? `0 0 32px ${hexA(PALETTE.cyan, 0.14)}` : 'none',
-                }}
-              >
+            {PROPOPS8_LADDER.map((t) => {
+              const external = t.href.startsWith('http');
+              return (
                 <div
+                  key={t.name}
+                  className="flex flex-col"
                   style={{
-                    fontFamily: DISPLAY,
-                    fontWeight: 900,
-                    fontSize: 30,
-                    lineHeight: 1,
-                    letterSpacing: '-0.03em',
-                    color: t.featured ? PALETTE.cyan : PALETTE.bright,
+                    ...cardStyle,
+                    padding: '24px 22px 26px',
+                    border: t.featured
+                      ? `1px solid ${hexA(PALETTE.cyan, 0.45)}`
+                      : `1px solid ${hexA('#ffffff', 0.05)}`,
+                    boxShadow: t.featured ? `0 0 32px ${hexA(PALETTE.cyan, 0.14)}` : 'none',
                   }}
                 >
-                  {t.price}
+                  <div
+                    style={{
+                      fontFamily: DISPLAY,
+                      fontWeight: 900,
+                      fontSize: 30,
+                      lineHeight: 1,
+                      letterSpacing: '-0.03em',
+                      color: t.featured ? PALETTE.cyan : PALETTE.bright,
+                    }}
+                  >
+                    {t.price}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      letterSpacing: '0.13em',
+                      textTransform: 'uppercase',
+                      color: hexA('#ffffff', 0.6),
+                      margin: '12px 0',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {t.name}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      color: hexA('#ffffff', 0.62),
+                      margin: '0 0 20px',
+                      flex: '1 1 auto',
+                    }}
+                  >
+                    {t.body}
+                  </p>
+                  <a
+                    href={t.href}
+                    {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    className={
+                      t.featured
+                        ? 'chaos-cta inline-flex items-center justify-center'
+                        : 'chaos-ghost inline-flex items-center justify-center'
+                    }
+                    style={t.featured ? ctaStyle() : ghostCtaStyle()}
+                  >
+                    {t.cta}
+                  </a>
                 </div>
-                <div
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 11,
-                    letterSpacing: '0.13em',
-                    textTransform: 'uppercase',
-                    color: hexA('#ffffff', 0.6),
-                    margin: '12px 0 12px',
-                  }}
-                >
-                  {t.name}
-                </div>
-                <p
-                  style={{
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: hexA('#ffffff', 0.62),
-                    margin: '0 0 20px',
-                    flex: '1 1 auto',
-                  }}
-                >
-                  {t.body}
-                </p>
-                <a
-                  href={t.href}
-                  className={t.featured ? 'chaos-cta inline-flex items-center justify-center' : 'chaos-ghost inline-flex items-center justify-center'}
-                  style={t.featured ? ctaStyle() : ghostCtaStyle()}
-                >
-                  {t.cta}
-                </a>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <p style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.14em', marginTop: 24 }}>
@@ -611,7 +603,11 @@ export default function LandingPage() {
             A property rarely becomes expensive overnight. The warning signs arrive one work order
             at a time.
           </p>
-          <a href={CALCULATOR} className="chaos-cta inline-flex items-center gap-3" style={ctaStyle()}>
+          <a
+            href={CALCULATOR}
+            className="chaos-cta inline-flex items-center gap-3"
+            style={ctaStyle()}
+          >
             Run the free diagnostic
             <span aria-hidden="true" style={{ fontSize: 15 }}>
               &rarr;
@@ -620,40 +616,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ================================================== FOOTER ========= */}
-      <footer
-        style={{
-          borderTop: `1px solid ${hexA('#ffffff', 0.06)}`,
-          background: PALETTE.void,
-        }}
-      >
-        <div
-          className="mx-auto px-5 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-          style={{ maxWidth: 1120, padding: '26px 20px' }}
-        >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {['n8n', 'supabase', 'postgres', 'propops8_core'].map((tag, i) => (
-              <span key={tag} className="flex items-center gap-3">
-                {i > 0 && <span style={{ color: PALETTE.track }}>&middot;</span>}
-                <span
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 11,
-                    letterSpacing: '0.14em',
-                    color: i === 0 ? PALETTE.body : PALETTE.label,
-                    textTransform: i === 0 ? 'none' : 'uppercase',
-                  }}
-                >
-                  {tag}
-                </span>
-              </span>
-            ))}
-          </div>
-          <span style={{ ...utilityLabel, fontSize: 10, letterSpacing: '0.13em' }}>
-            PropOps8 &middot; Daniel Ebuehi
-          </span>
-        </div>
-      </footer>
+      {/* No footer here — SiteFooter renders from app/layout.tsx on every route. */}
     </main>
   );
 }

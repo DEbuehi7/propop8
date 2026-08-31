@@ -1,47 +1,53 @@
 /**
  * app/api/tally-webhook/route.ts
  * ----------------------------------------------------------------------------
- * Replaces stripe-webhook-route.ts. This is now the keystone: it is the only
- * thing that turns a form submission into a paid intake with an upload link.
+ * Turns a Tally submission into a paid intake with an upload link. Nothing else
+ * issues tokens.
  *
- * Tally posts here on submission. This route:
- *   1. verifies the signature          (an unsigned endpoint is a free-token machine)
- *   2. claims the event id             (Tally retries; retries must not re-send email)
- *   3. maps Tally's field array into a record
- *   4. issues an upload token          (only when payment is confirmed)
- *   5. emails the secure upload link
+ *   1. verify the signature   — an unsigned endpoint is a free-token machine
+ *   2. claim the event id     — Tally retries; retries must not re-send email
+ *   3. map Tally's field array into a record
+ *   4. issue an upload token  — only when payment is confirmed
+ *   5. email the secure link  — via lib/email.ts (Resend)
  *
- * TWO THINGS TO VERIFY IN TALLY'S DOCS BEFORE GOING LIVE — I can't confirm
- * either from here, and both are load-bearing:
+ * WHAT CHANGED IN THIS VERSION
  *
- *   a) The signature header name and digest encoding. Constants are at the top
- *      so you can correct them in one place. Send a test submission and log
- *      the headers if the docs are ambiguous.
+ * Dropdowns. Tally sends the answer as an array of option UUIDs plus a separate
+ * `options` lookup table:
  *
- *   b) WHETHER THE WEBHOOK FIRES BEFORE OR AFTER PAYMENT COMPLETES. If Tally
- *      posts on form submission rather than on successful charge, this route
- *      will issue upload tokens to people who never paid. That is the same
- *      failure as treating Stripe's checkout.session.completed as proof of
- *      payment. Set TALLY_PAYMENT_ENABLED=false until you have confirmed it,
- *      and the route will hold every intake for manual release.
+ *     "value":   ["7d169bd0-faf4-4a62-adba-9c859cee3d80"]
+ *     "options": [{ "id": "7d169bd0-...", "text": "500+ units" }, ...]
+ *
+ * The previous version stored the raw UUID, so audit_intakes read
+ * `portfolio_size: 7d169bd0-faf4-4a62-adba-9c859cee3d80` — which makes the
+ * held_intakes queue unreadable at a glance, and means any later filter on
+ * portfolio size compares meaningless strings. resolveValue() now looks the id
+ * up and stores "500+ units".
+ *
+ * Payment capture. The payload carries Payment (price) and Payment (currency)
+ * fields. When Stripe is connected they hold real values; until then they are
+ * null. Reading them means the intake records what was actually charged rather
+ * than what the form was configured to charge — and it gives you a second,
+ * independent signal for whether money moved.
  */
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { issueUploadToken, UPLOAD_WINDOW_DAYS } from '@/lib/uploadTokens';
+import { issueUploadToken } from '@/lib/uploadTokens';
+import { sendUploadInstructions, notifyOwner } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /* -------------------------------------------------------------------------- */
-/*  Config — verify these two against Tally's webhook documentation            */
+/*  Config                                                                     */
 /* -------------------------------------------------------------------------- */
 
 const SIGNATURE_HEADER = 'tally-signature';
 const SIGNATURE_ENCODING: 'base64' | 'hex' = 'base64';
 
-/** Set true ONLY once you've confirmed the webhook fires after payment clears. */
+/** True ONLY once you've confirmed the webhook fires after payment clears. */
 const PAYMENT_CONFIRMED_BY_WEBHOOK = process.env.TALLY_PAYMENT_ENABLED === 'true';
 
 const supabase = createClient(
@@ -54,17 +60,52 @@ const supabase = createClient(
 /*  Field mapping                                                              */
 /* -------------------------------------------------------------------------- */
 
+interface TallyOption {
+  id?: string;
+  text?: string;
+}
+
 interface TallyField {
   key?: string;
   label?: string;
   type?: string;
   value?: unknown;
+  options?: TallyOption[];
 }
 
 /**
- * Tally sends an array of fields, not an object. Match on label first (stable
- * if you rename the internal key) then key. Labels here must match the form
- * exactly — see TALLY-SETUP.md §2.
+ * Turns a field's raw value into the string a human would recognise.
+ *
+ * Dropdowns, multi-selects and checkboxes arrive as arrays of option ids that
+ * only mean something against the field's own `options` table. Everything else
+ * arrives as a plain scalar.
+ */
+function resolveValue(field: TallyField): string | null {
+  const raw = field.value;
+  if (raw === undefined || raw === null) return null;
+
+  const lookup = (id: unknown): string => {
+    const hit = field.options?.find((o) => o.id === id);
+    return (hit?.text ?? String(id)).trim();
+  };
+
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) return null;
+    // Multi-selects keep every choice, comma-joined, in the order given.
+    const parts = raw.map(lookup).filter(Boolean);
+    return parts.length ? parts.join(', ').slice(0, 2000) : null;
+  }
+
+  // A scalar can still be an option id when the field allows a single choice.
+  if (field.options?.length) return lookup(raw).slice(0, 2000);
+
+  const s = String(raw).trim();
+  return s ? s.slice(0, 2000) : null;
+}
+
+/**
+ * Match on label first — stable if the internal key is renamed — then key.
+ * Labels must match the Tally form exactly; see TALLY-SETUP.md §2.
  */
 function pick(fields: TallyField[], ...labels: string[]): string | null {
   for (const wanted of labels) {
@@ -73,12 +114,9 @@ function pick(fields: TallyField[], ...labels: string[]): string | null {
         f.label?.trim().toLowerCase() === wanted.toLowerCase() ||
         f.key?.trim().toLowerCase() === wanted.toLowerCase()
     );
-    if (!hit || hit.value === undefined || hit.value === null) continue;
-
-    // Dropdowns arrive as arrays; take the first choice.
-    const raw = Array.isArray(hit.value) ? hit.value[0] : hit.value;
-    const s = String(raw).trim();
-    if (s) return s.slice(0, 2000);
+    if (!hit) continue;
+    const v = resolveValue(hit);
+    if (v) return v;
   }
   return null;
 }
@@ -91,87 +129,6 @@ function pickNumber(fields: TallyField[], ...labels: string[]): number | null {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-/* -------------------------------------------------------------------------- */
-/*  Fulfilment                                                                 */
-/* -------------------------------------------------------------------------- */
-
-async function sendUploadInstructions(name: string, email: string, token: string) {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
-  const link = `${base}/upload/${token}`;
-  const pmToken = process.env.POSTMARK_SERVER_TOKEN;
-  const from = process.env.POSTMARK_FROM ?? 'daniel@propops8.com';
-  if (!pmToken) throw new Error('POSTMARK_SERVER_TOKEN is not configured');
-
-  const firstName = name.split(' ')[0] || 'there';
-
-  const text = [
-    `${firstName},`,
-    '',
-    'Your PropOps8 Operations Audit is booked.',
-    '',
-    `Upload your export here (private to you, valid ${UPLOAD_WINDOW_DAYS} days):`,
-    link,
-    '',
-    'What to send — whichever of these you can export:',
-    '  • Work orders (unit, date opened, date completed, category, vendor, cost)',
-    '  • Vacancy / turn data (move-out, rent-ready, lease-signed, monthly rent)',
-    '  • Vendor invoices (vendor, date, amount, category)',
-    '',
-    'CSV or XLSX. Straight out of your PMS is fine — normalising it is my job.',
-    '',
-    'Please send de-identified operational data only. Strip resident names,',
-    'SSNs, financial account numbers and any medical information before',
-    'uploading. Unit numbers and dates are all I need.',
-    '',
-    'Turnaround is 48 hours from upload. You get a written findings report and',
-    'a 30-minute call to walk through it.',
-    '',
-    'Daniel Ebuehi',
-    'PropOps8',
-  ].join('\n');
-
-  const res = await fetch('https://api.postmarkapp.com/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Postmark-Server-Token': pmToken,
-    },
-    body: JSON.stringify({
-      From: from,
-      To: email,
-      Subject: 'Your PropOps8 audit is booked — secure upload link inside',
-      TextBody: text,
-      MessageStream: 'outbound',
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Postmark ${res.status}: ${await res.text()}`);
-}
-
-async function notifyOwner(subject: string, body: string) {
-  const pmToken = process.env.POSTMARK_SERVER_TOKEN;
-  const from = process.env.POSTMARK_FROM ?? 'daniel@propops8.com';
-  const to = process.env.AUDIT_NOTIFY_EMAIL ?? from;
-  if (!pmToken) return;
-
-  await fetch('https://api.postmarkapp.com/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Postmark-Server-Token': pmToken,
-    },
-    body: JSON.stringify({
-      From: from,
-      To: to,
-      Subject: subject,
-      TextBody: body,
-      MessageStream: 'outbound',
-    }),
-  }).catch(() => undefined);
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Handler                                                                    */
@@ -227,7 +184,7 @@ export async function POST(req: Request) {
   });
 
   if (logError) {
-    // 23505 = already seen. Tally retried; do nothing and acknowledge.
+    // 23505 = unique violation = already seen. Tally retried; acknowledge.
     if (logError.code === '23505') {
       return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
     }
@@ -253,11 +210,21 @@ export async function POST(req: Request) {
         'PropOps8 — form submission missing name or email',
         `Response ${payload.data?.responseId} arrived without a usable name/email. Check the form field labels against TALLY-SETUP.md §2.`
       );
-      // 200 so Tally stops retrying — the payload will never improve.
+      // 200 so Tally stops retrying — this payload will never improve.
       return NextResponse.json({ received: true, incomplete: true }, { status: 200 });
     }
 
-    const paid = PAYMENT_CONFIRMED_BY_WEBHOOK;
+    /* ------------------------------------------------- payment, if any */
+
+    // Null until Stripe is connected in Tally. When it is connected these
+    // carry what was actually charged — a second, independent signal that
+    // money moved, separate from the TALLY_PAYMENT_ENABLED flag.
+    const paidAmount = pickNumber(fields, 'Payment (price)');
+    const paidCurrency = pick(fields, 'Payment (currency)');
+    const paymentLink = pick(fields, 'Payment (link)');
+    const paymentSeen = paidAmount !== null && paidAmount > 0;
+
+    const paid = PAYMENT_CONFIRMED_BY_WEBHOOK && paymentSeen;
 
     const { data: intake, error: dbError } = await supabase
       .from('audit_intakes')
@@ -276,7 +243,10 @@ export async function POST(req: Request) {
           operationalDays: pickNumber(fields, 'days', 'operational_days'),
           operationalExposure: pickNumber(fields, 'exposure', 'operational_exposure'),
           totalDays: pickNumber(fields, 'total_days'),
-          totalExposure: pickNumber(fields, 'total', 'total_exposure'),
+          totalExposure: pickNumber(fields, 'total_exposure'),
+          paidAmount,
+          paidCurrency,
+          paymentLink,
         },
         tally_response_id: payload.data?.responseId ?? null,
         status: paid ? 'paid' : 'submitted',
@@ -291,7 +261,11 @@ export async function POST(req: Request) {
 
     if (paid) {
       const token = await issueUploadToken(intake.id);
-      await sendUploadInstructions(name, email, token);
+
+      // intake.id as idempotency key: if a retry slips past the event guard,
+      // Resend still won't send the same customer two upload links.
+      await sendUploadInstructions(name, email, token, intake.id);
+
       await supabase
         .from('audit_intakes')
         .update({ fulfillment_status: 'sent' })
@@ -299,19 +273,32 @@ export async function POST(req: Request) {
 
       await notifyOwner(
         `PropOps8 — audit booked: ${company ?? name}`,
-        `${name} (${email}) at ${company ?? 'unknown'} booked an audit.\nIntake: ${intake.id}\nUpload link sent.`
+        [
+          `${name} (${email}) at ${company ?? 'unknown'} booked an audit.`,
+          `Intake: ${intake.id}`,
+          paidAmount ? `Charged: ${paidAmount} ${paidCurrency ?? ''}`.trim() : '',
+          'Upload link sent.',
+        ]
+          .filter(Boolean)
+          .join('\n')
       );
     } else {
-      // Payment not proven. Hold it. Release manually — see TALLY-SETUP.md §5.
+      const why = !PAYMENT_CONFIRMED_BY_WEBHOOK
+        ? 'TALLY_PAYMENT_ENABLED is not true'
+        : 'the payload carried no payment amount — is Stripe connected in Tally?';
+
       await notifyOwner(
         `PropOps8 — intake HELD, confirm payment: ${company ?? name}`,
         [
           `${name} (${email}) at ${company ?? 'unknown'} submitted the audit form.`,
           `Intake: ${intake.id}`,
+          `Portfolio: ${pick(fields, 'Portfolio size') ?? 'unknown'}`,
+          `Data available: ${pick(fields, 'Data you can export') ?? 'unknown'}`,
           '',
-          'No upload link was sent — TALLY_PAYMENT_ENABLED is not true, so this',
-          'route cannot prove the $497 was collected. Confirm the payment, then',
-          'release the intake to send the link.',
+          `No upload link was sent — ${why}.`,
+          'Confirm the payment, then release the intake:',
+          '',
+          `  select public.release_intake('${intake.id}');`,
         ].join('\n')
       );
     }
