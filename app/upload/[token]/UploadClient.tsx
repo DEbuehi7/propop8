@@ -418,7 +418,7 @@ export default function UploadClient({ token }: { token: string }) {
           Received &mdash; the clock has started
         </h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: hexA('#ffffff', 0.68), margin: 0 }}>
-          {uploadedCount} file{uploadedCount === 1 ? '' : 's'} are in. You&rsquo;ll have your
+          {uploadedCount} file{uploadedCount === 1 ? ' is' : 's are'} in. You&rsquo;ll have your
           findings report within 48 hours, along with a link to book the review call.
         </p>
         <div className="p-5" style={{ ...cardStyle, marginTop: 20 }}>

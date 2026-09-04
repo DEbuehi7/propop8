@@ -128,6 +128,36 @@ function pickNumber(fields: TallyField[], ...labels: string[]): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 }
 
+/**
+ * Payment fields, matched on TYPE rather than label.
+ *
+ * Tally builds a payment field's label from the question's own title, so the
+ * same field has arrived as "Payment (price)", "Make a payment below: (price)"
+ * and " (price)" across three tests — every rename in the form editor produces
+ * a different label, and a label-based lookup silently returns null each time.
+ * `type: "PAYMENT"` never changes. Match on that, then on the suffix.
+ */
+function pickPayment(fields: TallyField[], suffix: string): unknown {
+  const hit = fields.find(
+    (f) => f.type === 'PAYMENT' && (f.label ?? '').trim().toLowerCase().endsWith(`(${suffix})`)
+  );
+  return hit?.value ?? null;
+}
+
+function paymentAmount(fields: TallyField[]): number | null {
+  const raw = pickPayment(fields, 'price');
+  if (raw === null || raw === undefined) return null;
+  const n = Number(String(raw).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function paymentString(fields: TallyField[], suffix: string): string | null {
+  const raw = pickPayment(fields, suffix);
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  return s ? s.slice(0, 500) : null;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /* -------------------------------------------------------------------------- */
@@ -219,9 +249,9 @@ export async function POST(req: Request) {
     // Null until Stripe is connected in Tally. When it is connected these
     // carry what was actually charged — a second, independent signal that
     // money moved, separate from the TALLY_PAYMENT_ENABLED flag.
-    const paidAmount = pickNumber(fields, 'Payment (price)');
-    const paidCurrency = pick(fields, 'Payment (currency)');
-    const paymentLink = pick(fields, 'Payment (link)');
+    const paidAmount = paymentAmount(fields);
+    const paidCurrency = paymentString(fields, 'currency');
+    const paymentLink = paymentString(fields, 'link');
     const paymentSeen = paidAmount !== null && paidAmount > 0;
 
     const paid = PAYMENT_CONFIRMED_BY_WEBHOOK && paymentSeen;
