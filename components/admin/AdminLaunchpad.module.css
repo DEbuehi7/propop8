@@ -1,0 +1,8 @@
+.pad{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:0 0 24px}
+.tile{position:relative;display:flex;flex-direction:column;gap:4px;padding:16px 16px 14px;border-radius:12px;text-decoration:none;
+  background:#111a33;border:1px solid rgba(233,235,239,.12);color:#E9EBEF;overflow:hidden;transition:border-color .15s,transform .15s}
+.tile:hover{border-color:var(--a);transform:translateY(-1px)}
+.tile strong{font:600 15px/1.2 Inter,system-ui,sans-serif;padding-right:20px}
+.tile span{font:12px/1.3 ui-monospace,Menlo,monospace;color:#A3A9B8}
+.tile em{position:absolute;right:14px;top:14px;font-style:normal;color:var(--a)}
+.bar{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--a)}
