@@ -23,7 +23,7 @@ const NODES: Node[] = [
     tags: ["29! V2", "Solar Bloom", "EDO Droid Phase 0", "Local-first"],
     gates: [["Zoning", "unknown"], ["Septic", "unknown"], ["Earn-It (revenue)", "pending"]],
     note: "Compute is bounded by real roof, energy and site conditions.",
-    labUrl: null, boardUrl: null,
+    labUrl: "/admin/lvn/eon", boardUrl: null,
   },
   {
     id: "LVN-02", name: "Lumen", lab: "Lumen Lab", glyph: "L",
@@ -32,15 +32,16 @@ const NODES: Node[] = [
     tags: ["CL V2", "WUI", "Outage mode", "One calm AIM wall"],
     gates: [["Access", "unknown"], ["Septic / OWTS", "unknown"], ["Lot merge", "unknown"]],
     note: "Title, survey and OWTS feasibility come before any design spend.",
-    labUrl: null, boardUrl: null,
+    labUrl: "/admin/lvn/lumen", boardUrl: null,
   },
   {
-    id: "LVN-03", name: "Node 03", lab: "Digital Nomad Lab", glyph: "+", empty: true,
-    location: "Location to be named", season: "Season / role to be assigned",
-    role: "Third digital-nomad live-work node. Add its site, board and gates once a candidate is identified.",
-    tags: ["Slot reserved"], gates: [["Site identified", "pending"]],
-    note: "No design before the site and business gates clear (Canon 12).",
-    labUrl: null, boardUrl: null,
+    id: "LVN-03", name: "Transect", lab: "Digital Nomad Node", glyph: "T",
+    location: "No fixed site · seasonal circuit", season: "Year-round · scouting · in transit",
+    role: "Summers at Crestline, winters at Twentynine Palms, Airbnb in between scouting BRRRR / AIM-B5R land across Kern and Fresno Counties.",
+    tags: ["Land-survey circuit", "BRRRR / AIM-B5R scouting"],
+    gates: [["Circuit defined", "open"], ["BRRRR / AIM-B5R site (Kern/Fresno)", "pending"]],
+    note: "No design or acquisition commitment before the site and business gates clear (Canon 12).",
+    labUrl: "/admin/lvn/transect", boardUrl: null,
   },
 ];
 
