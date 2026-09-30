@@ -40,6 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python (aim-b5r-engine)
+__pycache__/
+*.pyc
+*.sqlite3
+
 # Local Netlify folder
 .netlify
 .DS_Store
