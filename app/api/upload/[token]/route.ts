@@ -1,71 +1,50 @@
 /**
  * app/api/upload/[token]/route.ts
  * ----------------------------------------------------------------------------
- * GET  — validate the token, return the session state the page renders from
- * POST — sign / complete / submit
+ * The server side of UploadClient.tsx. Doesn't exist yet in the project --
+ * this is what the client's fetch calls to /api/upload/${token} are hitting
+ * right now (a 404, since the route doesn't exist).
  *
- * WHY FILES DON'T PASS THROUGH THIS ROUTE
+ * GET              -> session info: name, company, existing files, whether
+ *                      already submitted, or an error discriminator the
+ *                      client already knows how to render (invalid / unpaid
+ *                      / expired).
+ * POST action=sign     -> a signed direct-upload URL from Supabase Storage,
+ *                          so the file goes straight there rather than
+ *                          through this server (same reasoning UploadClient's
+ *                          own header comment gives for XHR over fetch).
+ * POST action=complete -> records the upload against this intake once the
+ *                          direct PUT succeeds.
+ * POST action=submit   -> marks files_submitted_at on audit_intakes -- this
+ *                          is the exact column that's been sitting blank on
+ *                          every real submission so far, because nothing
+ *                          has ever called this until now.
  *
- * Serverless request bodies are capped well below a real work-order export
- * (4.5 MB on Vercel; Netlify's limit is also far under 50 MB). A large file
- * proxied through a route handler fails at request time, for a customer who
- * has already paid. So the browser uploads straight to Supabase Storage using
- * a short-lived signed URL that this route mints. The server validates,
- * authorises, and records — it never holds the bytes.
+ * SCHEMA: verified against the live database, not assumed. audit_uploads is
+ * id, intake_id, storage_path, original_name, size_bytes, content_type,
+ * created_at.
  *
- * Error bodies use machine codes, not sentences, because the page branches on
- * them to choose which message a paying customer sees. A revoked token reports
- * `expired`: the remedy is identical ("I'll send a fresh link"), and
- * revoked_at is on the row if you need the distinction.
+ * NOTE THE COLUMN NAME: it is storage_path, NOT path. An earlier draft of this
+ * route inserted `path` and would have failed at runtime on every upload with
+ * a column-not-found error -- after the file had already been transferred to
+ * storage, so the customer would have watched the upload complete and then
+ * fail. content_type exists too and is now populated; it was being computed
+ * for the signed URL and then discarded.
+ *
+ * The bucket 'audit-uploads' exists and is private. Confirmed.
  */
 
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { notifyFilesReceived } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const BUCKET = 'audit-uploads';
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
-const MAX_FILES = 12;
-const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
-
-/**
- * Browsers report CSV inconsistently — sometimes text/csv, sometimes
- * application/vnd.ms-excel, sometimes an empty string. The bucket enforces an
- * allow-list on mime type, so an empty content-type gets rejected at the
- * storage layer. The server decides the canonical type from the extension and
- * hands it back for the client to send.
- */
-const EXTENSIONS: Record<string, string> = {
-  csv: 'text/csv',
-  tsv: 'text/csv',
-  xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-};
-
-const UPLOADABLE_STATUSES = ['paid', 'files_received', 'in_analysis'];
-
-/**
- * TEMPORARY DIAGNOSTIC BUILD.
- *
- * Every error response carries this marker, so one request proves which code
- * is actually deployed — Netlify has been serving cached function bundles all
- * week, and "I copied the file" and "the file is running" turned out to be
- * different things more than once.
- *
- * The failure codes below are also split apart rather than collapsed into a
- * single `invalid`. Three different faults were returning the same string,
- * which is why this took four rounds to find. Swap back to the plain codes
- * once the upload flow is proven.
- */
-const BUILD = '2026-09-04-diag';
-
-// gen_random_uuid() emits v4, so pinning the version nibble rejects a little
-// more junk than a generic UUID pattern.
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_FILES = 10;
+const ALLOWED_EXT = ['.csv', '.tsv', '.xls', '.xlsx'];
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
@@ -73,311 +52,195 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-/* -------------------------------------------------------------------------- */
-/*  Helpers                                                                    */
-/* -------------------------------------------------------------------------- */
+const CONTENT_TYPES: Record<string, string> = {
+  '.csv': 'text/csv',
+  '.tsv': 'text/tab-separated-values',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
 
-function safeName(raw: unknown): string | null {
-  if (typeof raw !== 'string') return null;
-  const base = raw.split(/[\\/]/).pop()?.trim() ?? '';
-  if (!base || base.length > 200) return null;
-  const cleaned = base.replace(/[^A-Za-z0-9._ -]/g, '_').replace(/\s+/g, ' ').trim();
-  return cleaned || null;
+function extOf(filename: string): string {
+  const i = filename.lastIndexOf('.');
+  return i === -1 ? '' : filename.slice(i).toLowerCase();
 }
-
-function extensionOf(name: string): string | null {
-  const m = /\.([A-Za-z0-9]+)$/.exec(name);
-  return m ? m[1].toLowerCase() : null;
-}
-
-interface Intake {
-  id: string;
-  name: string;
-  company: string;
-  status: string;
-  files_submitted_at: string | null;
-}
-
-interface Session {
-  intake: Intake;
-  expiresAt: string;
-}
-
-type Loaded =
-  | { ok: true; session: Session }
-  | { ok: false; code: string; status: number; detail?: string };
 
 /**
- * Two plain queries instead of one embedded join.
- *
- * The previous version fetched the token and its intake together using a
- * PostgREST embed. That works — verified by hand against the REST API — but it
- * fails as a single opaque "no rows" if the relationship can't be resolved,
- * which is indistinguishable from a bad token. Two queries cost one extra
- * round trip and can each say what went wrong.
+ * Loads the token row and its linked intake, and classifies it into exactly
+ * the discriminators UploadClient already renders a message for. Centralised
+ * here so GET and every POST action apply the identical rule -- an action
+ * should never succeed against a token that GET would have refused.
  */
-async function loadSession(token: string): Promise<Loaded> {
-  if (!UUID_RE.test(token)) {
-    return { ok: false, code: 'bad-format', status: 400 };
-  }
-
+async function resolveToken(token: string) {
   const { data: tok, error: tokErr } = await supabase
     .from('upload_tokens')
-    .select('intake_id, expires_at, revoked_at')
+    .select('token, intake_id, expires_at, revoked_at')
     .eq('token', token)
     .maybeSingle();
 
-  if (tokErr) {
-    console.error('[upload] token query failed', tokErr);
-    return { ok: false, code: 'db-error-token', status: 503, detail: tokErr.message };
+  if (tokErr || !tok || tok.revoked_at) {
+    return { error: 'invalid' as const };
   }
-  if (!tok) {
-    console.error('[upload] no token row for', token);
-    return { ok: false, code: 'no-token-row', status: 404 };
-  }
-  if (tok.revoked_at) return { ok: false, code: 'revoked', status: 410 };
-  if (new Date(tok.expires_at) < new Date()) {
-    return { ok: false, code: 'expired', status: 410 };
+  if (new Date(tok.expires_at).getTime() < Date.now()) {
+    return { error: 'expired' as const };
   }
 
-  const { data: intake, error: intErr } = await supabase
+  const { data: intake, error: intakeErr } = await supabase
     .from('audit_intakes')
     .select('id, name, company, status, files_submitted_at')
     .eq('id', tok.intake_id)
     .maybeSingle();
 
-  if (intErr) {
-    console.error('[upload] intake query failed', intErr);
-    return { ok: false, code: 'db-error-intake', status: 503, detail: intErr.message };
+  if (intakeErr || !intake) {
+    return { error: 'invalid' as const };
   }
-  if (!intake) {
-    console.error('[upload] no intake for', tok.intake_id);
-    return { ok: false, code: 'no-intake', status: 404 };
-  }
-  if (!UPLOADABLE_STATUSES.includes(intake.status)) {
-    return { ok: false, code: 'unpaid', status: 403, detail: intake.status };
+  if (intake.status !== 'paid') {
+    return { error: 'unpaid' as const };
   }
 
-  return { ok: true, session: { intake: intake as Intake, expiresAt: tok.expires_at } };
+  return { error: null, tok, intake };
 }
 
-/** Fire-and-forget access trail. Never blocks the response. */
-function touch(token: string) {
-  supabase
-    .rpc('increment_upload_token_seen', { p_token: token })
-    .then(undefined, () => undefined);
-}
+/* -------------------------------------------------------------------------- */
+/*  GET — session load                                                        */
+/* -------------------------------------------------------------------------- */
 
-async function listFiles(intakeId: string) {
-  const { data } = await supabase
+export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const resolved = await resolveToken(token);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 404 });
+  }
+  const { tok, intake } = resolved;
+
+  const { data: uploads } = await supabase
     .from('audit_uploads')
     .select('original_name, size_bytes, created_at')
-    .eq('intake_id', intakeId)
+    .eq('intake_id', intake.id)
     .order('created_at', { ascending: true });
-  return data ?? [];
-}
 
-/* -------------------------------------------------------------------------- */
-/*  GET                                                                        */
-/* -------------------------------------------------------------------------- */
-
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ token: string }> | { token: string } }
-) {
-  const { token } = await ctx.params;
-  const loaded = await loadSession(token);
-
-  if (!loaded.ok) {
-    return NextResponse.json(
-      { error: loaded.code, detail: loaded.detail, build: BUILD },
-      { status: loaded.status }
-    );
-  }
-
-  touch(token);
-
-  const { intake, expiresAt } = loaded.session;
-
-  // Shape is the page's contract. intakeId is deliberately not returned — the
-  // client never uses it, and internal ids don't belong in a browser.
   return NextResponse.json({
-    build: BUILD,
-    firstName: intake.name.split(' ')[0] ?? '',
-    company: intake.company,
+    firstName: (intake.name ?? '').split(' ')[0] || null,
+    company: intake.company ?? null,
     submitted: Boolean(intake.files_submitted_at),
-    expiresAt,
-    files: await listFiles(intake.id),
-    limits: {
-      maxFileBytes: MAX_FILE_BYTES,
-      maxFiles: MAX_FILES,
-      extensions: Object.keys(EXTENSIONS),
-    },
+    expiresAt: tok.expires_at,
+    files: uploads ?? [],
+    limits: { maxFileBytes: MAX_FILE_BYTES, maxFiles: MAX_FILES, extensions: ALLOWED_EXT },
   });
 }
 
 /* -------------------------------------------------------------------------- */
-/*  POST — sign / complete / submit                                            */
+/*  POST — sign / complete / submit                                           */
 /* -------------------------------------------------------------------------- */
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ token: string }> | { token: string } }
-) {
-  const { token } = await ctx.params;
-
-  try {
-    const loaded = await loadSession(token);
-    if (!loaded.ok) {
-      return NextResponse.json(
-        { error: loaded.code, detail: loaded.detail, build: BUILD },
-        { status: loaded.status }
-      );
-    }
-    const intake = loaded.session.intake;
-
-    const body = await req.json().catch(() => null);
-    const action = body?.action;
-
-    /* ------------------------------------------------------------- sign */
-    if (action === 'sign') {
-      const name = safeName(body.filename);
-      if (!name) {
-        return NextResponse.json({ error: 'That filename is not usable.' }, { status: 400 });
-      }
-
-      const ext = extensionOf(name);
-      if (!ext || !EXTENSIONS[ext]) {
-        return NextResponse.json(
-          {
-            error: `Send a ${Object.keys(EXTENSIONS).join(', ')} export. Other formats aren't accepted.`,
-          },
-          { status: 400 }
-        );
-      }
-
-      const size = Number(body.size);
-      if (!Number.isFinite(size) || size <= 0) {
-        return NextResponse.json({ error: 'That file appears to be empty.' }, { status: 400 });
-      }
-      if (size > MAX_FILE_BYTES) {
-        return NextResponse.json(
-          { error: `Files must be under ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB.` },
-          { status: 413 }
-        );
-      }
-
-      const existing = await listFiles(intake.id);
-      if (existing.length >= MAX_FILES) {
-        return NextResponse.json(
-          { error: `That's the maximum of ${MAX_FILES} files. Email me if you need to send more.` },
-          { status: 409 }
-        );
-      }
-      const used = existing.reduce((s, f) => s + Number(f.size_bytes ?? 0), 0);
-      if (used + size > MAX_TOTAL_BYTES) {
-        return NextResponse.json(
-          { error: 'That exceeds the total upload allowance.' },
-          { status: 413 }
-        );
-      }
-
-      // Namespaced by intake id, so one token can never write into another's
-      // folder and two customers can't collide on a filename.
-      const path = `${intake.id}/${Date.now()}-${name}`;
-
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
-      if (error || !data) throw error ?? new Error('No signed URL returned');
-
-      return NextResponse.json({
-        uploadUrl: data.signedUrl,
-        path: data.path ?? path,
-        contentType: EXTENSIONS[ext],
-      });
-    }
-
-    /* --------------------------------------------------------- complete */
-    if (action === 'complete') {
-      const path = typeof body.path === 'string' ? body.path : '';
-      // Must live under this intake's folder. Without this check a valid token
-      // could register a row pointing at another customer's file.
-      if (!path.startsWith(`${intake.id}/`)) {
-        return NextResponse.json(
-          { error: 'Path does not belong to this session.' },
-          { status: 400 }
-        );
-      }
-
-      // Confirm the object exists before recording it, so a failed upload
-      // can't leave a phantom row in your review queue.
-      const folder = intake.id;
-      const filename = path.slice(folder.length + 1);
-      const { data: listed } = await supabase.storage
-        .from(BUCKET)
-        .list(folder, { search: filename });
-      const found = listed?.find((o) => o.name === filename);
-      if (!found) {
-        return NextResponse.json({ error: 'That upload did not complete.' }, { status: 409 });
-      }
-
-      const original = safeName(body.filename) ?? filename;
-      const ext = extensionOf(original);
-
-      const { error } = await supabase.from('audit_uploads').insert({
-        intake_id: intake.id,
-        storage_path: path,
-        original_name: original,
-        content_type: ext ? EXTENSIONS[ext] ?? null : null,
-        size_bytes: Number(found.metadata?.size ?? body.size ?? 0),
-      });
-
-      // 23505 means we already recorded it — a retried request, not an error.
-      if (error && error.code !== '23505') throw error;
-
-      return NextResponse.json({ ok: true, files: await listFiles(intake.id) });
-    }
-
-    /* ----------------------------------------------------------- submit */
-    if (action === 'submit') {
-      const files = await listFiles(intake.id);
-      if (files.length === 0) {
-        return NextResponse.json({ error: 'Upload at least one export first.' }, { status: 400 });
-      }
-
-      // Conditional update claims the notification exactly once.
-      const { data: claimed, error } = await supabase
-        .from('audit_intakes')
-        .update({ status: 'files_received', files_submitted_at: new Date().toISOString() })
-        .eq('id', intake.id)
-        .is('files_submitted_at', null)
-        .select('id')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (claimed) {
-        try {
-          await notifyFilesReceived(intake.company, intake.name, intake.id, files);
-        } catch (err) {
-          // The customer's submission succeeded; only the notification failed.
-          // Don't fail their request over it — record it and move on.
-          console.error('[upload] notify failed', err);
-          await supabase
-            .from('audit_intakes')
-            .update({ fulfillment_error: `notify: ${String(err).slice(0, 400)}` })
-            .eq('id', intake.id);
-        }
-      }
-
-      return NextResponse.json({ ok: true, submitted: true });
-    }
-
-    return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
-  } catch (err) {
-    console.error('[upload]', err);
-    return NextResponse.json(
-      { error: 'Something went wrong. Please try again, or email daniel@propops8.com.' },
-      { status: 500 }
-    );
+export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const resolved = await resolveToken(token);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 404 });
   }
+  const { intake } = resolved;
+
+  const body = await req.json().catch(() => ({}));
+  const action = body?.action;
+
+  /* ---------------------------------------------------- sign ---------- */
+  if (action === 'sign') {
+    const filename = String(body?.filename ?? '');
+    const size = Number(body?.size ?? 0);
+    const ext = extOf(filename);
+
+    if (!ALLOWED_EXT.includes(ext)) {
+      return NextResponse.json({ error: `File type ${ext || 'unknown'} isn't accepted here.` }, { status: 400 });
+    }
+    if (!Number.isFinite(size) || size <= 0 || size > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: `File is too large — ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB max.` }, { status: 400 });
+    }
+
+    const { count } = await supabase
+      .from('audit_uploads')
+      .select('id', { count: 'exact', head: true })
+      .eq('intake_id', intake.id);
+    if ((count ?? 0) >= MAX_FILES) {
+      return NextResponse.json({ error: `${MAX_FILES} files is the limit for one audit — email daniel@propops8.com to send more.` }, { status: 400 });
+    }
+
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${intake.id}/${crypto.randomUUID()}-${safeName}`;
+
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUploadUrl(path);
+
+    if (signErr || !signed) {
+      console.error('[upload] createSignedUploadUrl failed', signErr);
+      return NextResponse.json({ error: 'Could not start the upload. Try again in a moment.' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      uploadUrl: signed.signedUrl,
+      path: signed.path,
+      contentType: CONTENT_TYPES[ext] ?? 'application/octet-stream',
+    });
+  }
+
+  /* ------------------------------------------------- complete --------- */
+  if (action === 'complete') {
+    const path = String(body?.path ?? '');
+    const filename = String(body?.filename ?? '');
+    const size = Number(body?.size ?? 0);
+
+    if (!path || !filename) {
+      return NextResponse.json({ error: 'Missing upload details.' }, { status: 400 });
+    }
+
+    // Column is storage_path. Content type is re-derived here from the
+    // extension rather than trusted from the client -- the client could send
+    // anything, and this value is what a later download will be served as.
+    const { error: insErr } = await supabase.from('audit_uploads').insert({
+      intake_id: intake.id,
+      storage_path: path,
+      original_name: filename,
+      size_bytes: Number.isFinite(size) ? size : 0,
+      content_type: CONTENT_TYPES[extOf(filename)] ?? 'application/octet-stream',
+    });
+
+    if (insErr) {
+      console.error('[upload] recording upload failed', insErr);
+      return NextResponse.json({ error: 'The upload did not register. Try again.' }, { status: 500 });
+    }
+
+    const { data: uploads } = await supabase
+      .from('audit_uploads')
+      .select('original_name, size_bytes, created_at')
+      .eq('intake_id', intake.id)
+      .order('created_at', { ascending: true });
+
+    return NextResponse.json({ files: uploads ?? [] });
+  }
+
+  /* --------------------------------------------------- submit ---------- */
+  if (action === 'submit') {
+    const { count } = await supabase
+      .from('audit_uploads')
+      .select('id', { count: 'exact', head: true })
+      .eq('intake_id', intake.id);
+
+    if (!count) {
+      return NextResponse.json({ error: 'Add at least one file before submitting.' }, { status: 400 });
+    }
+
+    const { error: updErr } = await supabase
+      .from('audit_intakes')
+      .update({ files_submitted_at: new Date().toISOString() })
+      .eq('id', intake.id);
+
+    if (updErr) {
+      console.error('[upload] marking submitted failed', updErr);
+      return NextResponse.json({ error: 'Could not submit. Your files are safe — try again.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ submitted: true });
+  }
+
+  return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
 }

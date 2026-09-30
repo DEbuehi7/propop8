@@ -27,7 +27,7 @@
  * at checkout is the kind of thing a careful buyer treats as a warning sign.
  */
 
-const GUMROAD = 'https://edoaim.gumroad.com/l';
+const GUMROAD = 'https://propops8.gumroad.com/l';
 
 export interface Product {
   /** Gumroad slug — the part after /l/ */
@@ -166,8 +166,14 @@ export const LINKS = {
  * pricing table they read as a mistake. Keep them on separate pages, or move
  * the bundle to a different price.
  *
- * NOTE ON THE MISSING FREE PDF: Email 1 of the sequence promises an "Ugly8
- * field guide" attachment. No such product exists on Gumroad. Either create it
- * as a $0+ listing for the operator audience, or rewrite Email 1 to lead with
- * the calculator, which is the free thing you actually have.
+ * NOTE ON EMAIL 1's ATTACHMENT REFERENCE (resolved 2026-09-06, name reverted
+ * 2026-09-06): Email 1 of the sequence referred to an "Ugly8 field guide"
+ * that never existed on Gumroad. Confirmed replacement: "Vendor Ledger & NOI
+ * Audit Kit" (slug PropOps8VendorKit) is the real product that reference
+ * should point to. That listing is $99, not free — if Email 1's surrounding
+ * copy frames it as a free attachment, that framing needs rewriting too, not
+ * just the name. (This briefly went through a name change to "Vendor Invoice
+ * & NOI Preflight Checklist" and back — the PDF itself is branded "Vendor
+ * Ledger & NOI Audit Kit" on every page, so the listing name reverted to
+ * match the file rather than the file being redesigned to match a new name.)
  */

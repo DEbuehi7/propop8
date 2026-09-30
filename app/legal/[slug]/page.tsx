@@ -268,10 +268,23 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const doc = DOCS.find((d) => d.slug === slug);
+  const title = doc?.title ?? 'Legal';
+  const description = doc?.intro;
   return {
-    title: doc?.title ?? 'Legal',
-    description: doc?.intro,
+    title,
+    description,
     robots: { index: true, follow: true },
+    openGraph: {
+      title: `${title} — PropOps8`,
+      description,
+      url: doc ? `https://propops8.com/legal/${doc.slug}` : undefined,
+      images: [{ url: '/og/calculator.png', width: 1200, height: 630 }],
+    },
+    twitter: {
+      title: `${title} — PropOps8`,
+      description,
+      images: ['/og/calculator.png'],
+    },
   };
 }
 

@@ -32,6 +32,7 @@
  */
 
 import type { Metadata } from 'next';
+import FounderStrip from '@/components/FounderStrip';
 import {
   PALETTE,
   MONO,
@@ -265,7 +266,7 @@ export default function LandingPage() {
           {DIAGNOSTICS.map((d) => (
             <a
               key={d.slug}
-              href={CALCULATOR}
+              href={d.slug === 'vacancy-black-hole' ? CALCULATOR : `/tools/${d.slug}`}
               className="chaos-tile chaos-focus block overflow-hidden"
               style={{ ...cardStyle, textDecoration: 'none' }}
             >
@@ -410,6 +411,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* =================================================== FOUNDER ======= */}
+      <FounderStrip />
+
       {/* ================================================ SEGMENTS ========= */}
       <section className="mx-auto px-5 sm:px-8" style={{ maxWidth: 1120, padding: '68px 20px' }}>
         <span style={utilityLabel}>Who this is for</span>
@@ -482,8 +486,6 @@ export default function LandingPage() {
             Do it yourself, or send me the export
           </h2>
 
-          {/* Prices, names and links all come from lib/products.ts, which is
-              the same file the rest of the site reads. One place to change. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {PROPOPS8_LADDER.map((t) => {
               const external = t.href.startsWith('http');

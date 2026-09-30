@@ -26,7 +26,15 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      router.push(params.get("from") || "/admin/review");
+      // Default is the launchpad, not the review tool. `from` only ever
+      // comes from our own proxy.ts sending you back where you started, but
+      // it's a query param and therefore attacker-controllable -- someone
+      // could craft /admin/login?from=https://evil.example and ride a real
+      // login to an external site. Only honor it when it points back into
+      // /admin; anything else (another origin, a protocol-relative //host,
+      // no from at all) falls back to the launchpad.
+      const from = params.get("from");
+      router.push(from && from.startsWith("/admin") ? from : "/admin");
       router.refresh();
     } catch {
       setError("Network error -- try again.");

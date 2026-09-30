@@ -19,10 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!safeStringEqual(password, expected)) {
-    // TEMPORARY -- remove debugExpectedLength/debugGotLength once this is
-    // confirmed working. They only ever reveal lengths, never the actual
-    // values, but no reason to leave them in past this one check.
-        return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
+    return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
