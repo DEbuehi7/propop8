@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import s from "./ConceptPoster.module.css";
 
@@ -5,7 +6,11 @@ export type ConceptBlock =
   | { kind: "cards"; title: string; items: { label: string; body: string }[] }
   | { kind: "list"; title: string; items: string[] }
   | { kind: "steps"; title: string; items: string[] }
-  | { kind: "matrix"; title: string; columns: string[]; rows: { label: string; marks: boolean[] }[] };
+  | { kind: "matrix"; title: string; columns: string[]; rows: { label: string; marks: boolean[] }[] }
+  /* Escape hatch for a one-off section (a diagram, an embedded interactive
+     component) that doesn't fit the generic list/cards/steps/matrix shapes.
+     Still gets the same title treatment as every other block. */
+  | { kind: "custom"; title: string; render: ReactNode };
 
 export type ConceptPosterProps = {
   /* e.g. "Concept poster — vision precedent, not current board". Always say
@@ -88,6 +93,8 @@ export default function ConceptPoster({ label, title, tagline, image, blocks, ca
               </tbody>
             </table>
           )}
+
+          {b.kind === "custom" && b.render}
         </div>
       ))}
 

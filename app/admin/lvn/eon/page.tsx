@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import LabDetail from "@/components/admin/LabDetail";
 import ConceptPoster from "@/components/admin/ConceptPoster";
+import HubSpokeDiagram from "@/components/admin/HubSpokeDiagram";
 
 export const metadata: Metadata = { title: "Eon Lab · LVN Network · Admin · PropOps8", robots: { index: false } };
 
@@ -48,16 +49,22 @@ export default function EonLab() {
             ],
           },
           {
-            kind: "cards",
+            kind: "custom",
             title: "AI-Driven Resilience Node — six functions around one hub",
-            items: [
-              { label: "Sensor network", body: "Environment · energy · structural · security." },
-              { label: "Renewable energy", body: "Solar · battery · microgrid." },
-              { label: "Climate management", body: "Passive + active systems." },
-              { label: "Field operations", body: "Drones · robotics · remote monitoring." },
-              { label: "Data + compute", body: "On-site AI processing, model training and storage — field-station scale, per the rule below." },
-              { label: "Real estate intelligence", body: "Site analysis, digital twins, BRRRR support." },
-            ],
+            render: (
+              <HubSpokeDiagram
+                hubLabel="EON LABS"
+                ariaLabel="Eon Labs AI-Driven Resilience Node: six functions connected to one central hub"
+                items={[
+                  { id: "sensor", label: ["Sensor", "Network"], body: "Environment · energy · structural · security." },
+                  { id: "renewable", label: ["Renewable", "Energy"], body: "Solar · battery · microgrid." },
+                  { id: "climate", label: ["Climate", "Management"], body: "Passive + active systems." },
+                  { id: "field", label: ["Field", "Operations"], body: "Drones · robotics · remote monitoring." },
+                  { id: "data", label: ["Data +", "Compute"], body: "On-site AI processing, model training and storage — field-station scale, per the rule below." },
+                  { id: "rei", label: ["Real Estate", "Intelligence"], body: "Site analysis, digital twins, BRRRR support." },
+                ]}
+              />
+            ),
           },
           {
             kind: "cards",

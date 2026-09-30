@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import LabDetail from "@/components/admin/LabDetail";
 import ConceptPoster from "@/components/admin/ConceptPoster";
+import HubSpokeDiagram from "@/components/admin/HubSpokeDiagram";
 
 export const metadata: Metadata = { title: "Lumen Lab · LVN Network · Admin · PropOps8", robots: { index: false } };
 
@@ -24,6 +25,17 @@ export default function LumenLab() {
       gates={[["Access", "unknown"], ["Septic / OWTS", "unknown"], ["Lot merge", "unknown"]]}
       source="Source: AIM / PropOps8 Canonical Design Manifesto v3.2 (27 Sep 2026), Canon 12."
     >
+      <HubSpokeDiagram
+        heading="The AIM Intelligent Cabin — four systems, one calm wall"
+        hubLabel="THE CABIN"
+        ariaLabel="Lumen's AIM intelligent cabin: four systems connected to one control wall"
+        items={[
+          { id: "sensing", label: ["Local-First", "Sensing"], body: "Environmental and structural awareness, processed on-site." },
+          { id: "water", label: ["Water, Leak &", "Freeze Awareness"], body: "Continuous monitoring for the failure modes that actually threaten a mountain cabin through winter." },
+          { id: "power", label: ["Power &", "Outage State"], body: "Grid and backup status, visible at a glance — the cabin's own posture during a mountain outage." },
+          { id: "wall", label: ["The AIM", "Wall"], body: "One calm display for the cabin's systems. Manual override always available — nothing automated without a physical way to step in." },
+        ]}
+      />
       <ConceptPoster
         label="Concept poster — technique precedent only, not current program"
         title="Snowline Crestline Lumen Labs"
