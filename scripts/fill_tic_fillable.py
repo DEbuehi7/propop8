@@ -17,7 +17,7 @@ field values by name, using:
                                   and tooltip don't reveal it)
 
 Usage:
-    pip install pypdf --break-system-packages
+    pip install pymupdf --break-system-packages
     python3 fill_tic_fillable.py DATA_FILE.json hotma_tic.pdf OUTPUT.pdf
 
 DATA_FILE.json is what engine.html's "Export" produces for one household —
@@ -38,16 +38,30 @@ KNOWN GAPS — printed as warnings, never guessed silently:
     script derives each row as value * (rate / 100) and warns if the rows
     don't sum back to the exported total, so a mismatch is visible instead of
     silently wrong.
+
+WHY PYMUPDF, NOT PYPDF: the previous version of this script wrote field
+values with pypdf and then set the PDF's NeedAppearances flag, which just
+asks whatever application opens the file to redraw every field itself. Some
+viewers do that; several common ones — and most print drivers, since printing
+usually skips the interactive-form redraw path entirely — don't, so the same
+output PDF could show filled-in on one screen and blank on another, or print
+blank even when it looked right on screen. PyMuPDF's widget.update() instead
+renders each field's value into a real appearance stream at write time, once,
+here — the value becomes ordinary page content, the same as a printed line,
+so every viewer and every print path shows the same thing. As a second-order
+fix, this also removes the old patch_missing_appearance_states() workaround:
+that existed only because pypdf's writer crashed on a widget with no /AP at
+all (the official form's "fill_140" field ships this way) — PyMuPDF has no
+such assumption and fills that widget the same as any other.
 """
 import json
 import sys
 from pathlib import Path
 
 try:
-    from pypdf import PdfReader, PdfWriter
-    from pypdf.generic import DictionaryObject, NameObject
+    import pymupdf
 except ImportError:
-    raise SystemExit("Missing dependency — run: pip install pypdf --break-system-packages")
+    raise SystemExit("Missing dependency — run: pip install pymupdf --break-system-packages")
 
 HERE = Path(__file__).parent
 
@@ -274,37 +288,64 @@ def build_values(data, field_map, on_state, warn):
     return text, chk
 
 
-def patch_missing_appearance_states(writer):
-    """Work around a pypdf crash on this PDF: at least one field (the official
-    hotma_tic.pdf ships with 'fill_140' like this) is a plain text field split
-    into a parent object (/T, /FT) plus a single anonymous Kid widget that has
-    never been rendered and so has no /AP at all. pypdf's
-    update_page_form_field_values() assumes every Kid of a matched parent is a
-    checkbox/radio widget with on/off appearance sub-states, and does
-    `kid["/AP"]["/N"]` unconditionally — which raises KeyError('/AP') the
-    moment it walks a Kid that has none.
+def fill_pdf(blank_pdf, all_values, checkbox_names, out_pdf, warn):
+    """Write every field in all_values into blank_pdf and bake a real
+    appearance stream for each one (widget.update()), then save to out_pdf.
 
-    Giving that Kid an empty /AP/N dict avoids the crash without changing what
-    ends up on the page: for a genuine checkbox/radio Kid it just means "no
-    matching on-state here, leave it /Off" (correct — a widget with no
-    appearance streams could never have shown as checked anyway); for a text
-    field's Kid, /AS is not what renders the value (that's /V plus the
-    NeedAppearances flag set below), so it's inert either way.
+    A checkbox or radio field's on-state name (e.g. "/On", "/Yes_2") always
+    starts with "/" in ctcac_checkbox_states.json / tic_field_map.json,
+    matching the pypdf NameObject convention those files were originally
+    built for — PyMuPDF's own widget_state names drop that leading slash, so
+    it's stripped here rather than in the JSON, which other tools may still
+    read the pypdf way.
+
+    A radio button is several sibling widgets sharing one field name, each
+    with its own on-state (e.g. one widget's own state is "No", another's is
+    "Yes_2") — /V lives once on the shared field, but /AS ("is THIS widget
+    the one currently selected") lives per widget. The reliable way to select
+    one is to touch ONLY that one sibling (set + update()) and leave every
+    other sibling completely alone: on the blank template every widget starts
+    at "Off" already, so an untouched sibling stays correctly unselected. The
+    tempting alternative — explicitly setting the losing siblings' field_value
+    to "Off" — does NOT reliably stick once another sibling in the same group
+    has already been set to an "on" state: in testing, a later sibling told
+    to go "Off" would instead flip back to ITS OWN on-state after update().
+    A plain checkbox is just the one-sibling case of this same rule (there's
+    nothing to skip), so it needs no separate branch.
+
+    Widgets must be set and update()'d within the same page.widgets() pass
+    that found them — a Widget object used outside that live iteration (e.g.
+    stashed in a dict for a later pass) raises "Annot is not bound to a page".
     """
-    patched = []
-    for page in writer.pages:
-        annots = page.get("/Annots")
-        if annots is None:
-            continue
-        for a in annots.get_object():
-            obj = a.get_object()
-            if obj.get("/Subtype") != "/Widget" or obj.get("/Parent") is None:
+    doc = pymupdf.open(blank_pdf)
+    seen = set()
+    for page in doc:
+        for w in (page.widgets() or []):
+            name = w.field_name
+            if name not in all_values:
                 continue
-            if "/AP" not in obj:
-                obj[NameObject("/AP")] = DictionaryObject({NameObject("/N"): DictionaryObject()})
-                parent_t = obj["/Parent"].get_object().get("/T")
-                patched.append(str(parent_t))
-    return patched
+            value = all_values[name]
+            if name in checkbox_names:
+                state = value[1:] if isinstance(value, str) and value.startswith("/") else value
+                own_states = set(w.button_states()["normal"]) if hasattr(w, "button_states") else set()
+                seen.add(name)
+                if own_states and state not in own_states:
+                    continue  # a non-selected sibling in this group — leave it at the blank
+                              # template's own default (Off); see the note above.
+                w.field_value = state
+            else:
+                seen.add(name)
+                w.field_value = "" if value is None else str(value)
+            w.update()
+
+    missing = sorted(set(all_values) - seen)
+    if missing:
+        warn(f"{len(missing)} field name(s) from tic_field_map.json / ctcac_checkbox_states.json aren't on "
+             f"the PDF passed in ({', '.join(missing[:8])}{', …' if len(missing) > 8 else ''}) — check that "
+             "it's the December 2025 hotma_tic.pdf field_map.json was built from.")
+
+    doc.save(out_pdf)
+    doc.close()
 
 
 def main():
@@ -319,23 +360,8 @@ def main():
 
     warnings_ = []
     text_values, checkbox_values = build_values(data, field_map, on_state, warnings_.append)
-
-    reader = PdfReader(blank_pdf)
-    writer = PdfWriter()
-    writer.append(reader)
-    patched = patch_missing_appearance_states(writer)
-    if patched:
-        warnings_.append(
-            f"worked around {len(patched)} PDF widget(s) with no appearance stream in the official "
-            f"form ({', '.join(patched)}) — their text/value still gets written, this is just a "
-            "pypdf compatibility shim, not a data gap.")
     all_values = {**text_values, **checkbox_values}
-    for page in writer.pages:
-        writer.update_page_form_field_values(page, all_values, auto_regenerate=False)
-    if hasattr(writer, "set_need_appearances_writer"):
-        writer.set_need_appearances_writer(True)  # ask the PDF viewer to redraw field appearances on open
-    with open(out_pdf, "wb") as f:
-        writer.write(f)
+    fill_pdf(blank_pdf, all_values, set(checkbox_values), out_pdf, warnings_.append)
 
     print(f"wrote {out_pdf}  ({len(text_values)} text fields, {len(checkbox_values)} checkboxes)")
     if warnings_:
