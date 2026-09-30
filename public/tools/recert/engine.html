@@ -47,6 +47,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .logo{font:800 34px/1 var(--display);letter-spacing:.01em;color:#fff}
 .logo b{color:var(--cyan);font-weight:800}
 .brand small{font:500 10.5px/1.2 var(--mono);letter-spacing:.18em;color:var(--cyan-2);opacity:.85}
+.brandlink,.footerlink{color:inherit;text-decoration:none}
+.brandlink{display:grid;gap:2px}
+.brandlink:hover,.footerlink:hover{opacity:.82}
 .title h1{margin:0;font:800 clamp(30px,4.4vw,58px)/.95 var(--display);letter-spacing:.01em;text-wrap:balance}
 .title h1 em{font-style:normal;color:var(--cyan);text-shadow:0 0 22px rgba(34,211,238,.45)}
 .title p{margin:6px 0 0;font:500 12.5px/1.3 var(--mono);letter-spacing:.16em;color:var(--muted)}
@@ -289,7 +292,7 @@ dialog .row-tools{justify-content:flex-end}
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><span class="logo">PropOps<b>8</b></span><small>PROPERTIES · PEOPLE · COMPLIANCE</small></div>
+    <div class="brand"><a class="brandlink" href="https://propops8.com/" title="Back to PropOps8.com"><span class="logo">PropOps<b>8</b></span><small>PROPERTIES · PEOPLE · COMPLIANCE</small></a></div>
     <div class="title"><h1>RECERT <em>FLOW ENGINE</em></h1><p>PROPOPS8 // COMPLIANCE AUTOMATION // CTCAC HOTMA FORM SET</p></div>
     <ul class="promise"><li>Faster</li><li>Cleaner</li><li>More compliant</li><li>For stronger communities</li></ul>
   </header>
@@ -399,7 +402,7 @@ dialog .row-tools{justify-content:flex-end}
 
   <footer>
     <span>Next.js · Supabase · Postgres · Rules engine · PDF renderer</span>
-    <b>PropOps<em>8</em> <span style="font:500 12px var(--mono);color:var(--muted);letter-spacing:.08em">| COMPLIANCE BUILT FOR A BRIGHTER TOMORROW.</span></b>
+    <a class="footerlink" href="https://propops8.com/" title="Back to PropOps8.com"><b>PropOps<em>8</em> <span style="font:500 12px var(--mono);color:var(--muted);letter-spacing:.08em">| COMPLIANCE BUILT FOR A BRIGHTER TOMORROW.</span></b></a>
     <p class="disclaimer">PropOps8 prepares data and routes forms; it does not determine eligibility. The owner or agent remains responsible for verifying income and certifying the household under Section 42 and the regulatory agreement. Not legal or tax advice. Form versions checked against CTCAC's compliance forms page, September 2026.</p>
   </footer>
 </div>
@@ -487,13 +490,15 @@ const ASSETS = {
   realestate:{label:"Real estate", q:23, inst:"Property description", rate:false, imp:true},
   lifeins:   {label:"Life insurance cash value", q:28, inst:"Insurer", rate:false, imp:true},
   cash:      {label:"Cash on hand over $250", q:30, inst:"Where it's kept", rate:false},
-  retirement:{label:"Retirement (401k / IRA)", q:null, inst:"Plan administrator", rate:false, excluded:true},
+  retirement:{label:"Retirement (401k / IRA)", q:null, inst:"Plan administrator", rate:false, excluded:true, distrib:true},
   other:     {label:"Other asset", q:null, inst:"Describe it", rate:true},
 };
-/* rate:true  → enter the interest rate; blank means unknown, so it's imputed when net assets are over $52,787
-   imp:true   → no computable return (crypto, real estate, life insurance) — imputed when over $52,787
-   neither    → actual return is $0 (cash, card balances, payment apps) — never imputed
-   excluded   → not a net family asset under HOTMA (IRS-recognized retirement accounts) */
+/* rate:true    → enter the interest rate; blank means unknown, so it's imputed when net assets are over $52,787
+   imp:true     → no computable return (crypto, real estate, life insurance) — imputed when over $52,787
+   neither      → actual return is $0 (cash, card balances, payment apps) — never imputed
+   excluded     → not a net family asset under HOTMA (IRS-recognized retirement accounts) — the balance is left out of net assets entirely
+   distrib:true → the account is excluded, but this tool asks whether it's paying out, so any monthly distribution gets added as a normal
+                  Pension / retirement income line instead of silently going uncounted */
 const REL = {H:"H · Head", S:"S · Spouse", A:"A · Adult co-tenant", C:"C · Child", O:"O · Other family", F:"F · Foster child/adult", L:"L · Live-in caretaker", U:"U · Unborn / anticipated", N:"N · None of the above"};
 const FED = {"":"None", 1:"1 · HUD PBRA", 2:"2 · Section 8 Mod Rehab", 3:"3 · Public Housing Operating Subsidy", 4:"4 · HOME Rental Assistance", 5:"5 · HCV, tenant-based", 6:"6 · Project-Based Voucher (PBV)", 7:"7 · USDA Section 521", 8:"8 · Other Federal"};
 const HUD_ASSISTED = ["1","2","3","5","6"];
@@ -522,11 +527,11 @@ function blankState(){
 }
 function newMember(rel){ return {k:uid(), first:"", mi:"", last:"", rel:rel||"A", dob:"", student:"NA", ssn4:"", disabled:false, race:"", ethnicity:"", separated:false, phone:""}; }
 function newIncome(type, member){ return {k:uid(), member:member||0, type:type||"wages", payer:"", amount:"", freq:"monthly", hours:"", verified:"", debit:false, change:false}; }
-function newAsset(type){ return {k:uid(), member:"joint", type:type||"checking", institution:"", last4:"", value:"", rate:""}; }
+function newAsset(type){ return {k:uid(), member:"joint", type:type||"checking", institution:"", last4:"", value:"", rate:"", paying:""}; }
 
 let S = blankState();
 let tab = "income";
-const LOG = []; let exported = false; let prevRouteIds = null;
+const LOG = []; let exported = false; let prevRouteIds = null; let dirty = false;
 
 /* ============================================================ helpers */
 const $ = s => document.querySelector(s);
@@ -662,6 +667,10 @@ function evaluate(s, c, R){
     const t = ASSETS[a.type] || ASSETS.other, f = p => "assets." + i + "." + p;
     req("assets", t.label + ": bank or source", has(a.institution), f("institution"));
     req("assets", t.label + ": cash value", has(a.value), f("value"));
+    if (t.distrib){
+      req("assets", t.label + ": receiving monthly payments? (yes/no)", has(a.paying), f("paying"));
+      if (a.paying === "yes") req("income", t.label + ": add the pension / retirement income line", s.income.some(r => r.type === "pension" && (a.member === "joint" || r.member === a.member)), null);
+    }
   });
   req("assets", "Tax refund in the last 12 months — yes or no", has(s.special.taxRefund), "special.taxRefund");
   if (s.special.taxRefund === "yes") req("assets", "Tax refund amount", num(s.special.taxRefundAmount) > 0, "special.taxRefundAmount");
@@ -703,7 +712,7 @@ function evaluate(s, c, R){
     if (m && m.rel === "L") info.push({t:memberName(m, r.member) + " is a live-in caretaker — their income isn't counted.", tab:"income"});
     else if (m && m.age !== null && m.age < 18 && (r.type === "wages" || r.type === "self")) warnings.push({t:memberName(m, r.member) + " is under 18 — earned income of minors is generally excluded; confirm before counting it.", tab:"income"});
   });
-  if (c.assets.some(a => a.excluded)) info.push({t:"IRS-recognized retirement accounts are excluded from net family assets under HOTMA, so they're left off the $52,787 certification — count withdrawals and periodic payments as income instead.", tab:"assets"});
+  if (c.assets.some(a => a.excluded)) info.push({t:"IRS-recognized retirement accounts are excluded from net family assets under HOTMA — the balance itself doesn't count, but the payments question on that asset makes sure a monthly distribution still gets counted as income.", tab:"assets"});
   if (s.special.supportAwardedNotReceived) warnings.push({t:"Support awarded but not received can be excluded only with third-party proof that collection was pursued.", tab:"special"});
   if ((s.cert.type === "initial" || s.cert.changedComposition)) info.push({t:"Demographics (TIC Part IX) are due — move-in or household change.", tab:"household"});
   if (c.hud) info.push({t:"HUD-assisted unit — confirm the VAWA notice (HUD-5380), certification form (HUD-5382) and the lease addendum your program uses: HUD-91067 for PBRA, HUD-52530-C for PBV, HUD-52641-A for HCV.", tab:"rent"});
@@ -820,7 +829,7 @@ function renderPanel(){
     h += '<div class="row-tools"><button class="btn" type="button" data-act="add-income">+ Add income source</button></div>';
   }
   if (tab === "assets"){
-    h += '<p class="intro">Every account and asset, joint or individual — cash value is market value minus the cost to cash it out. At or under $52,787 in net assets the household self-certifies; over it, every asset needs a statement, and assets whose return can\'t be computed are imputed at 0.40%. HOTMA leaves some things out of net assets: retirement accounts (list one if you like — it won\'t count), ABLE and 529 accounts, and necessary personal property such as a car or furniture.</p>';
+    h += '<p class="intro">Every account and asset, joint or individual — cash value is market value minus the cost to cash it out. At or under $52,787 in net assets the household self-certifies; over it, every asset needs a statement, and assets whose return can\'t be computed are imputed at 0.40%. Retirement accounts (401k / IRA) are excluded from net assets — but if the household is drawing monthly payments from one, say so below and add the income line for it. HOTMA also leaves out ABLE and 529 accounts and necessary personal property such as a car or furniture.</p>';
     h += '<div class="grid two">' + seg("Federal tax refund or refundable credit in the last 12 months?", "special.taxRefund", {no:"No", yes:"Yes"}) +
       (S.special.taxRefund === "yes" ? field("Refund amount", "special.taxRefundAmount", {type:"number", num:1, ph:"Subtracted from net assets", req:1}) : "") +
       seg("Given away or sold assets more than $1,000 below value in 2 years?", "special.disposed", {no:"No", yes:"Yes"}) +
@@ -832,7 +841,17 @@ function renderPanel(){
       h += '<div class="card"><div class="card-h"><b>' + esc(t.label) + '</b><div class="tags">' + (t.q ? '<span class="tag">Q' + t.q + "</span>" : "") + '<span class="out num" data-out="asset-' + i + '"></span><button class="btn small danger" type="button" data-act="rm-asset" data-i="' + i + '" aria-label="Remove ' + esc(t.label) + '">Remove</button></div></div>';
       h += '<div class="grid">' + field("Type", p + "type", {select:Object.fromEntries(Object.entries(ASSETS).map(([k, v]) => [k, v.label]))}) + field("Owner", p + "member", {select:mo}) +
         field("Bank or source", p + "institution", {ph:t.inst, req:1}) + field("Account · last 4", p + "last4", {ph:"Last 4 only", max:4}) +
-        field("Cash value", p + "value", {type:"number", num:1, ph:"e.g., 754.27", req:1}) + (t.rate ? field("Interest rate %", p + "rate", {type:"number", num:1, ph:"e.g., 0.01 · blank if unknown"}) : "") + "</div></div>";
+        field("Cash value", p + "value", {type:"number", num:1, ph:"e.g., 754.27", req:1}) + (t.rate ? field("Interest rate %", p + "rate", {type:"number", num:1, ph:"e.g., 0.01 · blank if unknown"}) : "") + "</div>";
+      if (t.distrib){
+        h += '<div class="grid">' + seg("Receiving monthly payments from this account?", p + "paying", {no:"No", yes:"Yes"}) + "</div>";
+        if (a.paying === "yes"){
+          const hasLine = S.income.some(r => r.type === "pension" && (a.member === "joint" || r.member === a.member));
+          h += hasLine
+            ? '<p class="hint" style="color:var(--ok)">Counted — a Pension / retirement income line is entered for this. Fill in the amount on the Income tab if you haven\'t yet.</p>'
+            : '<p class="hint" style="color:var(--orange)">Not counted yet. <button class="btn small" type="button" data-act="add-pension" data-i="' + i + '">+ Add the pension income line</button></p>';
+        }
+      }
+      h += "</div>";
     });
     h += '<div class="row-tools"><button class="btn" type="button" data-act="add-asset">+ Add asset</button></div>';
   }
@@ -1009,6 +1028,7 @@ function updateOutputs(){
 }
 
 function update(opts = {}){
+  if (!opts.silent) dirty = true;
   CALC = compute(S); const R = route(S, CALC);
   const ids = new Set(R.map(r => r.id));
   if (prevRouteIds && !opts.silent){
@@ -1017,9 +1037,27 @@ function update(opts = {}){
   }
   ROUTES = R; EV = evaluate(S, CALC, R);
   renderTabs(EV); renderPipeline(EV); renderReadiness(EV); renderPacket(EV); renderStack(EV); renderLog(); updateOutputs();
-  prevRouteIds = ids;
+  prevRouteIds = ids; notifyParent();
 }
 function full(opts){ CALC = compute(S); renderPanel(); update(opts); }
+
+/* ============================================================ parent-frame guard
+   This tool holds all data in memory, in this tab, by design (see the privacy
+   note in the intake panel) — nothing is ever sent anywhere. That also means
+   navigating away loses it silently. Loaded normally inside an iframe from
+   /tools/recert/engine (see that route) — postMessage tells that parent page
+   whether there's real, unsaved work, so it can warn before the user leaves.
+   Client-side route changes don't fire beforeunload at all, so the parent
+   needs this signal explicitly rather than relying on the event below. The
+   beforeunload listener here additionally guards direct access to this
+   file's own URL, outside the iframe. */
+function hasUnsavedWork(){ return dirty && !exported; }
+function notifyParent(){
+  try { window.parent.postMessage({source: "propops8-recert-engine", dirty: hasUnsavedWork()}, "*"); } catch (e) {}
+}
+window.addEventListener("beforeunload", (e) => {
+  if (hasUnsavedWork()){ e.preventDefault(); e.returnValue = ""; }
+});
 
 /* ============================================================ loading data */
 function fromSample(sm){
@@ -1039,7 +1077,7 @@ function loadSample(key){
   S = fromSample(sm); prevRouteIds = null; tab = "income";
   $("#sampleflag").hidden = false; $("#sampleflag").textContent = "Sample · synthetic";
   log("Loaded synthetic sample — " + sm.label);
-  full({silent:true});
+  dirty = false; full({silent:true});
 }
 function parseCSV(text){
   const rows = []; let row = [], cell = "", q = false;
@@ -1101,7 +1139,7 @@ function handleFile(file){
         pick.innerHTML = IMPORTED.map((r, i) => '<option value="' + i + '">Unit ' + esc(r.unit || i + 1) + " · " + esc(((r.hoh_first_name || "") + " " + (r.hoh_last_name || "")).trim()) + "</option>").join("");
         S = fromRow(IMPORTED[0]); log("Imported " + IMPORTED.length + " row(s) from " + file.name + " — loaded unit " + (IMPORTED[0].unit || 1));
       }
-      $("#sampleflag").hidden = true; $("#sample").value = ""; prevRouteIds = null; tab = "income"; full({silent:true});
+      $("#sampleflag").hidden = true; $("#sample").value = ""; prevRouteIds = null; tab = "income"; dirty = false; full({silent:true});
     } catch (e){ toast(e.message); log("Import failed — " + e.message); renderLog(); }
   };
   rd.readAsText(file);
@@ -1183,14 +1221,14 @@ document.addEventListener("input", e => {
 document.addEventListener("change", e => {
   const el = e.target;
   if (el.id === "sample"){ if (el.value) loadSample(el.value); return; }
-  if (el.id === "unitpick"){ S = fromRow(IMPORTED[+el.value]); prevRouteIds = null; log("Loaded unit " + (IMPORTED[+el.value].unit || "")); full({silent:true}); return; }
+  if (el.id === "unitpick"){ S = fromRow(IMPORTED[+el.value]); prevRouteIds = null; log("Loaded unit " + (IMPORTED[+el.value].unit || "")); dirty = false; full({silent:true}); return; }
   if (el.id === "file"){ handleFile(el.files && el.files[0]); el.value = ""; return; }
   if (el.id === "quickmore"){ if (el.value) quickAdd(el.value); el.value = ""; return; }
   if (!el.dataset || !el.dataset.bind) return;
   const path = el.dataset.bind;
   const v = el.dataset.bool ? el.checked : el.value;
   setPath(S, path, path.endsWith(".member") && v !== "joint" ? +v : v);
-  const structural = /^(cert\.type|special\.taxRefund|special\.disposed|income\.\d+\.(type|freq|member)|assets\.\d+\.type|members\.\d+\.(rel|dob|student))$/.test(path);
+  const structural = /^(cert\.type|special\.taxRefund|special\.disposed|income\.\d+\.(type|freq|member)|assets\.\d+\.(type|paying)|members\.\d+\.(rel|dob|student))$/.test(path);
   if (/^income\.\d+\.type$/.test(path)) log("Income line changed to " + INCOME[v].label);
   schedule(structural);
 });
@@ -1234,7 +1272,14 @@ document.addEventListener("click", e => {
   if (act === "rm-income"){ log("Removed income line — " + (INCOME[S.income[i].type] || {}).label); S.income.splice(i, 1); full(); }
   if (act === "add-asset"){ S.assets.push(newAsset("checking")); log("Added asset"); full(); }
   if (act === "rm-asset"){ log("Removed asset — " + (ASSETS[S.assets[i].type] || {}).label); S.assets.splice(i, 1); full(); }
-  if (b.id === "blank"){ S = blankState(); prevRouteIds = null; tab = "cert"; $("#sample").value = ""; $("#sampleflag").hidden = true; $("#unitpick").hidden = true; log("Started a blank household"); full({silent:true}); }
+  if (act === "add-pension"){
+    const a = S.assets[i]; const memberIdx = a.member === "joint" ? Math.max(0, S.members.findIndex(m => m.rel === "H")) : a.member;
+    S.income.push(Object.assign(newIncome("pension", memberIdx), {payer: a.institution || ""}));
+    log("Added pension / retirement income line for " + (ASSETS[a.type] || {}).label);
+    tab = "income"; full();
+    const idx = S.income.length - 1; setTimeout(() => { const f = document.getElementById("fld-income-" + idx + "-amount"); if (f) f.focus(); }, 30);
+  }
+  if (b.id === "blank"){ S = blankState(); prevRouteIds = null; tab = "cert"; $("#sample").value = ""; $("#sampleflag").hidden = true; $("#unitpick").hidden = true; log("Started a blank household"); dirty = false; full({silent:true}); }
   if (b.id === "x-json" || b.id === "x-all"){ const u = S.property.unit || "unit"; saveFile("propops8-recert-" + u + ".json", JSON.stringify(payload(), null, 2)); }
   if (b.id === "x-chk"){ const u = S.property.unit || "unit"; saveFile("recert-checklist-" + u + ".md", checklist()); }
   if (b.id === "dlg-close"){ $("#dlg").close ? $("#dlg").close() : $("#dlg").removeAttribute("open"); }
