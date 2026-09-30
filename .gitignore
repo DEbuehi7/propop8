@@ -47,3 +47,17 @@ env.local
 bundle.txt
 *.bak
 *.icloud
+node_modules/
+.next/
+.env
+.env.local
+.env*.local
+*.pem
+.DS_Store
+node_modules/
+.next/
+.env
+.env.local
+.env*.local
+*.pem
+.DS_Store

@@ -12,6 +12,11 @@
  *
  * It also does not claim the audit has started. Nothing has been analysed —
  * the files haven't arrived yet.
+ *
+ * robots: noindex stays — this is a post-purchase confirmation page, not
+ * something a stranger should land on from a search result. The openGraph
+ * block below is for the rare case this link gets shared directly (a buyer
+ * forwarding it to a colleague), not for search or ad discovery.
  */
 
 import type { Metadata } from 'next';
@@ -33,6 +38,11 @@ import {
 export const metadata: Metadata = {
   title: 'Audit booked — PropOps8',
   robots: { index: false, follow: false },
+  openGraph: {
+    title: 'Audit booked — PropOps8',
+    description: 'Your operations audit is booked. Here\u2019s what happens next.',
+    images: [{ url: '/og/audit.png', width: 1200, height: 630 }],
+  },
 };
 
 const STEPS = [

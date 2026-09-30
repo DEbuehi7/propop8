@@ -1,0 +1,196 @@
+{
+  "_meta": {
+    "form": "CTCAC Tenant Income Certification (HOTMA), December 2025 revision",
+    "source_url": "https://www.treasurer.ca.gov/sites/default/files/2025-12/hotma_tic.pdf",
+    "extracted_from": "ctcac_fields.json (produced by scripts/extract_ctcac_fields.py)",
+    "pdf_page_index": {"page1_certification_income_assets": 0, "page2_eligibility_rent_program": 1, "page3_race_ethnicity": 2},
+    "how_this_was_built": "extract_ctcac_fields.py gives field name + type + tooltip, but ~35 fields on this form have no tooltip and got auto-named by Acrobat ('undefined', 'undefined_2', 'fill_129'...) or mis-named by grabbing whatever static text happened to sit nearest the widget. Those can't be trusted from the name alone, so each page was rendered to an image with every field's rect boxed and numbered, cross-checked against the field's actual [x0,y0,x1,y1] PDF coordinates (see tic_field_positions.json), and matched to what's printed at that position on the real form.",
+    "READ_THIS_FIRST_gotchas": [
+      "GOTCHA 1 — Household member Student Status checkboxes (page 1, Part II) are named ONE POSITION OFF from where they visually sit. For member row n, the box drawn under 'FT' is internally named 'PT' (or 'PT_n'), the box under 'PT' is named 'NA' (or 'NA_n'), and the box under 'NA' is named 'undefined_(n+1)'. Filling by name naively (e.g. checking field 'PT' to mark someone part-time) checks the WRONG box — it visually lands on FT. See page1_household_composition.member_row.student_status below.",
+      "GOTCHA 2 — Page 1's tax-refund question ('Have you received a tax refund or refundable tax credit in the last 12 months? No [] Yes []') has the same off-by-one: the field named 'Yes' is the leftmost box, which is actually 'No'. The field named 'If Yes' is the box that's actually 'Yes'. See page1_tax_return_and_totals.has_tax_refund below.",
+      "GOTCHA 3 — The asset table's 'Total:' row (page 1, bottom of Part IV — the J/K/L column totals) got auto-named from nearby Part (M) text instead of getting real tooltips: the J-column (Cash Value) total is named 'Value of returncredit', the K-column (Actual Income) total is 'fill_133', and the L-column total is named 'Subtract tax returncredit if'. None of those three are the actual Part (M) tax-return fields — the real Part (M)/(N)/(O) fields are 'fill_141' through 'fill_144' (see page1_tax_return_and_totals below). Verified by matching each field's x-range to the J/K/L column x-range used by every asset row above it.",
+      "GOTCHA 4 — Two radio-style Yes/No fields share ONE field name across both widgets (normal PDF radio-group behavior, not a bug): 'Have you received a tax refund...' uses names 'Yes'/'If Yes' per gotcha 2 above (that pair is NOT a shared-name radio — they're two separately-named Btn widgets, each checked with '/On'). But 'Household Income exceeds 140% at recertification: Yes/No' (page 2) IS a true shared-name radio: both the Yes widget and the No widget are named '140 at recertification', RESOLVED to on-values '/Yes_2' (the Yes widget, leftmost, x~503) and '/No' (the No widget, rightmost, x~534) — set the field to '/Yes_2' or '/No', not to '/On'. See page2_part5_income_eligibility.recert_only.income_exceeds_140pct_radio below.",
+      "GOTCHA 5 (minor) — On page 1, the field literally named 'TENANT INCOME CERTIFICATION' is not a title, it's the small blank next to the 'Other' certification-type checkbox (for typing what 'Other' means). Acrobat grabbed the page's big title text as the fallback name because this blank has no tooltip."
+    ],
+    "checkbox_on_state_values": "RESOLVED for the TIC via scripts/extract_ctcac_checkbox_states.py (see ctcac_checkbox_states.json). Every ordinary TIC checkbox in this map checks with on-value '/On' — that covers all of Parts I/II/V/VI/VII/VIII plus the page-3 race/ethnicity waiver. The one exception is the shared-name radio in GOTCHA 4 below, which has its own two on-values. ctcac_checkbox_states.json also has on-state data banked for the other 15 forms (ticq, asset, finaid, voe, zero, csver, sep, student, foster, livein, thif) for whenever those get mapped the same way — not used in this file. Four forms (csaff, sec42, evict, single) came back with zero /Btn fields at all, which usually means they're XFA forms rather than plain AcroForm — those will need a different extraction approach (e.g. pdftk) when their turn comes, not a bug in this script."
+  },
+
+  "page1_certification_type": {
+    "initial_certification_checkbox": "Initial Certification",
+    "recertification_checkbox": "Recertification",
+    "other_checkbox": "Other",
+    "other_description_text": "TENANT INCOME CERTIFICATION",
+    "_other_description_text_NOTE": "see GOTCHA 5",
+    "effective_date": "Effective Date",
+    "move_in_date": "MoveIn Date"
+  },
+
+  "page1_development_data": {
+    "property_name": "Property Name",
+    "county": "County",
+    "tcac_number": "TCAC",
+    "bin_number": "BIN",
+    "address": "Address",
+    "cdlac_number": "If applicable CDLAC",
+    "unit_number": "Unit Number",
+    "bedrooms": "Bedrooms",
+    "square_footage": "Square Footage"
+  },
+
+  "page1_household_composition": {
+    "vacant_checkbox": "undefined",
+    "_vacant_checkbox_NOTE": "unlabeled Btn directly above the 'Last Name' column header — this is the only unlabeled field at that position on the page, confirmed by rect [43.0,662.6,51.0,668.9] sitting between Square Footage (y691.8) and row 1 (y622.2).",
+
+    "member_row": {
+      "_apply_for": "n = 1..7 (household members, 0-indexed in S.members[] as members[n-1])",
+      "last_name": "Last Name{n}",
+      "first_name": "First Name{n}",
+      "middle_initial": "Middle Initial{n}",
+      "relationship_to_head": {"n_eq_1": null, "n_2_to_7": "HEAD{n}", "note": "row 1 has no field; 'HEAD' is printed literal text"},
+      "date_of_birth": {"n_eq_1": "Date of Birth MMDDYYYYHEAD", "n_2_to_7": "Date of Birth MMDDYYYY{n}"},
+      "ssn_last4": {"n_eq_1": "Last 4 digits of Social Security FT PT NA", "n_2_to_7": "Last 4 digits of Social Security FT PT NA_{n}"},
+      "student_status": {
+        "_GOTCHA_1": "names are shifted one box left of where they're drawn — see _meta.READ_THIS_FIRST_gotchas",
+        "FT_checkbox": {"n_eq_1": "PT", "n_2_to_7": "PT_{n}"},
+        "PT_checkbox": {"n_eq_1": "NA", "n_2_to_7": "NA_{n}"},
+        "NA_checkbox": {"n_1_to_7": "undefined_{n+1}"}
+      }
+    }
+  },
+
+  "page1_gross_annual_income_part3": {
+    "_layout_NOTE": "one row PER HOUSEHOLD MEMBER (only 5 rows exist on the form, even though Part II allows 7 members), with 4 category columns A/B/C/D. engine.html's INCOME_TYPES table already tags every income type with its col (A/B/C/D) — sum each member's income lines by col and drop the sum into that member's row/column cell. This table only maps the grid cells; it doesn't do that aggregation.",
+    "row": {
+      "_apply_for": "n = 1..5 (household member position, not income-line index)",
+      "hh_member_number": "HH Mbr Row{n}",
+      "col_A_employment_or_wages": "A Employment or WagesRow{n}",
+      "col_B_social_security_pensions": "B Soc SecurityPensionsRow{n}",
+      "col_C_public_assistance": "C Public AssistanceRow{n}",
+      "col_D_other_income": "D Other IncomeRow{n}"
+    },
+    "totals": {
+      "total_A": "Add totals from A through D above",
+      "total_B": "fill_129",
+      "total_C": "fill_140",
+      "total_D": "fill_130",
+      "total_E_total_income": "fill_131",
+      "_NOTE": "'Add totals from A through D above' is genuinely the total-A field (see GOTCHA-style note in _meta) — Acrobat named it from the instruction line printed just below the totals row, not a tooltip. Confirmed by rect: it's the leftmost of the four totals boxes, directly under column A."
+    }
+  },
+
+  "page1_income_from_assets_part4": {
+    "_layout_NOTE": "one row per ASSET (not per member), 5 rows max. Retirement accounts (401k/IRA) are excluded:true in engine.html's ASSETS table — HOTMA excludes them from net family assets entirely, so they should be SKIPPED when populating this table (don't consume a row), even though a distribution from one still needs its own Pension/retirement income line on the Part III grid.",
+    "row": {
+      "_apply_for": "n = 1..5",
+      "hh_member_number": "HH Mbr Row{n}_2",
+      "col_F_type_of_asset": "F Type of AssetRow{n}",
+      "col_G_bank_or_source": "G Bank  SourceRow{n}",
+      "col_H_last4_of_account": "H Last 4 of Account Row{n}",
+      "col_I_C_or_I": "I CIRow{n}",
+      "col_J_cash_value": "J Cash Value of AssetRow{n}",
+      "col_K_actual_income": "K Actual Income from AssetRow{n}",
+      "col_L_imputed": "L If total assets  52787 and no actual income impute x 40Row{n}",
+      "_column_name_NOTE": "these are the literal field names including the double spaces and missing $/% signs — copy exactly, don't 'clean up' the whitespace."
+    },
+    "totals": {
+      "total_J_cash_value": "Value of returncredit",
+      "total_K_actual_income": "fill_133",
+      "total_L_imputed": "Subtract tax returncredit if",
+      "_NOTE": "see GOTCHA 3 — these three are the J/K/L column totals, NOT tax-return fields, despite their names. Confirmed by x-range matching the J/K/L columns exactly."
+    }
+  },
+
+  "page1_tax_return_and_totals": {
+    "has_tax_refund_no_checkbox": "Yes",
+    "has_tax_refund_yes_checkbox": "If Yes",
+    "_has_tax_refund_NOTE": "see GOTCHA 2 — field 'Yes' is the No box, field 'If Yes' is the Yes box",
+    "refund_value_if_yes": "fill_141",
+    "subtract_refund_from_net_assets": "fill_142",
+    "total_N_income_from_assets": "fill_143",
+    "total_O_annual_household_income": "fill_144"
+  },
+
+  "page1_signatures": {
+    "_layout_NOTE": "up to 4 adult household members sign here, in order",
+    "pairs": ["Signature/Date", "Signature_2/Date_2", "Signature_3/Date_3", "Signature_4/Date_4"]
+  },
+
+  "page2_part5_income_eligibility": {
+    "total_annual_household_income_from_L": "fill_17",
+    "current_federal_lihtc_limit_per_family_size": "undefined_9",
+    "current_federal_bond_limit_per_family_size": "undefined_10",
+    "household_income_as_of_movein": "undefined_11",
+    "federal_income_restriction_checkboxes": {"60": "60-0", "50": "50-111"},
+    "federal_ait_checkboxes": {"80": "80-1", "70": "70-1", "60": "60-1", "50": "50-1 ait", "40": "40-1", "30": "30-1", "20": "20-1"},
+    "state_deeper_targeting_income": {"other_checkbox": "at", "other_pct": "Other_2"},
+    "recert_only": {
+      "current_federal_lihtc_limit_x_140pct": "undefined_9-1",
+      "income_exceeds_140pct_radio": "140 at recertification",
+      "income_exceeds_140pct_radio_yes_value": "/Yes_2",
+      "income_exceeds_140pct_radio_no_value": "/No",
+      "_income_exceeds_140pct_radio_NOTE": "true shared-name radio (GOTCHA 4) — Yes widget sits left (x~503), No widget sits right (x~534). Set this field to the literal string '/Yes_2' or '/No' (not '/On').",
+      "household_size_at_movein": "undefined_9-2"
+    }
+  },
+
+  "page2_part6_rent": {
+    "tenant_paid_monthly_rent": "undefined_12",
+    "monthly_utility_allowance": "undefined_13",
+    "other_monthly_nonoptional_charges": "undefined_14",
+    "gross_monthly_rent_for_unit": "fill_170",
+    "federal_rent_assistance_amount": "undefined_17",
+    "federal_rent_assistance_source_code": "Source",
+    "non_federal_rent_assistance_amount": "undefined_18",
+    "total_monthly_rent_assistance": "Total Monthly Rent Assistance",
+    "max_federal_lihtc_rent_limit": "undefined_15",
+    "max_federal_state_bond_rent_limit": "undefined_16",
+    "federal_rent_restriction_checkboxes": {"60": "60-2", "50": "50-2"},
+    "federal_ait_rent_checkboxes": {"80": "80-2", "70": "70-2", "60": "60-3", "50": "50-3", "40": "40-2", "30": "30-2", "20": "20-2"},
+    "bond_rent_restriction_checkboxes": {"60": "60-4", "50": "50-4"},
+    "state_deeper_targeting_rent": {"other_checkbox": "Targeting Rent Restriction at", "other_pct": "Other_3"}
+  },
+
+  "page2_part7_student_status": {
+    "all_full_time_students_yes": "Yes-1",
+    "all_full_time_students_no": "No-1",
+    "explanation_code_1_to_5": "Enter 15"
+  },
+
+  "page2_part8_program_type": {
+    "select_one": {
+      "9pct_tax_credit": "9 Allocated Federal Housing Tax Credit",
+      "4pct_tax_credit": "4 Allocated Federal Housing Tax Credit",
+      "tax_exempt_bond_only": "TaxExempt Bond Only No tax credits"
+    },
+    "select_all_that_apply": {
+      "home_including_tcap": "HOME including TCAP",
+      "cdbg": "CDBG",
+      "other_hud_202_811_236": "Other HUD including 202 811 and 236",
+      "national_housing_trust_fund": "National Housing Trust Fund",
+      "usda_rural_housing_514_515_538": "USDA Rural Housing Service including 514 515 and 538",
+      "other_state_or_local": "Other state or local housing programs"
+    }
+  },
+
+  "page2_signature": {
+    "signature": "SIGNATURE OF OWNERREPRESENTATIVE",
+    "date": "DATE"
+  },
+
+  "page3_race_ethnicity": {
+    "_layout_NOTE": "one row per household member, up to 7",
+    "row": {
+      "_apply_for": "n = 1..7",
+      "last_name": "Last Name{n}_2",
+      "first_name": "First Name{n}_2",
+      "middle_initial": "Middle Initial{n}_2",
+      "race": "Race{n}",
+      "ethnicity": "Ethnicity{n}",
+      "disabled": "Disabled{n}"
+    },
+    "waiver_checkbox": "ResidentApplicant I do not wish to furnish information regarding ethnicity race and other household composition",
+    "waiver_initials_by_member": {"1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7"},
+    "_stray_field_IGNORE": "3  Did not respond Please initial below",
+    "_stray_field_IGNORE_NOTE": "a /Tx field occupying almost the exact same rect as the waiver checkbox — looks like a leftover annotation from an earlier form revision. Leave it blank; don't write to it."
+  }
+}

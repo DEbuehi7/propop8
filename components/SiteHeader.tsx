@@ -22,6 +22,7 @@ const LINKS = [
   { href: '/tools/vacancy-calculator', label: 'Calculator' },
   { href: '/ingest', label: 'Ingest' },
   { href: '/audit', label: 'Audit' },
+  { href: '/infographics', label: 'Info' },
 ];
 
 export default function SiteHeader() {
@@ -29,6 +30,23 @@ export default function SiteHeader() {
 
   return (
     <>
+      {/* Colors sampled directly from the approved logo files (Cyan/Magenta
+          exports), not the site's PALETTE tokens -- the brand mark uses its
+          own slightly different cyan/magenta, intentionally kept separate
+          from chaosTokens.ts here rather than overwriting those tokens. */}
+      <style>{`
+        @keyframes propops8-eight-pulse {
+          0%, 100% { color: #03edff; }
+          50% { color: #f11aff; }
+        }
+        .propops8-eight-pulse {
+          animation: propops8-eight-pulse 4s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .propops8-eight-pulse { animation: none; color: #03edff; }
+        }
+      `}</style>
+
       {/* Keyboard users land here first. Invisible until focused. */}
       <a
         href="#main"
@@ -83,7 +101,7 @@ export default function SiteHeader() {
               whiteSpace: 'nowrap',
             }}
           >
-            PROPOPS<span style={{ color: PALETTE.cyan }}>8</span>
+            PropOps<span className="propops8-eight-pulse">8</span>
           </Link>
 
           <div className="flex items-center" style={{ gap: 'clamp(10px, 3vw, 22px)' }}>

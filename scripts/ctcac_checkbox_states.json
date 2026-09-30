@@ -1,0 +1,1560 @@
+{
+  "tic": {
+    "Initial Certification": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Recertification": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Other": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_7": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT_7": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA_7": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "undefined_8": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "If Yes": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Targeting Rent Restriction at": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "9 Allocated Federal Housing Tax Credit": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "4 Allocated Federal Housing Tax Credit": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "TaxExempt Bond Only No tax credits": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "HOME including TCAP": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "CDBG": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Other HUD including 202 811 and 236": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "National Housing Trust Fund": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "USDA Rural Housing Service including 514 515 and 538": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Other state or local housing programs": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "ResidentApplicant I do not wish to furnish information regarding ethnicity race and other household composition": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Yes": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "at": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "80-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "70-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "40-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "30-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "20-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "80-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "70-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60-3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50-3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "40-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "30-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "20-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60-2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50-4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60-4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Yes-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "No-1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Income Restriction at": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Or Federal AIT at": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "140 at recertification": {
+      "widget_count": 2,
+      "on_states": [
+        "/No",
+        "/Yes_2"
+      ]
+    },
+    "Unit Meets State Deeper": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Restriction at": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Unit Meets State Deeper_2": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "ARE ALL OCCUPANTS FULL TIME STUDENTS": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "60-0": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50-111": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50-1 ait": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "20": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "50_2": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "60": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No": {
+      "widget_count": 0,
+      "on_states": []
+    }
+  },
+  "ticq": {
+    "Initial Cerfification": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Re-Certification": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Other": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "I am a new household member": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I am self-employed": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I am self-employed": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have a job/have been offered employment and receive/will receive wages, salary, overtime pay, commissions, fees, tips, bonuses, and/or other compensation:": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have a job/have been offered employment and receive/will receive wages, salary, overtime pay, commissions, fees, tips, bonuses, and/or other compensation:": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive cash contributions of gifts including rent or utility payments, on an ongoing basis from persons not living with me": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive cash contributions of gifts including rent or utility payments, on an ongoing basis from persons not living with me": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive unemployment benefits": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive unemployment benefits": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive Veteran's Administration, GI Bill, or National Guard/Military Benefits/Income": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive Veteran's Administration, GI Bill, or National Guard/Military Benefits/Income": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive Social Security payments": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive Social Security payments": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes The household receives unearned income from family members age 17 or under (example: Social Security, Trust Fund disbursements, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No The household receives unearned income from family members age 17 or under (example: Social Security, Trust Fund disbursements, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes I receive Supplemental Security Income (SSI)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive Supplemental Security Income (SSI)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive disability, EDD paid family leave, EDD disability insurance, or death benefits other than Social Security (do not include settlement payments: ie; workers compensation, lawsuit settlements due to a disability)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive disability, EDD paid family leave, EDD disability insurance, or death benefits other than Social Security (do not include settlement payments: ie; workers compensation, lawsuit settlements due to a disability)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive Public Assistance Income (examples: TANF, CalWorks, CAPI, AFDC, GA/GR)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive Public Assistance Income (examples: TANF, CalWorks, CAPI, AFDC, GA/GR)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive child support payments (ie: court ordered, parental agreement, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No I receive child support payments (ie: court ordered, parental agreement, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes I receive periodic payments from trust (interest), annuities, inheritance, retirement funds or pensions, insurance policies, or lottery winnings": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive periodic payments from trust (interest), annuities, inheritance, retirement funds or pensions, insurance policies, or lottery winnings": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I receive alimony or spousal support payments (ie: court ordered, divorce agreement, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No I receive alimony or spousal support payments (ie: court ordered, divorce agreement, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes I receive rental income from real or personal property": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive rental income from real or personal property": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "yes I receive student financial aid (public/private)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I receive student financial aid (public/private)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Are any of the above noted income sources (including Social Security, wages, unemployment, public assistance, disability, etc.) , currently being received as": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No Are any of the above noted income sources (including Social Security, wages, unemployment, public assistance, disability, etc.) , currently being received as": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes Do you anticipate receiving or have you applied for any income source that will begin in the next 12 months?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Do you anticipate receiving or have you applied for any income source that will begin in the next 12 months?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I am a part-time student": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I am a part-time student": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I am a full-time student (Example: K-12, College, Trade School, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No I am a full-time student (Example: K-12, College, Trade School, etc.)": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes Does the entire household consist of people who are currently full-time students?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Does the entire household consist of people who are currently full-time students?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Does the entire household consist of people who are either currently a full time student or were a full-time student for 5 months or more in the current calendar year?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Does the entire household consist of people who are either currently a full time student or were a full-time student for 5 months or more in the current calendar year?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Does your household anticipate becoming an all full-time student household in the next 12 months?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Does your household anticipate becoming an all full-time student household in the next 12 months?": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Receiving assistance under Title IV of the Social Security Act (AFDC, TANF, CalWorks - not SSA/SSI)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Receiving assistance under Title IV of the Social Security Act (AFDC, TANF, CalWorks - not SSA/SSI)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Enrolled in a job training program receiving assistance through the Job Training Participation Act (JTPA), Workforce Investment Act (WIA), or other similar  federal, state, or county government program": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Enrolled in a job training program receiving assistance through the Job Training Participation Act (JTPA), Workforce Investment Act (WIA), or other similar  federal, state, or county government program": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Married and filing (or are entitled to file) a joint tax return (please provide copy of marriage certificate or tax return)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Married and filing (or are entitled to file) a joint tax return (please provide copy of marriage certificate or tax return)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Single Parent with a dependent child(ren) and neither you or your child(ren) are dependents of another individual": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Single Parent with a dependent child(ren) and neither you or your child(ren) are dependents of another individual": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes Previously enrolled in the Foster Care Program (currently age 18-24)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Previously enrolled in the Foster Care Program (currently age 18-24)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have Certificates of Deposit (CD) or Money Market account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have Certificates of Deposit (CD) or Money Market account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have recevied a federal tax return refund or refundable tax credit in the last 12 months": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have recevied a federal tax return refund or refundable tax credit in the last 12 months": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have a life insurance policy with a cash/surrender value": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have a life insurance policy with a cash/surrender value": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have disposed of assets (i.e. gave away money/assets) for less than the fair market value in the last 2 years": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "No I have disposed of assets (i.e. gave away money/assets) for less than the fair market value in the last 2 years": {
+      "widget_count": 0,
+      "on_states": []
+    },
+    "Yes I have cash on hand in excess of $250": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have cash on hand in excess of $250": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have a checking account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have a checking account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have a savings account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No Yes I have a savings account(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have funds held on an EBT card, Debit Visa, or Debit MC": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have funds held on an EBT card, Debit Visa, or Debit MC": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have available funds held in a payment service account, such as Venmo, PayPal, Skrill, etc": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have available funds held in a payment service account, such as Venmo, PayPal, Skrill, etc": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I have a revocable trust(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I have a revocable trust(s)": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I own real estate": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I own real estate": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I own crypto currency such as Bitcoin, Litecoin, Ethereum, etc": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I own crypto currency such as Bitcoin, Litecoin, Ethereum, etc": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Yes I own stocks, bonds, or treasury bills": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "No I own stocks, bonds, or treasury bills": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    }
+  },
+  "asset": {
+    "If this box is checked draw a line through the asset information below and go to Question 2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Please complete each item fully with amounts or NA in columns that do not apply": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Iwe have not sold or given away assets including cash real estate etc for less": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Within the past two 2 years Iwe have sold or given away assets including cash": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    }
+  },
+  "finaid": {
+    "Check Box1": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box11": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box12": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box13": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box14": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box15": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box16": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box17": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box18": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box19": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box110": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box111": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box112": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box113": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box114": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box115": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box116": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box117": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box119": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box120": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box121": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box122": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box123": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box124": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box125": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box126": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box127": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box128": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box129": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box130": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box131": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box132": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    },
+    "Check Box133": {
+      "widget_count": 1,
+      "on_states": [
+        "/Yes"
+      ]
+    }
+  },
+  "csaff": {
+    "_note": "no /Btn fields found via AcroForm"
+  },
+  "sec42": {
+    "_note": "no /Btn fields found via AcroForm"
+  },
+  "evict": {
+    "_note": "no /Btn fields found via AcroForm"
+  },
+  "voe": {
+    "weekly": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "biweekly": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "semimonthly": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "monthly": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "other": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "hourly_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Commissions bonuses tips other additional pay": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "weekly_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "biweekly_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "monthly_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "other_2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "hourly": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Yes": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "No": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    }
+  },
+  "zero": {
+    "Choose one": {
+      "widget_count": 2,
+      "on_states": [
+        "/Currrently I have no income of any kind and while I am seeking employment I have",
+        "/Currently I have no income of any kind and will not be seeking employment at this time"
+      ]
+    }
+  },
+  "csver": {
+    "Are payments paid to offset an AFDC/TANF grant?": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes",
+        "/No"
+      ]
+    },
+    "Are changes expected in the next 12 months?": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes",
+        "/No"
+      ]
+    }
+  },
+  "sep": {
+    "Please check this box and initial": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Please choose either A or B": {
+      "widget_count": 2,
+      "on_states": [
+        "/A. I am NOT currently legally separated or divorced from my spouse but I am in the process of filing for legal separation/divorce. I will provide documentation as it comes available.",
+        "/B. I am NOT currently legally separated or divorced from my spouse and have NOT taken any legal action with regard to my marital status"
+      ]
+    },
+    "Income Determination": {
+      "widget_count": 2,
+      "on_states": [
+        "/I have been awarded alimony or child support benefits. I currently receive or anticipate receiving",
+        "/I currently receive no compensation from my spouse nor do I intend (expect) to receive any compensation for the next twelve (12) months"
+      ]
+    },
+    "I hereby certify I am": {
+      "widget_count": 2,
+      "on_states": [
+        "/Separated (not living with)",
+        "/Estranged (not in contact with)"
+      ]
+    }
+  },
+  "student": {
+    "Is the above-named individual a student at this educational institution": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes",
+        "/No"
+      ]
+    },
+    "If so, part-time or full-time?": {
+      "widget_count": 2,
+      "on_states": [
+        "/Part-time",
+        "/Full-time"
+      ]
+    }
+  },
+  "single": {
+    "_note": "no /Btn fields found via AcroForm"
+  },
+  "foster": {
+    "Foster Care Eligibility Program the above referenced individual": {
+      "widget_count": 2,
+      "on_states": [
+        "/Has been in foster care from",
+        "/Has not previously been in foster care"
+      ]
+    }
+  },
+  "livein": {
+    "Is this household member disabled as defined below": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes",
+        "/No"
+      ]
+    },
+    "does the member require the services of a livein care attendant in order to": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes_2",
+        "/No_2"
+      ]
+    },
+    "for improvement such that the household member would continue to need the": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes_3",
+        "/No_3"
+      ]
+    },
+    "Does the member require more than one aide to occupy the unit": {
+      "widget_count": 2,
+      "on_states": [
+        "/Yes_4",
+        "/No_4"
+      ]
+    }
+  },
+  "thif": {
+    "Resident/Applicant": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60%": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50%": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "80%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "70%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "40%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "30%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "20%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Unit Meets": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Yes": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "No": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "Vacant": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "FT6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "PT6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA3": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA4": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA5": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "NA6": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50%1": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "50%2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    },
+    "60%2": {
+      "widget_count": 1,
+      "on_states": [
+        "/On"
+      ]
+    }
+  }
+}

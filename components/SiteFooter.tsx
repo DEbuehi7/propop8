@@ -28,6 +28,7 @@ const NAV = [
   { href: '/', label: 'Home' },
   { href: '/tools/vacancy-calculator', label: 'Vacancy calculator' },
   { href: '/ingest', label: 'Ledger screening' },
+  { href: '/tools/recert', label: 'Recert flow engine' },
   { href: '/audit', label: 'Operations audit' },
 ];
 
