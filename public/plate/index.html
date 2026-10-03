@@ -24,11 +24,20 @@
    no brown. Colour is bound to function, and every surface reads
    it from --ac / --ac2 on the shell root, so a page re-skins in
    one row. (A sprint tried cyan/violet/orange/coral/magenta/aqua;
-   it put two pairs of near-twins side by side and was reverted.)
+   it put two pairs of near-twins side by side and was reverted --
+   the fix is the >=25 degree gap test in regress3.cjs, not a rule
+   against any particular hue.)
+   2026-10-02: Plate's vermilion moved to magenta (h7 -> h303) to
+   bring the suite's accent family in line with the new glossy
+   cyan/magenta brand marks (PLATE8_SPEC.md, "Rulings on the
+   conflicts" / Oct 2026 addendum). State, Skate, Slate and Late
+   already sat in that cyan-to-magenta arc and were left alone --
+   only Plate was the outlier. Mate has no new mark yet, so its
+   green stays.
      state  pink       voice, audio, sealed notes
      mate   green      chess
      skate  blue       autonomous racing
-     plate  vermilion  licence plates
+     plate  magenta    licence plates
      slate  violet     video
      late   cyan       news, casts, dispatches, the river        */
 :root{
@@ -43,7 +52,7 @@
   --t-state:#F462A6; --t-state-2:#FFB8D9; --t-state-ink:#2F0319; --t-state-deep:#940E69; --t-state-bg:#2C202E; --t-state-h:332;
   --t-mate:#00BE5F; --t-mate-2:#9FE9B2; --t-mate-ink:#002004; --t-mate-deep:#006730; --t-mate-bg:#192729; --t-mate-h:150;
   --t-skate:#6496FF; --t-skate-2:#B3D3FF; --t-skate-ink:#071339; --t-skate-deep:#224AA7; --t-skate-bg:#212436; --t-skate-h:221;
-  --t-plate:#FE6651; --t-plate-2:#FFBAAB; --t-plate-ink:#320402; --t-plate-deep:#A10120; --t-plate-bg:#2D2028; --t-plate-h:7;
+  --t-plate:#F96DF2; --t-plate-2:#FFBDFC; --t-plate-ink:#31062F; --t-plate-deep:#9B1794; --t-plate-bg:#2C202F; --t-plate-h:303;
   --t-slate:#B97BFD; --t-slate-2:#E3C3FF; --t-slate-ink:#1F0B32; --t-slate-deep:#6C2EA4; --t-slate-bg:#282235; --t-slate-h:269;
   --t-late:#00BAE1; --t-late-2:#79E7FC; --t-late-ink:#001E2A; --t-late-deep:#03647B; --t-late-bg:#192733; --t-late-h:190;
   --inst:#0C0D16;
@@ -274,7 +283,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radiu
    the stamping is SVG, so the emboss bevel and the fit of the
    characters stay exact at every width.                        */
 .pstage{perspective:1100px;padding:10px 0 20px;display:flex;justify-content:center;position:relative}
-/* the floor under the plate: a restrained vermilion reflection, where the one light lands */
+/* the floor under the plate: a restrained magenta reflection, where the one light lands */
 .pstage::after{content:'';position:absolute;left:50%;bottom:4px;width:min(80%,310px);height:26px;transform:translateX(-50%);
   background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--t-plate) 36%,transparent),transparent 72%);pointer-events:none}
 /* the hub card's plate: the same object, leaning back from its bottom edge */
@@ -949,7 +958,7 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
       <div class="pane" data-p="viz"><div class="scroll pad" id="rVizPane"></div></div>
     </section>
 
-    <!-- ══ PLATE — vermilion · licence plates ══ -->
+    <!-- ══ PLATE — magenta · licence plates ══ -->
     <section class="mod" data-m="plate">
       <div class="pane on" data-p="play"><div class="scroll pad" id="pPlayPane"></div></div>
       <div class="pane" data-p="viz"><div class="scroll pad" id="pVizPane"></div></div>
@@ -4242,7 +4251,7 @@ ARC.register({
 });
 });
 
-/* ═══════════════ PLATE — vermilion · radial plate database
+/* ═══════════════ PLATE — magenta · radial plate database
    Decode a plate into the shortest legal word. The solver
    computes every reachable word first, so image-5's rings
    are the real search space: one tick per candidate.        */
@@ -4459,7 +4468,7 @@ function derivLayout(o){
 /* the tree's visual grammar, shared by Play, Data and the hub card:
    found — bright filled node · one letter away — lit hollow ring ·
    everything else the plate can make — background, at about 15% ·
-   the focus word's derivation — a thick vermilion curve with a little bloom */
+   the focus word's derivation — a thick magenta curve with a little bloom */
 const DERIV_IDX={};        /* sfx -> [word]; the DOM never names an unfound word */
 function derivMarks(Lo,o){
   const {g,F,near,chain,onChain,lens,pos,colX}=Lo, f1=P8.f1, sfx=o.sfx||'', C=TONE.plate.c, C2=TONE.plate.c2;
@@ -4909,7 +4918,7 @@ ARC.register({
     let o='<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><defs>'+m.defs+
       '<radialGradient id="hcPfl"><stop offset="0" stop-color="'+TONE.plate.c+'" stop-opacity=".42"/><stop offset=".55" stop-color="'+TONE.plate.c+'" stop-opacity=".12"/>'+
       '<stop offset="1" stop-color="'+TONE.plate.c+'" stop-opacity="0"/></radialGradient></defs>'+
-      /* the floor the plate stands on: a restrained vermilion reflection */
+      /* the floor the plate stands on: a restrained magenta reflection */
       '<ellipse cx="'+f1(px+pw/2)+'" cy="'+f1(py+ph+2)+'" rx="'+f1(pw*.5)+'" ry="7" fill="url(#hcPfl)"/>'+
       '<line x1="'+f1(px+pw*.12)+'" y1="'+f1(py+ph+1.5)+'" x2="'+f1(px+pw*.88)+'" y2="'+f1(py+ph+1.5)+'" stroke="'+TONE.plate.c2+'" stroke-opacity=".35" stroke-width=".8"/>';
     /* emergence: each banked word, wired to the plate cells it consumed */

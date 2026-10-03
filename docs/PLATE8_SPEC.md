@@ -15,7 +15,7 @@ Six computational instruments in one engine, living inside PropOps8 at `/plate`.
 | **State** | pink `#F462A6` | Audio analysis, voice recording, sealed chat |
 | **Mate** | green `#00BE5F` | Chess vs. its own engine, with a movement-geometry layer |
 | **Skate** | blue `#6496FF` | Autonomous racing — four controllers on a solved line |
-| **Plate** | vermilion `#FE6651` | California plate word game |
+| **Plate** | magenta `#F96DF2` | California plate word game |
 | **Slate** | violet `#B97BFD` | Video discovery, seeded to Daniel's interests |
 | **Late** | cyan `#00BAE1` | News, podcasts, original dispatches, the shared river |
 | *home* | neutral `#DCD8F2` | The suite: six live cards and the activity stream |
@@ -187,7 +187,7 @@ RICH=1 node scripts/plate8/live.cjs 393x852 shots/m home:hub --full          # t
 
 **What changed.** Every instrument now draws its own computation as its identity, at the hub and inside the module, through one shared primitive library and one depth stack.
 
-- **Plate** — the plate is the hero object over a vermilion floor reflection; banked letters fly from the plate cells into the tree; word lengths are translucent depth planes; found words are lit spheres, one-away words hollow rings, the rest dots; the derivation chain is drawn thick.
+- **Plate** — the plate is the hero object over a magenta floor reflection (vermilion as of this pass's original write-up, moved to magenta 2026-10-02 — see section 8a); banked letters fly from the plate cells into the tree; word lengths are translucent depth planes; found words are lit spheres, one-away words hollow rings, the rest dots; the derivation chain is drawn thick.
 - **Skate** — LiDAR occupancy behind the circuit, kerbs where curvature peaks, braking glow under the line, per-deck predicted paths and aim crosshairs, steering vectors, and a band carrying the friction circle and the SCAN → MAP → LINE → TRACK → ACT stack. The two keys take columns or strips, whichever leaves the circuit larger.
 - **State** — waveform (peak outer, true RMS core) over the co-activation network and the spectral landscape, with the centroid marked; the card is a canvas redrawn every frame while a track plays, and `bg()` keeps the analysis running from any page.
 - **Mate** — the geometry layer on the board (defenders, attackers, knight rings, slider rays), an evaluation bar beside it, and a card carrying the advantage curve — which only exists after the first move.
@@ -206,6 +206,17 @@ RICH=1 node scripts/plate8/live.cjs 393x852 shots/m home:hub --full          # t
 - Late's river figure excluded shares while the drawing included them; Skate saved a circuit id it threw away on load; the hub's minutes were counted three ways.
 - The word list, which came from web text, carried slurs, profanity and porn-spam tokens — 68 entries removed from the dictionary and pinned by hash.
 - The plate's accessible name still said "California licence plate"; the registration sticker's yellow-on-brown years were replaced.
+
+---
+
+## 8a. Revenue-reactive brand pass (2 October 2026)
+
+**Context.** Daniel supplied a new family of glossy chrome/neon logo renders (Pulse8, Skate8, Late8, Slate8, State8, Plate8, plus the unrelated Transect and Lumen marks) and asked for two things: the PropOps8 wordmark's existing cyan/magenta "8" to react to revenue instead of auto-cycling on a timer, and the Plate8 suite's accents to move toward that same cyan-magenta family. Decision recorded here per this file's own rule ("change it here first, then build").
+
+- **PropOps8 header mark** (`components/SiteHeader.tsx`) — the `propops8-eight-pulse` animation (a 4s auto-loop between `#03edff` and `#f11aff` since it was first built) is replaced with a state read from a manual revenue-trend flag: cyan when flagged up, magenta when flagged down, neutral/dim when unset. No live sales feed exists in this codebase yet (`lib/products.ts` is static pricing; `scripts/revenue-path-check.mjs` only checks that the funnel's pages and links resolve) — wiring a real feed (most likely Gumroad's API) is follow-up work, tracked separately. Applies site-wide wherever the shared header renders.
+- **Plate8 accents** — State (h332), Skate (h221), Slate (h269) and Late (h190) already sat inside the cyan-to-magenta arc the new marks use and are untouched. Plate was the outlier (vermilion, h7) and moves to magenta (`#F96DF2`, h303) — chosen so it keeps >=25° of hue separation from every other instrument (the near-twin regression in regress3.cjs), verified by rerunning the full suite (164/164) after the change. The five other token values (`-2/-ink/-deep/-bg`) were re-derived from State's and Slate's own light/sat curves at h303, not guessed, so Plate's bevels, floor glow and derivation-chain colour stay internally consistent with the rest of the palette's logic.
+- **Mate** has no corresponding new mark and keeps its green (`#00BE5F`) unchanged — restyling it would be inventing a design with no reference.
+- **Harness bug found and fixed in the same pass.** Every script in `scripts/plate8/` that reads the rig's HTML directly (`boot.cjs`, `drive.cjs`, `look.cjs`, `live.cjs`, plus inline reads in `regress2.cjs` and `regress3.cjs`) pointed at `scripts/public/index.html`, which has never existed — stale from before Plate8 moved under `public/plate/`, and one `..` short of the repo root besides. `npm i -D jsdom` (per section 7) plus this path fix were both needed before any of the suite would run at all; fixed in all six places, and the full suite (`audit` 68, `regress` 14, `regress2` 22, `regress3` 45, `plate-test` 15 — 164 total) passes clean both before and after the colour change.
 
 ---
 

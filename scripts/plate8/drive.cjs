@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Headless page-drive harness for the Plate rig.
-// Boots public/index.html in jsdom with enough browser surface that every
-// module mounts, then walks every page and every pane and reports FAULTS.
-// Usage: node scripts/drive.js [--json] [--dump-canvas mate:viz]
+// Boots public/plate/index.html in jsdom with enough browser surface that
+// every module mounts, then walks every page and every pane and reports FAULTS.
+// Usage: node scripts/plate8/drive.cjs [--json] [--dump-canvas mate:viz]
 
 const fs = require('fs');
 const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const FILE = path.join(__dirname, '..', 'public', 'index.html');
+const FILE = path.join(__dirname, '..', '..', 'public', 'plate', 'index.html');
 const html = fs.readFileSync(FILE, 'utf8');
 
 // ---- canvas double ---------------------------------------------------------

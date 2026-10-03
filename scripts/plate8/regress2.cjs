@@ -72,7 +72,7 @@ const txt = s => ev('(document.querySelector(' + JSON.stringify(s) + ')||{}).tex
     (() => { ev('LOAD({slate:{vids:[{id:"zz\\" onerror=\\"window.__pwn3=1;//"},{id:"abcdefghijk"}]}})'); return ev('SAVE().slate.vids.length') === 1 })());
 
   // #6 swing() is not called after the game ends, and uses quiet positions (checked structurally)
-  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'public', 'plate', 'index.html'), 'utf8');
   ok('#6 swing() only runs while the game is live', /if\(!finish\(\)\)\{say\([^}]*\); swing\(\)\}/.test(src) && /function swing\(\)\{\s*if\(over\|\|/.test(src));
   ok('#6b swing() compares quiescence-resolved positions', /const before=quietEval\(hist\[hist\.length-2\]\.S\), after=quietEval\(S\)/.test(src));
 

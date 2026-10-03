@@ -21,6 +21,7 @@
 import type { Metadata, Viewport } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
+import { getRevenueTrend } from '@/lib/chaosTokens';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -61,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Column layout so the footer sits at the bottom on short pages
           (thank-you, 404) instead of floating mid-screen. */}
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <SiteHeader />
+        <SiteHeader revenueTrend={getRevenueTrend()} />
         <div id="main" style={{ flex: '1 0 auto' }}>
           {children}
         </div>

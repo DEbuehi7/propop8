@@ -67,6 +67,36 @@ export function textGlow(color: string, a = 0.5): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Revenue trend — drives the "8" in the PropOps8 wordmark                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Cyan when revenue is trending up, magenta when it's trending down -- the
+ * same feedback-loop logic as the pink/cyan/mint meaning above, applied to
+ * the brand mark itself. (See components/SiteHeader.tsx for where this
+ * renders; its colours are sampled from the approved logo exports, not
+ * these PALETTE tokens, so they're read here rather than derived from them.)
+ *
+ * No live revenue feed exists yet -- lib/products.ts is static pricing, and
+ * nothing in this repo calls Gumroad's API for real sales data. Until that's
+ * worth building, the trend is one manually-set value rather than a
+ * computed one:
+ *   REVENUE_TREND=up    -> cyan
+ *   REVENUE_TREND=down  -> magenta
+ *   unset / anything else -> neutral (no claim either way)
+ * Deliberately server-only (no NEXT_PUBLIC_ prefix): read once in
+ * app/layout.tsx and passed down as a prop, so flipping it is an env-var
+ * change + redeploy, and the client bundle never ships the lookup.
+ */
+export type RevenueTrend = 'up' | 'down' | 'flat';
+
+export function getRevenueTrend(): RevenueTrend {
+  const raw = (process.env.REVENUE_TREND || '').trim().toLowerCase();
+  if (raw === 'up' || raw === 'down') return raw;
+  return 'flat';
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Deterministic randomness — SSR-safe, same seed means same output           */
 /* -------------------------------------------------------------------------- */
 

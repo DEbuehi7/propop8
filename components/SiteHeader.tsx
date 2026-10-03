@@ -12,11 +12,18 @@
  * No hamburger. Four items in compact mono fit inside 375px with room to
  * spare, and a menu that has to be opened to be read is worse navigation than
  * one that is simply visible.
+ *
+ * THE "8" USED TO JUST AUTO-CYCLE cyan/magenta on a 4s timer, decoration with
+ * no meaning behind it. It now reflects revenueTrend (lib/chaosTokens.ts,
+ * read server-side in app/layout.tsx and passed down as a prop): cyan when
+ * trending up, magenta when down, a dim neutral when there's no signal to
+ * report. Still no live feed behind that signal -- see getRevenueTrend's own
+ * comment for what flipping it today actually takes.
  */
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PALETTE, MONO, DISPLAY, hexA } from '@/lib/chaosTokens';
+import { PALETTE, MONO, DISPLAY, hexA, textGlow, type RevenueTrend } from '@/lib/chaosTokens';
 
 const LINKS = [
   { href: '/tools/vacancy-calculator', label: 'Calculator' },
@@ -25,25 +32,30 @@ const LINKS = [
   { href: '/infographics', label: 'Info' },
 ];
 
-export default function SiteHeader() {
+// Colors sampled directly from the approved logo files (Cyan/Magenta
+// exports), not the site's PALETTE tokens -- the brand mark uses its own
+// slightly different cyan/magenta, intentionally kept separate from
+// chaosTokens.ts rather than overwriting those tokens.
+const EIGHT_COLOR: Record<RevenueTrend, string> = {
+  up: '#03edff',
+  down: '#f11aff',
+  flat: hexA('#ffffff', 0.55),
+};
+
+export default function SiteHeader({
+  revenueTrend = 'flat',
+}: {
+  revenueTrend?: RevenueTrend;
+}) {
   const pathname = usePathname() ?? '/';
+  const eightColor = EIGHT_COLOR[revenueTrend];
 
   return (
     <>
-      {/* Colors sampled directly from the approved logo files (Cyan/Magenta
-          exports), not the site's PALETTE tokens -- the brand mark uses its
-          own slightly different cyan/magenta, intentionally kept separate
-          from chaosTokens.ts here rather than overwriting those tokens. */}
       <style>{`
-        @keyframes propops8-eight-pulse {
-          0%, 100% { color: #03edff; }
-          50% { color: #f11aff; }
-        }
-        .propops8-eight-pulse {
-          animation: propops8-eight-pulse 4s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .propops8-eight-pulse { animation: none; color: #03edff; }
+        .propops8-eight {
+          color: ${eightColor};
+          ${revenueTrend !== 'flat' ? `text-shadow: ${textGlow(eightColor, 0.5)};` : ''}
         }
       `}</style>
 
@@ -101,7 +113,7 @@ export default function SiteHeader() {
               whiteSpace: 'nowrap',
             }}
           >
-            PropOps<span className="propops8-eight-pulse">8</span>
+            PropOps<span className="propops8-eight">8</span>
           </Link>
 
           <div className="flex items-center" style={{ gap: 'clamp(10px, 3vw, 22px)' }}>
