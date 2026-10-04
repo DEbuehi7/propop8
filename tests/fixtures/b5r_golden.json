@@ -1,0 +1,164 @@
+{
+ "result": {
+  "deal_id": "EXAMPLE-KERN-12U-001",
+  "n_iterations": 200000,
+  "seed": 1,
+  "cash_required": {
+   "p10": 572221.6937800345,
+   "p50": 621158.8352048771,
+   "p90": 679436.0814280236
+  },
+  "all_in_basis": {
+   "p10": 1284721.6937800345,
+   "p50": 1333658.835204877,
+   "p90": 1391936.0814280238
+  },
+  "stabilized_noi": {
+   "p10": 59891.03888204054,
+   "p50": 74067.7395060187,
+   "p90": 87320.68080561164
+  },
+  "arv": {
+   "p10": 899408.1002297937,
+   "p50": 1121981.7888915977,
+   "p90": 1341995.8840480403
+  },
+  "max_refi_loan": {
+   "p10": 580107.0711311413,
+   "p50": 719616.6911154847,
+   "p90": 854342.8245267487
+  },
+  "cash_out": {
+   "p10": -143995.07029148156,
+   "p50": -7275.642706825005,
+   "p90": 124755.96803621376
+  },
+  "cash_left_in": {
+   "p10": 489736.7152536543,
+   "p50": 630914.3067268296,
+   "p90": 776830.6008450473
+  },
+  "equity_recovery_pct": {
+   "p10": -0.2322978905759797,
+   "p50": -0.011558680020945952,
+   "p90": 0.20058917584601557
+  },
+  "cash_on_cash": {
+   "p10": 0.015551451563513839,
+   "p50": 0.023488832169492886,
+   "p90": 0.03531225135951731
+  },
+  "duration_of_exposure_months": {
+   "p10": 15.54486328443587,
+   "p50": 17.525047102975606,
+   "p90": 19.9960117767447
+  },
+  "actual_dscr": {
+   "p10": 1.2499999999999998,
+   "p50": 1.25,
+   "p90": 1.2500000000000002
+  },
+  "yoc": {
+   "p10": 0.04466478929084844,
+   "p50": 0.055422313329096064,
+   "p90": 0.06564447159038858
+  },
+  "gates": {
+   "dscr_pass_probability": 1.0,
+   "positive_leverage_probability": 0.0,
+   "cash_left_in_pct_p50": 1.011558680020946,
+   "cash_left_in_pct_p90": 1.2322978905759796,
+   "gate_cash_left_in_p50_ok": false,
+   "gate_cash_left_in_p90_ok": false
+  }
+ },
+ "tornado": [
+  {
+   "input": "gross_potential_rent_monthly",
+   "p10_result": 746234.7037672368,
+   "p90_result": 522123.4972293164,
+   "swing": 224111.2065379204,
+   "share_of_total_swing": 0.3253780680028719
+  },
+  {
+   "input": "opex_annual_ex_capex",
+   "p10_result": 569652.4951300716,
+   "p90_result": 695884.644956663,
+   "swing": 126232.14982659137,
+   "share_of_total_swing": 0.18327139309508664
+  },
+  {
+   "input": "rehab_cost",
+   "p10_result": 582153.3607116792,
+   "p90_result": 684238.7142415167,
+   "swing": 102085.35352983745,
+   "share_of_total_swing": 0.1482136284751488
+  },
+  {
+   "input": "refi_rate",
+   "p10_result": 597887.3328433012,
+   "p90_result": 663489.8332564952,
+   "swing": 65602.50041319395,
+   "share_of_total_swing": 0.09524563795961226
+  },
+  {
+   "input": "vacancy_credit_loss_pct",
+   "p10_result": 601404.6815923881,
+   "p90_result": 665322.8003940803,
+   "swing": 63918.11880169227,
+   "share_of_total_swing": 0.09280015188599529
+  },
+  {
+   "input": "rehab_duration_months",
+   "p10_result": 613948.5435966783,
+   "p90_result": 649097.4419904776,
+   "swing": 35148.89839379932,
+   "share_of_total_swing": 0.05103127518020186
+  },
+  {
+   "input": "insurance_annual",
+   "p10_result": 615429.4277135218,
+   "p90_result": 646994.2006977525,
+   "swing": 31564.772984230774,
+   "share_of_total_swing": 0.04582762731599704
+  },
+  {
+   "input": "other_income_monthly",
+   "p10_result": 640186.288740166,
+   "p90_result": 619786.8336503105,
+   "swing": 20399.455089855473,
+   "share_of_total_swing": 0.02961715028884748
+  },
+  {
+   "input": "holding_cost_monthly",
+   "p10_result": 623730.2096486927,
+   "p90_result": 638148.7845851366,
+   "swing": 14418.574936443823,
+   "share_of_total_swing": 0.02093375038512814
+  },
+  {
+   "input": "property_tax_annual",
+   "p10_result": 628003.5733083582,
+   "p90_result": 633294.2473951855,
+   "swing": 5290.674086827319,
+   "share_of_total_swing": 0.0076813174111106
+  },
+  {
+   "input": "exit_cap_rate",
+   "p10_result": 631086.8065724279,
+   "p90_result": 631086.8065724279,
+   "swing": 0.0,
+   "share_of_total_swing": 0.0
+  }
+ ],
+ "call": {
+  "call": "DEFER",
+  "reasons": [
+   "P50 cash-left-in 101% of cash required exceeds policy max 25%",
+   "P90 cash-left-in 123% exceeds policy max 50% -- downside tail is uncapped",
+   "Positive leverage holds in only 0% of draws"
+  ],
+  "policy_id": "b5r_default_v1",
+  "review_date": null
+ }
+}
