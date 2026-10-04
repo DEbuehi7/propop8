@@ -21,6 +21,14 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  /* LVN was renamed LET (Lumen · Eon · Transect). Keep old bookmarks working. */
+  async redirects() {
+    return [
+      { source: '/admin/lvn', destination: '/admin/let', permanent: true },
+      { source: '/admin/lvn/:path*', destination: '/admin/let/:path*', permanent: true },
+    ];
+  },
+
   /**
    * Next 16 blocks cross-origin requests to dev-server resources by default.
    * Without these entries you get "Blocked cross-origin request to Next.js dev

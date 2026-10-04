@@ -7,7 +7,7 @@ const TILES = [
   { href: "/admin/review", title: "Ledger Review", sub: "Review findings · approve · send", accent: "#03edff" },
   { href: "/plate", title: "Plate8", sub: "Entertainment rig · 6 pages", accent: "#E92AD6" },
   { href: "/tools/recert", title: "Recert Flow Engine", sub: "AR form filler", accent: "#3DDCE8" },
-  { href: "/admin/lvn", title: "LVN Network", sub: "Eon · Lumen · Node 03", accent: "#4FD69C" },
+  { href: "/admin/let", title: "LET Network", sub: "Eon · Lumen · Node 03", accent: "#4FD69C" },
   { href: "/brrrr", title: "BRRRR / AIM-B5R", sub: "Phase 0 · Screen", accent: "#F2A33A" },
   { href: "/infographics", title: "Infographics", sub: "Boards + visuals", accent: "#8B7CF6" },
   { href: "/audit", title: "Audit (public)", sub: "What clients see", accent: "#A3A9B8" },

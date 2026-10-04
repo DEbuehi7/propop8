@@ -34,7 +34,7 @@ function pointOnCircle(index: number, total: number) {
 }
 
 /* A small hub-and-spoke SVG diagram: N items arranged around one center, connected by
-   animated spokes, hover/focus-synced to a matching card grid below. Shared across LVN
+   animated spokes, hover/focus-synced to a matching card grid below. Shared across LET
    node pages (originally built for Eon as NeuralFieldDiagram, generalized here so Lumen
    can reuse the same proven interaction instead of a one-off rebuild) — this component
    only knows shapes; each page supplies its own content, hub label and heading. */
