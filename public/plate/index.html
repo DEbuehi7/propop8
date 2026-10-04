@@ -806,6 +806,9 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
   .mcard img{width:132px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.chip[hidden]{display:none}
+.chip[disabled]{opacity:.4;pointer-events:none}
 </style>
 </head>
 <body>
@@ -813,7 +816,7 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
 
   <header>
     <button class="mark" id="homeMark" aria-label="Plate8 home">Plate<b>8</b></button>
-    <div class="crumb">propops8 / <b id="modName">home</b></div>
+    <div class="crumb"><a href="/admin" target="_top" style="color:inherit;text-decoration:none" title="Back to PropOps8 admin">propops8</a> / <b id="modName">home</b></div>
     <div class="tbar">
       <span class="live" id="liveInd" title="Instruments producing right now"><i></i><span>idle</span></span>
       <svg class="tse" id="tsEmb" viewBox="0 0 24 24" width="22" height="22" role="img" aria-label="Time spent per instrument"></svg>
@@ -880,6 +883,8 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
               <button class="chip" data-d="3" aria-pressed="true">Steady</button>
               <button class="chip" data-d="4">Sharp</button>
               <button class="chip" id="bBlitz">Blitz 5′</button>
+              <button class="chip" id="bWatch" aria-pressed="false" title="Watch the engine play both sides">Watch AI vs AI</button>
+              <button class="chip" id="bPause" hidden>Pause</button>
               <button class="chip" id="bGeoT" aria-pressed="true" title="Draw the geometry of influence on the board">Geometry</button>
             </div>
             <div class="row" style="gap:5px">
@@ -1473,7 +1478,14 @@ function fitCanvas(c){
   const x=c.getContext('2d'); x.setTransform(d,0,0,d,0,0);
   return {x,w,h};
 }
-addEventListener('resize',()=>ARC.safe(()=>ARC.mods[ARC.cur]?.enter?.(),'resize'));
+addEventListener('resize',()=>{
+  /* On a phone the soft keyboard fires a resize the moment a field is tapped.
+     Rebuilding the page then replaces the field itself, so the keyboard closes
+     and nothing can be typed. While a field has focus, leave the DOM alone. */
+  const a=document.activeElement;
+  if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+  ARC.safe(()=>ARC.mods[ARC.cur]?.enter?.(),'resize');
+});
 $$('label.btn').forEach(l=>l.addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#'+l.htmlFor).click()}
 }));
@@ -2952,19 +2964,23 @@ function drawGuides(tg,moving){
   out+=`<circle cx="${cx}" cy="${cy}" r="4.4" ${D}/>`;
   g.innerHTML=out;
 }
-function done(r){over=true;games++;rec[r]++;persist();
+let watch=false, watchPaused=false, watchTimer=0;
+function done(r){over=true;
+  if(watch){ARC.log('mate','AI vs AI · '+({w:'Light won',l:'Dark won',d:'Drawn'})[r]+' in '+Math.ceil(hist.length/2)+' moves · '+({2:'Casual',3:'Steady',4:'Sharp'})[depth]);return}
+  games++;rec[r]++;persist();
   ARC.log('mate',({w:'You won',l:'Engine won',d:'Drawn'})[r]+' in '+Math.ceil(hist.length/2)+' moves · '+
     ({2:'Casual',3:'Steady',4:'Sharp'})[depth])}
 const say=t=>$('#bStat').textContent=t;
 function finish(){
   const ms=legal(S);
   if(ms.length){if(S.hm>=100&&!over){say('Draw — fifty-move rule.');done('d');return true}return false}
-  if(inCheck(S,S.turn)){const win=S.turn==='b';say(win?'Checkmate. You win.':'Checkmate. Engine wins.');done(win?'w':'l')}
+  if(inCheck(S,S.turn)){const win=S.turn==='b';
+    say(watch?(win?'Checkmate. Light wins.':'Checkmate. Dark wins.'):(win?'Checkmate. You win.':'Checkmate. Engine wins.'));done(win?'w':'l')}
   else{say('Stalemate. Draw.');done('d')}
   return true}
 function apply(m){hist.push({S,lastM});S=make(S,m);lastM=m;sel=null;curve.push(evaluate(S));if(curve.length>120)curve.shift();paint()}
 bEl.addEventListener('click',e=>{
-  const t=e.target.closest('.sq'); if(!t||over||think||S.turn!=='w')return;
+  const t=e.target.closest('.sq'); if(watch||!t||over||think||S.turn!=='w')return;
   const i=+t.dataset.i;
   if(sel!=null){const m=legal(S).find(x=>x.f===sel&&x.t===i);
     if(m){apply(m);if(finish())return;say('Engine thinking…');think=true;setTimeout(ai,40);return}}
@@ -2996,7 +3012,41 @@ function swing(){
 }
 $$('.chip[data-d]').forEach(b=>b.onclick=()=>{depth=+b.dataset.d;
   $$('.chip[data-d]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
-$('#bNew').onclick=()=>{S=startPos();hist=[];sel=null;lastM=null;over=false;curve=[0];clkReset();say('Your move. You play the light pieces.');paint();
+/* Watch mode: the same engine plays both sides, one move at a time, so the
+   page can repaint between moves. Depth chip sets strength for both. Paused
+   automatically when you leave the Mate page. Capped at 300 half-moves. */
+function watchStep(){
+  clearTimeout(watchTimer);
+  if(!watch||over||watchPaused)return;
+  if(ARC.cur!=='mate'){watchTimer=setTimeout(watchStep,1000);return}
+  think=true; const m=best(S,depth); think=false;
+  if(!watch)return;
+  if(!m){finish();return}
+  apply(m);
+  if(finish())return;
+  if(hist.length>=300){say('Draw — move limit reached.');done('d');return}
+  say((inCheck(S,S.turn)?'Check. ':'')+(S.turn==='w'?'Light':'Dark')+' to move · move '+(Math.floor(hist.length/2)+1)+' · '+({2:'Casual',3:'Steady',4:'Sharp'})[depth]);
+  watchTimer=setTimeout(watchStep,650);
+}
+function watchStart(){
+  S=startPos();hist=[];sel=null;lastM=null;over=false;curve=[0];watchPaused=false;
+  $('#bPause').textContent='Pause'; say('AI vs AI — light moves first.'); paint();
+  watchTimer=setTimeout(watchStep,500);
+}
+$('#bWatch').onclick=()=>{
+  watch=!watch; clearTimeout(watchTimer);
+  $('#bWatch').setAttribute('aria-pressed',String(watch));
+  $('#bPause').hidden=!watch;
+  if(watch){ if(clk.blitz)$('#bBlitz').click(); $('#bBlitz').disabled=true; $('#bUndo').disabled=true; watchStart(); ARC.log('mate','AI vs AI · started · '+({2:'Casual',3:'Steady',4:'Sharp'})[depth]) }
+  else{ $('#bBlitz').disabled=false; $('#bUndo').disabled=false; S=startPos();hist=[];sel=null;lastM=null;over=false;curve=[0];say('Your move. You play the light pieces.');paint() }
+};
+$('#bPause').onclick=()=>{
+  watchPaused=!watchPaused; $('#bPause').textContent=watchPaused?'Resume':'Pause';
+  if(watchPaused)say('Paused.'); else watchStep();
+};
+$('#bNew').onclick=()=>{
+  if(watch){watchStart();return}
+  S=startPos();hist=[];sel=null;lastM=null;over=false;curve=[0];clkReset();say('Your move. You play the light pieces.');paint();
   ARC.log('mate','New game · '+(({2:'Casual',3:'Steady',4:'Sharp'})[depth]||'Steady'))};
 /* a position is worth sharing with the geometry read attached — the two
    numbers are what the page is actually for. */
@@ -3009,7 +3059,7 @@ $('#bShare').onclick=()=>{
            (mb?' · favours '+mb.favours:'') : 'position shared')+
       '\n'+fen(S)});
 };
-$('#bUndo').onclick=()=>{if(think||hist.length<2)return;hist.pop();const h=hist.pop();
+$('#bUndo').onclick=()=>{if(watch||think||hist.length<2)return;hist.pop();const h=hist.pop();
   S=h.S;lastM=h.lastM;sel=null;over=false;curve.splice(-2);say('Taken back. Your move.');paint()};
 
 /* Blitz: one wall-clock reading per frame, never an interval count.
@@ -4737,7 +4787,7 @@ function render(){                       // full rebuild: new plate or rule chan
   /* enter() calls this, and the kernel calls enter() on every resize — which
      on a phone means the soft keyboard appearing erased the word you were
      typing. Carry the entry across a rebuild of the same plate. */
-  const prevIn=$('#pIn'), carry=(prevIn&&renderedFor===plate)?prevIn.value:'';
+  const prevIn=$('#pIn'), carry=(prevIn&&renderedFor===plate)?prevIn.value:'', hadFocus=!!prevIn&&document.activeElement===prevIn;
   renderedFor=plate;
   $('#pPlayPane').innerHTML=`
     <div class="chips" style="margin-bottom:7px">
@@ -4776,6 +4826,7 @@ function render(){                       // full rebuild: new plate or rule chan
     <div id="pHist"></div>`;
   const i=$('#pIn');
   if(carry)i.value=carry;
+  if(hadFocus)i.focus();
   i.oninput=live; i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();submit()}};
   $('#pGo').onclick=submit; $('#pSkip').onclick=next;
   tilt();
