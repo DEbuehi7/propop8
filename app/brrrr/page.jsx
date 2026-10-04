@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import SimulatePanel from "./SimulatePanel";
 
 // Swap this for a Supabase table when you want the trades on more than one device.
 const STORE_KEY = "brrrr:papertrades";
@@ -166,7 +167,7 @@ const Rule = ({ label }) => (
 
 /* ------------------------------------------------------------------ */
 
-export default function BrrrrUnderwritingScreen() {
+function ScreenPanel() {
   const [unitCount, setUnitCount] = useState(4);
   const [price, setPrice] = useState(650000);
   const [rents, setRents] = useState([1700, 1700, 1750, 1750]);
@@ -526,6 +527,36 @@ export default function BrrrrUnderwritingScreen() {
           underwritten differently.
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Two tools, one page: the FHA acquisition screen (1-4 units) and the
+   Monte Carlo underwrite (5+ units). Tabs keep both mounted-on-demand. */
+export default function BrrrrUnderwritingScreen() {
+  const [mode, setMode] = useState("screen");
+  const tabs = [["screen", "Screen · 1–4 units (FHA)"], ["simulate", "Simulate · 5+ units (Monte Carlo)"]];
+  return (
+    <div style={{ background: T.navy, minHeight: "100%" }}>
+      <div role="tablist" aria-label="Underwriting tool" style={{ display: "flex", gap: 6, flexWrap: "wrap", maxWidth: 1080, margin: "0 auto", padding: "16px 18px 0" }}>
+        {tabs.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={mode === id} onClick={() => setMode(id)}
+            style={{ background: mode === id ? T.cyan : "transparent", color: mode === id ? T.navy : T.gray, border: `1px solid ${mode === id ? T.cyan : T.slate + "66"}`,
+              borderRadius: 3, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "screen" ? <ScreenPanel /> : (
+        <div style={{ color: T.gray, fontFamily: FONT, padding: "22px 18px 40px" }}>
+          <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+            <div style={{ borderBottom: `1px solid ${T.slate}44`, paddingBottom: 14, marginBottom: 6 }}>
+              <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.01em" }}>AIM-B5R — simulation underwrite</div>
+            </div>
+            <SimulatePanel />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
