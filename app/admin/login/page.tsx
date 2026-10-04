@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 function LoginForm() {
   const router = useRouter();
-  const params = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,15 +25,10 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      // Default is the launchpad, not the review tool. `from` only ever
-      // comes from our own proxy.ts sending you back where you started, but
-      // it's a query param and therefore attacker-controllable -- someone
-      // could craft /admin/login?from=https://evil.example and ride a real
-      // login to an external site. Only honor it when it points back into
-      // /admin; anything else (another origin, a protocol-relative //host,
-      // no from at all) falls back to the launchpad.
-      const from = params.get("from");
-      router.push(from && from.startsWith("/admin") ? from : "/admin");
+      // Always land on the admin launchpad; every other admin page is a
+      // link away from there. (Previously honored ?from=, which dropped
+      // you on whichever page the browser last remembered.)
+      router.push("/admin");
       router.refresh();
     } catch {
       setError("Network error -- try again.");

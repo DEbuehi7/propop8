@@ -100,6 +100,12 @@ export default function ReviewPage() {
   const handleFile = useCallback(async (file: File) => {
     setError(null);
     try {
+      if (/\.(xlsx|xls|xlsm|numbers|ods)$/i.test(file.name)) {
+        setError(
+          "Spreadsheet files can't be read directly. Open it, use File > Save As > CSV, and upload the CSV.",
+        );
+        return;
+      }
       const text = await file.text();
       const { rows, droppedRows, totalRows } = parseCsv(text);
       if (rows.length === 0) {
@@ -140,6 +146,7 @@ export default function ReviewPage() {
       window: auditWindow,
       netLedger: `$${Math.round(netLedger).toLocaleString()}`,
       rowsReviewed,
+      droppedRows: dropInfo?.dropped ?? 0,
       summary: meta.summary,
       spendTable,
       findings,

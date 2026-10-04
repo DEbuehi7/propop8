@@ -37,6 +37,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { notifyFilesReceived } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,7 +94,9 @@ async function resolveToken(token: string) {
   if (intakeErr || !intake) {
     return { error: 'invalid' as const };
   }
-  if (intake.status !== 'paid') {
+  // files_received is the state after a customer submits; the link must keep
+  // working then (to show "submitted"), not report the intake as unpaid.
+  if (intake.status !== 'paid' && intake.status !== 'files_received') {
     return { error: 'unpaid' as const };
   }
 
@@ -142,6 +145,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
+
+  // Once submitted, the file set is frozen: the 48-hour clock has started and
+  // analysis may be under way. Adding files afterwards silently changes the
+  // input to a review already in progress.
+  if ((action === 'sign' || action === 'complete') && intake.files_submitted_at) {
+    return NextResponse.json(
+      { error: 'Your files were already submitted. Email daniel@propops8.com to add more.' },
+      { status: 409 }
+    );
+  }
 
   /* ---------------------------------------------------- sign ---------- */
   if (action === 'sign') {
@@ -192,6 +205,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     if (!path || !filename) {
       return NextResponse.json({ error: 'Missing upload details.' }, { status: 400 });
     }
+    // A path is only ever issued under this intake's own folder. Refuse to
+    // register anything else, or one customer could attach another's file.
+    if (!path.startsWith(`${intake.id}/`) || path.includes('..')) {
+      return NextResponse.json({ error: 'Unrecognised upload.' }, { status: 400 });
+    }
 
     // Column is storage_path. Content type is re-derived here from the
     // extension rather than trusted from the client -- the client could send
@@ -220,9 +238,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   /* --------------------------------------------------- submit ---------- */
   if (action === 'submit') {
-    const { count } = await supabase
+    // Idempotent: a double-tap must not send you two "48-hour clock" emails.
+    if (intake.files_submitted_at) {
+      return NextResponse.json({ submitted: true });
+    }
+
+    const { data: uploads, count } = await supabase
       .from('audit_uploads')
-      .select('id', { count: 'exact', head: true })
+      .select('original_name, size_bytes', { count: 'exact' })
       .eq('intake_id', intake.id);
 
     if (!count) {
@@ -231,12 +254,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
     const { error: updErr } = await supabase
       .from('audit_intakes')
-      .update({ files_submitted_at: new Date().toISOString() })
-      .eq('id', intake.id);
+      .update({ files_submitted_at: new Date().toISOString(), status: 'files_received' })
+      .eq('id', intake.id)
+      .is('files_submitted_at', null);
 
     if (updErr) {
       console.error('[upload] marking submitted failed', updErr);
       return NextResponse.json({ error: 'Could not submit. Your files are safe — try again.' }, { status: 500 });
+    }
+
+    // This email is what starts the 48-hour clock. It existed in lib/email.ts
+    // but nothing ever called it, so submissions went unannounced. A failure
+    // here must not fail the customer's submit.
+    try {
+      await notifyFilesReceived(intake.company ?? 'Unknown company', intake.name ?? '', intake.id, uploads ?? []);
+    } catch (err) {
+      console.error('[upload] files-received notice failed', err);
     }
 
     return NextResponse.json({ submitted: true });

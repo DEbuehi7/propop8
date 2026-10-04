@@ -42,9 +42,9 @@
 
 import Papa from 'papaparse';
 import { useCallback, useRef, useState } from 'react';
-import { HEADER_ALIASES } from '@/lib/auditEngine';
+import { HEADER_ALIASES, normHeader, toAmount, parseLedgerDate } from '@/lib/auditEngine';
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+const norm = normHeader;
 
 /** The engine's alias table, normalised so "Opened Date", "opened_date" and
  *  "openeddate" all resolve to the same field. */
@@ -67,16 +67,8 @@ const FIELD_LABELS: Record<string, string> = {
   workOrderId: 'work order id',
 };
 
-/** Accounting notation "(85.00)" means -85 in every PMS export that uses it.
- *  Same rule as the engine's toAmount. */
-const toNumber = (v: unknown) => {
-  if (typeof v === 'number') return v;
-  const s = String(v ?? '').trim();
-  const isParenNegative = /^\(.*\)$/.test(s);
-  const n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
-  if (!Number.isFinite(n)) return NaN;
-  return isParenNegative ? -Math.abs(n) : n;
-};
+/** Same reader as the engine, so the screener and the paid review cannot disagree about a cell. */
+const toNumber = toAmount;
 
 type Tone = 'ok' | 'warn' | 'flag' | 'idle';
 type Badge = { tone: Tone; label: string; n?: string };
@@ -205,11 +197,11 @@ function screen(fileName: string, rows: Record<string, unknown>[], headers: stri
   /* ---- date range ------------------------------------------------- */
   if (map.date) {
     const ds = rows
-      .map((r) => new Date(String(r[map.date])))
-      .filter((d) => !isNaN(d.getTime()))
-      .sort((a, b) => a.getTime() - b.getTime());
+      .map((r) => parseLedgerDate(String(r[map.date])))
+      .filter((d): d is number => d !== null)
+      .sort((a, b) => a - b);
     if (ds.length) {
-      const days = Math.round((ds[ds.length - 1].getTime() - ds[0].getTime()) / 86400000);
+      const days = Math.round((ds[ds.length - 1] - ds[0]) / 86400000);
       const months = Math.round(days / 30);
       badges.push({
         tone: months >= 3 ? 'ok' : 'warn',

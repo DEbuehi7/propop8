@@ -328,7 +328,11 @@ export function AuditPdf({ report }: { report: AuditReport }) {
         <View style={s.statRow}>
           <View style={s.stat}>
             <Text style={s.statNum}>{report.rowsReviewed.toLocaleString()}</Text>
-            <Text style={s.statLabel}>ROWS REVIEWED</Text>
+            <Text style={s.statLabel}>
+              {report.droppedRows && report.droppedRows > 0
+                ? `ROWS REVIEWED (${report.droppedRows.toLocaleString()} SKIPPED)`
+                : "ROWS REVIEWED"}
+            </Text>
           </View>
           <View style={s.stat}>
             <Text style={s.statNum}>{report.netLedger}</Text>

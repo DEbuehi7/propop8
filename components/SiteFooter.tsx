@@ -30,6 +30,7 @@ const NAV = [
   { href: '/ingest', label: 'Ledger screening' },
   { href: '/tools/recert', label: 'Recert flow engine' },
   { href: '/audit', label: 'Operations audit' },
+  { href: '/admin', label: 'Admin' },
 ];
 
 const LEGAL = [

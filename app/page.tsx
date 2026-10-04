@@ -271,7 +271,7 @@ export default function LandingPage() {
               style={{ ...cardStyle, textDecoration: 'none' }}
             >
               <img
-                src={`/widgets/sm/${d.slug}.png`}
+                src={`/widgets/sm/${d.slug}.png?v=2`}
                 alt={`${d.name} diagnostic card`}
                 width={600}
                 height={600}
