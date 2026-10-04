@@ -53,6 +53,8 @@ create table if not exists public.audit_intakes (
   fulfillment_error   text,
 
   files_submitted_at  timestamptz,
+  report_sent_at      timestamptz,   -- stamped by /api/send-report
+  resend_message_id   text,
   purge_after         timestamptz   -- enforce your stated retention window
 );
 

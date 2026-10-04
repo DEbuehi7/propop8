@@ -36,6 +36,9 @@ import { Resend } from 'resend';
 import { cookies } from 'next/headers';
 import { verifySessionCookie, COOKIE_NAME } from '@/lib/adminAuth';
 
+const esc = (v: string) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -106,8 +109,8 @@ export async function POST(req: Request) {
       to: [intake.email],
       subject: `Your PropOps8 ledger review — ${property}`,
       html:
-        `<p>Hi ${intake.name},</p>` +
-        `<p>Your ledger review for ${property} is attached.` +
+        `<p>Hi ${esc(String(intake.name ?? ''))},</p>` +
+        `<p>Your ledger review for ${esc(property)} is attached.` +
         (count !== null
           ? ` It identifies <strong>${count} ${count === 1 ? 'item' : 'items'}</strong> worth a closer look, each traced back to rows in the export you sent.`
           : '') +
@@ -139,6 +142,7 @@ export async function POST(req: Request) {
       .update({
         report_sent_at: new Date().toISOString(),
         resend_message_id: data?.id ?? null,
+        status: 'delivered',
       })
       .eq('id', intakeId);
 

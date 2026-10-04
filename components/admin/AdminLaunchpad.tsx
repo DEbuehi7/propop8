@@ -3,6 +3,7 @@ import s from "./AdminLaunchpad.module.css";
 
 /* One-row launcher for the /admin page. Add or remove tiles here. */
 const TILES = [
+  { href: "/admin/intakes", title: "Audit Intakes", sub: "Release held · resend links", accent: "#4FD69C" },
   { href: "/admin/review", title: "Ledger Review", sub: "Review findings · approve · send", accent: "#03edff" },
   { href: "/plate", title: "Plate8", sub: "Entertainment rig · 6 pages", accent: "#E92AD6" },
   { href: "/tools/recert", title: "Recert Flow Engine", sub: "AR form filler", accent: "#3DDCE8" },

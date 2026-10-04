@@ -147,22 +147,83 @@ export const HEADER_ALIASES: Record<string, keyof LedgerRow> = {
   closed_date: "closedDate", "closed date": "closedDate", "date closed": "closedDate",
 };
 
-/** Ported from components/LedgerCheck.tsx. Accounting notation "(85.00)"
- *  means -85 in every PMS export that uses it. The old implementation
- *  stripped the parens without reading them. */
-function toAmount(v: unknown): number {
-  if (typeof v === "number") return v;
-  const s = String(v ?? "").trim();
-  const isParenNegative = /^\(.*\)$/.test(s);
-  const n = parseFloat(s.replace(/[^0-9.\-]/g, ""));
+/** "Opened Date", "opened_date", "Work-Order ID" and "workorderid" must all
+ *  resolve identically. The free screener (components/LedgerCheck.tsx) already
+ *  matched this loosely while this engine matched exact lowercase strings, so
+ *  the screener could say "columns found" about a file the engine then read as
+ *  zero rows. One normaliser, used by both. */
+export const normHeader = (h: string): string => h.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const NORM_ALIASES: Record<string, keyof LedgerRow> = Object.fromEntries(
+  Object.entries(HEADER_ALIASES).map(([k, v]) => [normHeader(k), v])
+);
+
+/**
+ * Reads a money cell. Returns NaN for anything it cannot read UNAMBIGUOUSLY,
+ * so the row is counted in droppedRows and disclosed, never guessed.
+ *
+ * Negatives: (85.00), ($85.00), $(85.00), -85, -$85, 85.00-, and the unicode
+ * minus/dashes some exports emit. Before this, "$(85.00)", "85.00-" and a
+ * unicode minus all silently became +85 -- a credit turning into a charge.
+ *
+ * Rejected (NaN): letters ("12 CR"), European decimal commas ("1.234,56",
+ * "12,50"), Indian grouping, and anything else that is not a plain number.
+ */
+export function toAmount(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+  const raw = String(v ?? "")
+    .trim()
+    .replace(/[\u2212\u2012\u2013\u2014]/g, "-");
+  if (!raw) return NaN;
+  const t = raw.replace(/[$\u20AC\u00A3\s]/g, "");
+  const neg = t.startsWith("-") || t.endsWith("-") || (t.startsWith("(") && t.endsWith(")"));
+  const core = t.replace(/^[-(]+|[-)]+$/g, "");
+  if (!/\d/.test(core)) return NaN;
+  if (!/^(\d{1,3}(,\d{3})+|\d+)?(\.\d+)?$/.test(core)) return NaN;
+  const n = parseFloat(core.replace(/,/g, ""));
   if (!Number.isFinite(n)) return NaN;
-  return isParenNegative ? -Math.abs(n) : n;
+  return neg ? -Math.abs(n) : n;
+}
+
+function daysIn(y: number, m: number): number {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * The calendar date WRITTEN in the cell, as UTC-midnight milliseconds, or null.
+ *
+ * Date.parse is timezone-dependent for M/D/YYYY and for datetimes: it reads
+ * them in local time, then monthKey read the result in UTC, so on a machine
+ * east of UTC "10/01/2026" landed in September. This reads the written date
+ * and ignores timezone entirely. M/D/YYYY is read US-style; a first part above
+ * 12 is rejected (null), not silently flipped to D/M.
+ */
+export function parseLedgerDate(input: string | null | undefined): number | null {
+  const t = String(input ?? "").trim();
+  if (!t) return null;
+  let y: number, m: number, d: number;
+  let hit = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/.exec(t);
+  if (hit) {
+    y = +hit[1]; m = +hit[2]; d = +hit[3];
+  } else if ((hit = /^(\d{1,2})[-/](\d{1,2})[-/](\d{2}|\d{4})(?:[\s,T].*)?$/.exec(t))) {
+    m = +hit[1]; d = +hit[2]; y = +hit[3];
+    if (hit[3].length === 2) y += 2000;
+  } else if (/[a-z]{3}/i.test(t)) {
+    const p = Date.parse(t); // "Oct 5, 2026": parsed in local time, so read local parts
+    if (Number.isNaN(p)) return null;
+    const dt = new Date(p);
+    y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+  } else {
+    return null;
+  }
+  if (m < 1 || m > 12 || d < 1 || d > daysIn(y, m)) return null;
+  return Date.UTC(y, m - 1, d);
 }
 
 /** YYYY-MM, or null if the date doesn't parse. Never guesses a format. */
 function monthKey(dateStr: string): string | null {
-  const t = Date.parse(dateStr);
-  if (Number.isNaN(t)) return null;
+  const t = parseLedgerDate(dateStr);
+  if (t === null) return null;
   const d = new Date(t);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
@@ -171,7 +232,7 @@ export function parseCsv(text: string): { rows: LedgerRow[]; droppedRows: number
   const parsed = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (h) => h.trim().toLowerCase(),
+    transformHeader: (h) => normHeader(h),
   });
 
   const rows: LedgerRow[] = [];
@@ -180,7 +241,7 @@ export function parseCsv(text: string): { rows: LedgerRow[]; droppedRows: number
   parsed.data.forEach((raw, i) => {
     const row: Partial<LedgerRow> = { sourceRow: i + 2 }; // +2: 1-based, plus header
     for (const [key, value] of Object.entries(raw)) {
-      const mapped = HEADER_ALIASES[key];
+      const mapped = NORM_ALIASES[key];
       if (!mapped) continue;
       if (mapped === "amount") {
         const num = toAmount(value);
@@ -240,8 +301,8 @@ function daysInMonthOf(d: Date): number {
  */
 function buildWindow(rows: LedgerRow[]): AuditWindow | null {
   const dated = rows
-    .map((r) => ({ r, t: Date.parse(r.date), m: monthKey(r.date) }))
-    .filter((x) => !Number.isNaN(x.t) && x.m);
+    .map((r) => ({ r, t: parseLedgerDate(r.date), m: monthKey(r.date) }))
+    .filter((x): x is { r: LedgerRow; t: number; m: string } => x.t !== null && x.m !== null);
   if (dated.length === 0) return null;
 
   dated.sort((a, b) => a.t - b.t);
@@ -477,8 +538,8 @@ function checkNearDuplicates(rows: LedgerRow[], windowDays = 7): Finding[] {
   const used = new Set<number>();
 
   const sorted = [...rows]
-    .filter((r) => r.amount > 0 && !Number.isNaN(Date.parse(r.date)))
-    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    .filter((r) => r.amount > 0 && parseLedgerDate(r.date) !== null)
+    .sort((a, b) => (parseLedgerDate(a.date) as number) - (parseLedgerDate(b.date) as number));
 
   for (let i = 0; i < sorted.length; i++) {
     if (used.has(sorted[i].sourceRow)) continue;
@@ -487,7 +548,7 @@ function checkNearDuplicates(rows: LedgerRow[], windowDays = 7): Finding[] {
       const a = sorted[i];
       const b = sorted[j];
       if (a.date === b.date) continue; // that's an exact-duplicate case
-      const gap = Math.abs(Date.parse(b.date) - Date.parse(a.date)) / 86_400_000;
+      const gap = Math.abs((parseLedgerDate(b.date) as number) - (parseLedgerDate(a.date) as number)) / 86_400_000;
       if (gap > windowDays) break; // sorted, so nothing further can be closer
       if (a.vendor === b.vendor && a.amount === b.amount) {
         const k = `${a.date}||${a.vendor}||${a.category}||${a.amount}`;
@@ -556,12 +617,18 @@ function checkCredits(rows: LedgerRow[]): Finding[] {
 /** Open-item aging. Requires status + openedDate; skipped, not
  *  estimated, without them. Only claims concentration when one
  *  category actually holds a majority. */
-function checkAging(rows: LedgerRow[], thresholdDays = 30): Finding[] {
+function checkAging(rows: LedgerRow[], asOf: number, thresholdDays = 30): Finding[] {
   const openRows = rows.filter((r) => r.status?.toLowerCase() === "open" && r.openedDate);
   if (openRows.length === 0) return [];
 
-  const now = Date.now();
-  const ageOf = (r: LedgerRow) => (now - Date.parse(r.openedDate!)) / 86_400_000;
+  // Age is measured to an explicit as-of date, printed in the finding, so the
+  // same file gives the same answer in a test and the report says what "older
+  // than 30 days" was measured against.
+  const asOfDay = new Date(asOf).toISOString().slice(0, 10);
+  const ageOf = (r: LedgerRow) => {
+    const opened = parseLedgerDate(r.openedDate);
+    return opened === null ? NaN : (Date.parse(asOfDay) - opened) / 86_400_000;
+  };
 
   const aged = openRows.filter((r) => {
     const a = ageOf(r);
@@ -591,7 +658,7 @@ function checkAging(rows: LedgerRow[], thresholdDays = 30): Finding[] {
     category: "Open-item aging",
     title: `${aged.length} open item(s) older than ${thresholdDays} days, totalling ${money(agedTotal)}`,
     description:
-      `${over90.length} are older than 90 days, totalling ${money(over90Total)}. ${spread}`,
+      `${over90.length} are older than 90 days, totalling ${money(over90Total)}. ${spread} Age is measured to ${asOfDay}.`,
     amount: money(agedTotal),
     amountLabel: `OPEN >${thresholdDays} DAYS`,
     amountIsCost: true,
@@ -606,7 +673,11 @@ function checkAging(rows: LedgerRow[], thresholdDays = 30): Finding[] {
 
 /* -------------------------------------------------------------------------- */
 
-export function runEngine(rows: LedgerRow[]): Omit<EngineResult, "droppedRows" | "totalRows"> {
+export function runEngine(
+  rows: LedgerRow[],
+  opts: { asOf?: number } = {}
+): Omit<EngineResult, "droppedRows" | "totalRows"> {
+  const asOf = opts.asOf ?? Date.now();
   nextId = 1;
   const win = buildWindow(rows);
   const spendTable = buildSpendTable(rows, win);
@@ -617,7 +688,7 @@ export function runEngine(rows: LedgerRow[]): Omit<EngineResult, "droppedRows" |
     ...checkExactDuplicates(rows),
     ...checkNearDuplicates(rows),
     ...checkCredits(rows),
-    ...checkAging(rows),
+    ...checkAging(rows, asOf),
   ];
 
   return {

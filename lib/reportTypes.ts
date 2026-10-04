@@ -40,6 +40,8 @@ export interface AuditReport {
   netLedger: string;
   /** Usable rows the findings were computed from. */
   rowsReviewed: number;
+  /** Rows in the file that were skipped (missing date/vendor/category/amount). Optional for older callers. */
+  droppedRows?: number;
 
   summary: string;
   spendTable: SpendRow[];

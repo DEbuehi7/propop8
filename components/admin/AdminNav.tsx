@@ -14,6 +14,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const LINKS = [
   { href: "/admin", label: "Admin home", exact: true },
+  { href: "/admin/intakes", label: "Intakes" },
   { href: "/admin/review", label: "Review" },
   { href: "/admin/lvn", label: "LVN" },
   { href: "/plate", label: "Plate8" },

@@ -34,7 +34,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { issueUploadToken } from '@/lib/uploadTokens';
+import { fulfillIntake } from '@/lib/fulfill';
 import { sendUploadInstructions, notifyOwner } from '@/lib/email';
 
 export const runtime = 'nodejs';
@@ -256,50 +256,72 @@ export async function POST(req: Request) {
 
     const paid = PAYMENT_CONFIRMED_BY_WEBHOOK && paymentSeen;
 
-    const { data: intake, error: dbError } = await supabase
-      .from('audit_intakes')
-      .insert({
-        name,
-        email: email.toLowerCase(),
-        company: company ?? '(not given)',
-        role: pick(fields, 'Your role', 'role'),
-        portfolio_size: pick(fields, 'Portfolio size', 'portfolio_size') ?? '(not given)',
-        primary_concern:
-          pick(fields, "What's the problem you'd most want answered?", 'primary_concern') ??
-          '(not given)',
-        data_availability: pick(fields, 'Data you can export', 'data_availability'),
-        authority_confirmed: true,
-        calculator_snapshot: {
-          operationalDays: pickNumber(fields, 'days', 'operational_days'),
-          operationalExposure: pickNumber(fields, 'exposure', 'operational_exposure'),
-          totalDays: pickNumber(fields, 'total_days'),
-          totalExposure: pickNumber(fields, 'total_exposure'),
-          paidAmount,
-          paidCurrency,
-          paymentLink,
-        },
-        tally_response_id: payload.data?.responseId ?? null,
-        status: paid ? 'paid' : 'submitted',
-        paid_at: paid ? new Date().toISOString() : null,
-      })
-      .select('id')
-      .single();
+    /* Resume-safe: if an earlier delivery of this same response already saved
+       the intake (and then failed later, e.g. on email), pick it up instead of
+       inserting again. The unique index on tally_response_id would otherwise
+       reject the retry forever -- the customer would have paid, no link would
+       have gone out, and nothing would tell you. */
+    const responseId = payload.data?.responseId ?? null;
+    type IntakeRef = { id: string; status: string; fulfillment_status: string };
+    let intake: IntakeRef | null = null;
 
-    if (dbError || !intake) throw dbError ?? new Error('Intake insert returned no row');
+    if (responseId) {
+      const { data: existing } = await supabase
+        .from('audit_intakes')
+        .select('id, status, fulfillment_status')
+        .eq('tally_response_id', responseId)
+        .maybeSingle();
+      if (existing) intake = existing as IntakeRef;
+    }
+
+    if (!intake) {
+      const { data: created, error: dbError } = await supabase
+        .from('audit_intakes')
+        .insert({
+          name,
+          email: email.toLowerCase(),
+          company: company ?? '(not given)',
+          role: pick(fields, 'Your role', 'role'),
+          portfolio_size: pick(fields, 'Portfolio size', 'portfolio_size') ?? '(not given)',
+          primary_concern:
+            pick(fields, "What's the problem you'd most want answered?", 'primary_concern') ??
+            '(not given)',
+          data_availability: pick(fields, 'Data you can export', 'data_availability'),
+          authority_confirmed: true,
+          calculator_snapshot: {
+            operationalDays: pickNumber(fields, 'days', 'operational_days'),
+            operationalExposure: pickNumber(fields, 'exposure', 'operational_exposure'),
+            totalDays: pickNumber(fields, 'total_days'),
+            totalExposure: pickNumber(fields, 'total_exposure'),
+            paidAmount,
+            paidCurrency,
+            paymentLink,
+          },
+          tally_response_id: responseId,
+          status: paid ? 'paid' : 'submitted',
+          paid_at: paid ? new Date().toISOString() : null,
+        })
+        .select('id, status, fulfillment_status')
+        .single();
+
+      if (dbError || !created) throw dbError ?? new Error('Intake insert returned no row');
+      intake = created as IntakeRef;
+    }
 
     /* ------------------------------------------------- 4. token + email */
 
-    if (paid) {
-      const token = await issueUploadToken(intake.id);
+    if (intake.status === 'paid') {
+      if (intake.fulfillment_status === 'sent') {
+        // A retry of a delivery that already finished. Nothing to do.
+        await supabase
+          .from('webhook_events')
+          .update({ status: 'processed', processed_at: new Date().toISOString() })
+          .eq('event_id', eventId);
+        return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+      }
 
-      // intake.id as idempotency key: if a retry slips past the event guard,
-      // Resend still won't send the same customer two upload links.
-      await sendUploadInstructions(name, email, token, intake.id);
-
-      await supabase
-        .from('audit_intakes')
-        .update({ fulfillment_status: 'sent' })
-        .eq('id', intake.id);
+      // intake.id as idempotency key: a retry cannot send a second upload link.
+      await fulfillIntake(intake.id);
 
       await notifyOwner(
         `PropOps8 — audit booked: ${company ?? name}`,
@@ -341,6 +363,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
     console.error('[tally-webhook] processing failed', err);
+    // Tell the owner. A paid customer with no link is otherwise invisible
+    // until they write to ask where it is.
+    await notifyOwner(
+      'PropOps8 — webhook FAILED, a customer may not have their link',
+      [
+        `Tally response: ${payload.data?.responseId ?? eventId}`,
+        `Error: ${err instanceof Error ? err.message : String(err)}`,
+        '',
+        'Tally will retry. The retry resumes the saved intake and will not duplicate it or double-send.',
+        'If it keeps failing, open /admin/intakes and use Release or Resend link.',
+      ].join('\n')
+    );
     // Release the claim so Tally's retry can re-process this event id.
     await supabase.from('webhook_events').delete().eq('event_id', eventId);
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
