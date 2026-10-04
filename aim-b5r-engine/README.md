@@ -57,3 +57,20 @@ header if the guess is wrong) and correct the map to match.
   live APIs — this sandbox's own network policy blocks outbound calls
   to them, so real verification has to happen wherever this actually
   runs.
+
+## Web app counterpart (TypeScript)
+
+The underwriting math also lives in the Next.js app so the `/brrrr` Simulate
+tab can run it in the browser with no server round-trip:
+
+- `lib/b5r/engine.ts` — TypeScript port of `aim_b5r_engine.py`. **This Python
+  file stays the reference.** `tests/b5r.test.ts` checks the port against a
+  golden run (`tests/fixtures/b5r_golden.json`); if you change the math here,
+  regenerate that fixture and update the port.
+- `lib/b5r/worker.ts` + `app/brrrr/useB5r.ts` — runs it in a Web Worker.
+- Saved deals, run history and the predicted-vs-actual log live in Supabase
+  (`supabase/migrations/007_b5r_pipeline.sql`), behind the admin login at
+  `/admin/b5r`. Saving re-runs the simulation on the server from the submitted
+  inputs, so stored results are always the engine's own output.
+- The scheduled data job (`run_weekly.py`) still writes to its local SQLite file
+  and is not connected to the web app yet.

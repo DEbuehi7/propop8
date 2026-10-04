@@ -20,6 +20,7 @@ const LINKS = [
   { href: "/plate", label: "Plate8" },
   { href: "/tools/recert", label: "Recert" },
   { href: "/brrrr", label: "BRRRR" },
+  { href: "/admin/b5r", label: "B5R pipeline" },
   { href: "/infographics", label: "Infographics" },
   { href: "/", label: "Public site", exact: true },
 ];

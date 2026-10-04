@@ -75,3 +75,40 @@ test("rng is uniform-ish in [0,1)", () => {
   for (let i = 0; i < 20000; i++) { const x = r(); assert.ok(x >= 0 && x < 1); s += x; }
   assert.ok(Math.abs(s / 20000 - 0.5) < 0.01);
 });
+
+import { parseDealInputs } from "../lib/b5r/parse";
+import { calibrationStats, errorPctOfP50, isCalibrationMetric } from "../lib/b5r/calibration";
+
+test("parseDealInputs accepts the example deal and rejects junk", () => {
+  const ok = parseDealInputs(JSON.parse(JSON.stringify(EXAMPLE_DEAL)));
+  assert.ok(ok.ok && ok.deal.dealId === EXAMPLE_DEAL.dealId);
+  assert.equal(parseDealInputs(null).ok, false);
+  const missing = parseDealInputs({ ...EXAMPLE_DEAL, rehabCost: undefined, units: "12" });
+  assert.ok(!missing.ok && missing.errors.some((e) => e.includes("rehabCost")) && missing.errors.some((e) => e.includes("units")));
+  const noId = parseDealInputs({ ...EXAMPLE_DEAL, dealId: "  " });
+  assert.ok(!noId.ok);
+});
+
+test("parseDealInputs downgrades 'assumed' + 'high' confidence and coerces bad provenance", () => {
+  const d = JSON.parse(JSON.stringify(EXAMPLE_DEAL));
+  d.rehabCost.provenance = "assumed"; d.rehabCost.confidence = "high"; d.exitCapRate.provenance = "bogus";
+  const r = parseDealInputs(d);
+  assert.ok(r.ok && r.deal.rehabCost.confidence === "low" && r.deal.exitCapRate.provenance === "assumed");
+});
+
+test("calibration: error % and stats match the Python definitions", () => {
+  assert.equal(errorPctOfP50({ p10: 80, p50: 100, p90: 130 }, 110), 0.1);
+  assert.equal(errorPctOfP50({ p10: 0, p50: 0, p90: 1 }, 5), null);
+  assert.equal(calibrationStats([]), null);
+  const s = calibrationStats([
+    { error_pct_of_p50: 0.1, predicted_p10: 80, predicted_p90: 130, actual: 110 },
+    { error_pct_of_p50: -0.1, predicted_p10: 80, predicted_p90: 130, actual: 90 },
+    { error_pct_of_p50: 0.5, predicted_p10: 80, predicted_p90: 130, actual: 150 },
+  ])!;
+  assert.equal(s.n, 3);
+  assert.ok(Math.abs(s.meanErrorPct - 0.5 / 3) < 1e-9);
+  assert.ok(Math.abs(s.withinP10P90 - 2 / 3) < 1e-9);
+  assert.equal(s.recommendation, "widen range");
+  assert.equal(calibrationStats([{ error_pct_of_p50: 0.02, predicted_p10: 1, predicted_p90: 3, actual: 2 }])!.recommendation, "range looks calibrated");
+  assert.ok(isCalibrationMetric("arv") && !isCalibrationMetric("deal_id"));
+});
