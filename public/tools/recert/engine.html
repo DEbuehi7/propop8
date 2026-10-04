@@ -588,7 +588,7 @@ function route(s, c){
   if (s.property.lahd) add("tirc", 1, "Property is monitored by LAHD", [], {t:Math.max(nA,1), m:1});
   add("tic", 1, s.cert.type === "initial" ? "Move-in certification" : "Annual recertification — one per household", [], {t:Math.max(nA,1), m:1});
   add("ticq", nA, "One per adult household member", names(c.adults), {t:nA, m:nA});
-  add("asset", 1, c.assets.length ? "Net assets " + money(c.net) + " — at or under $52,787, self-certified" : "No assets reported — certify none", [], {t:Math.max(Math.min(nA,2),1), m:0});
+  add("asset", 1, c.assets.length ? (c.net > ASSET_LIMIT ? "Net assets " + money(c.net) + " — OVER $52,787: self-certification not allowed, third-party verification and imputed return required" : "Net assets " + money(c.net) + " — at or under $52,787, self-certified") : "No assets reported — certify none", [], {t:Math.max(Math.min(nA,2),1), m:0});
   add("csaff", nA, "CTCAC required form, each adult answers yes or no", names(c.adults), {t:nA, m:0});
   add("sec42", 1, "CTCAC required lease rider", [], {t:Math.max(nA,1), m:1});
   add("evict", 1, "CTCAC required lease rider", [], {t:Math.max(nA,1), m:1});
@@ -695,6 +695,7 @@ function evaluate(s, c, R){
     if (m.age !== null && (m.age < 0 || m.age > 120)) conflicts.push({t:memberName(m, i) + ": check the date of birth.", tab:"household", focus:"members." + i + ".dob"});
   });
   // warnings
+  if (c.net > ASSET_LIMIT) blockers.push({t:"Net family assets " + money(c.net) + " are over the $52,787 HOTMA self-certification threshold. This tool doesn't impute asset income or build third-party verification for that case — the income total below is understated until you add it by hand.", tab:"assets"});
   if (c.over140) warnings.push({t:"Income " + money(c.O) + " is over 140% of the limit (" + money(c.limit140) + ") — the available unit rule applies.", tab:"cert"});
   if (c.refund > 0) info.push({t:"Tax refund of " + money(c.refund) + " subtracted from net assets, per the TIC instructions.", tab:"assets"});
   c.rows.forEach((r, i) => {
@@ -1087,14 +1088,20 @@ function parseCSV(text){
 const CODE_MAP = {EMP:"wages", SELF:"self", SSI:"ssi", SS:"ss", SSDI:"ss", GR:"gr", TANF:"tanf", CALWORKS:"tanf", UI:"unemployment", PENSION:"pension"};
 const RACE_MAP = {"white":"1","black or african american":"2","american indian or alaska native":"3","asian":"4","native hawaiian or other pacific islander":"5","other":"6","decline":"7"};
 const ETH_MAP = {"hispanic or latino":"1","non-hispanic or latino":"2","decline":"3"};
-function isoDate(v){ if (!v) return ""; const d = new Date(v); return isNaN(d) ? "" : d.toISOString().slice(0, 10); }
+function isoDate(v){
+  if (!v) return ""; v = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (m){ const y = m[3].length === 2 ? 2000 + +m[3] : +m[3]; return y + "-" + String(+m[1]).padStart(2, "0") + "-" + String(+m[2]).padStart(2, "0"); }
+  const d = new Date(v + " 12:00"); return isNaN(d) ? "" : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 function fromRow(r){
   const s = blankState();
   s.property.unit = r.unit || ""; s.property.bedrooms = r.bedrooms || "";
   s.cert.effective = isoDate(r.cert_effective_date); s.cert.qualDate = isoDate(r.initial_lihtc_qual_date || r.move_in_date);
   if (s.cert.effective){ const p = new Date(s.cert.effective + "T12:00:00"); p.setFullYear(p.getFullYear() - 1); s.cert.previous = p.toISOString().slice(0, 10); }
   const m = s.members[0]; m.first = r.hoh_first_name || ""; m.last = r.hoh_last_name || ""; m.mi = (r.hoh_middle_initial || "").slice(0, 1);
-  m.dob = isoDate(r.hoh_dob); m.ssn4 = r.hoh_ssn_last4 ? String(parseInt(r.hoh_ssn_last4, 10)).padStart(4, "0") : "";
+  m.dob = isoDate(r.hoh_dob); m.ssn4 = r.hoh_ssn_last4 ? String(r.hoh_ssn_last4).replace(/\D/g, "").slice(-4).padStart(4, "0") : "";
   m.student = r.hoh_ft_student && r.hoh_ft_student !== "NAP" ? r.hoh_ft_student : "NA"; m.phone = r.hoh_phone || "";
   m.race = RACE_MAP[(r.hoh_race || "").toLowerCase()] || ""; m.ethnicity = ETH_MAP[(r.hoh_ethnicity || "").toLowerCase()] || "";
   const code = (r.income_source_code || "").toUpperCase(); const annual = num(r.total_annual_income);
