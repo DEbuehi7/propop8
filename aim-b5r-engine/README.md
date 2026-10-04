@@ -72,5 +72,22 @@ tab can run it in the browser with no server round-trip:
   (`supabase/migrations/007_b5r_pipeline.sql`), behind the admin login at
   `/admin/b5r`. Saving re-runs the simulation on the server from the submitted
   inputs, so stored results are always the engine's own output.
-- The scheduled data job (`run_weekly.py`) still writes to its local SQLite file
-  and is not connected to the web app yet.
+- The weekly data job (`run_scheduled.py`, run by `.github/workflows/b5r-weekly.yml`)
+  keeps the SQLite dataset in a private Supabase Storage bucket (`b5r-data`):
+  restore → `run_weekly.main()` → save + dated backup → record the run in
+  `b5r_job_runs` (migration 008), shown at the top of `/admin/b5r`.
+
+## Scheduled job setup (one time)
+
+1. Run `supabase/migrations/007_b5r_pipeline.sql` then `008_b5r_job_runs.sql`.
+2. GitHub repo → Settings → Secrets and variables → Actions → add:
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CENSUS_API_KEY`, `HUD_API_TOKEN`.
+3. Actions → "AIM-B5R weekly data job" → Run workflow once to test.
+   It then runs Mondays 13:17 UTC. A red run (GitHub emails you) means every
+   context source failed or a stage crashed; individual source failures are
+   recorded but don't fail the run. The Kern/Fresno county-GIS stubs are
+   expected to report "not wired in yet" and are ignored.
+
+The job refuses to run if the saved dataset can't be downloaded (anything other
+than "doesn't exist yet"), so a network blip can never overwrite good data with
+an empty file. Tests: `python3 -m unittest test_scheduled -v` (stub Supabase).

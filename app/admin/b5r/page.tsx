@@ -15,7 +15,11 @@ interface Run { id: string; call: string; reasons: string[]; created_at: string;
 interface Calib { id: string; metric: string; predicted_p50: number; actual: number; error_pct_of_p50: number | null; source: string; logged_at: string; run_id: string }
 interface Detail { deal: DealRow; runs: Run[]; calibration: Calib[]; stats: Record<string, CalibrationStats | null> }
 
+interface JobRun { id: string; started_at: string; ok: boolean; summary: string; trigger: string }
+const STALE_DAYS = 9; // job is weekly; a run older than this means it stopped
+
 export default function B5rPipeline() {
+  const [job, setJob] = useState<JobRun[] | "unavailable" | null>(null);
   const [deals, setDeals] = useState<DealRow[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -35,6 +39,11 @@ export default function B5rPipeline() {
   }, []);
 
   useEffect(() => { loadList(); }, [loadList]);
+  useEffect(() => {
+    fetch("/api/admin/b5r/job", { cache: "no-store" })
+      .then(async (r) => (r.ok ? setJob((await r.json()).runs) : setJob("unavailable")))
+      .catch(() => setJob("unavailable"));
+  }, []);
   useEffect(() => { if (open) { setDetail(null); loadDetail(open); } }, [open, loadDetail]);
 
   async function setStatus(dealId: string, status: string) {
@@ -61,6 +70,15 @@ export default function B5rPipeline() {
       <p style={{ margin: "0 0 18px", fontSize: 13, color: "#8e9ab3", maxWidth: 680, lineHeight: 1.55 }}>
         Deals saved from the <Link href="/brrrr" style={{ color: "#3DDCE8" }}>simulator</Link>. Every saved run is kept as history. Log what actually happened (the NOI you really got, the real rehab spend) and the model's error is tracked per metric, so you know when to widen a range.
       </p>
+      {job !== null && (() => {
+        const last = job === "unavailable" ? null : job[0];
+        const ageDays = last ? (Date.now() - new Date(last.started_at).getTime()) / 864e5 : Infinity;
+        const bad = job === "unavailable" || !last || !last.ok || ageDays > STALE_DAYS;
+        const text = job === "unavailable" ? "Weekly data job: status unavailable (has migration 008 been run?)."
+          : !last ? "Weekly data job: no runs recorded yet. Check the GitHub Actions workflow “AIM-B5R weekly data job”."
+          : `Weekly data job: last run ${new Date(last.started_at).toLocaleDateString()} (${last.trigger}) — ${last.ok ? "healthy" : "UNHEALTHY"}: ${last.summary}${ageDays > STALE_DAYS ? ` — NOT RUN IN ${Math.floor(ageDays)} DAYS, it may have stopped` : ""}`;
+        return <div role="status" style={{ ...card, padding: "10px 12px", marginBottom: 14, borderLeft: `3px solid ${bad ? "#E92AD6" : "#4FD69C"}`, fontSize: 13 }}>{text}</div>;
+      })()}
       {msg && <div role="status" style={{ ...card, padding: "10px 12px", marginBottom: 14 }}>{msg}</div>}
       {deals === null && <p>Loading…</p>}
       {deals?.length === 0 && !msg && <p>No deals yet. Run a simulation and choose “Save to pipeline”.</p>}
