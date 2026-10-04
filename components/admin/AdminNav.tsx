@@ -4,7 +4,7 @@
  * components/admin/AdminNav.tsx
  * ----------------------------------------------------------------
  * One bar under the site header on every /admin page (login excepted),
- * so no admin screen is a dead end: Review, LVN, Plate8, Recert,
+ * so no admin screen is a dead end: Review, LET, Plate8, Recert,
  * BRRRR, Infographics and the public site are all one tap away, and
  * "Admin" always goes back to the launchpad.
  */
@@ -16,7 +16,7 @@ const LINKS = [
   { href: "/admin", label: "Admin home", exact: true },
   { href: "/admin/intakes", label: "Intakes" },
   { href: "/admin/review", label: "Review" },
-  { href: "/admin/lvn", label: "LVN" },
+  { href: "/admin/let", label: "LET" },
   { href: "/plate", label: "Plate8" },
   { href: "/tools/recert", label: "Recert" },
   { href: "/brrrr", label: "BRRRR" },

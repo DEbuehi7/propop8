@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import s from "./lvn.module.css";
+import s from "./let.module.css";
 
-export const metadata: Metadata = { title: "LVN Network · Admin · PropOps8", robots: { index: false } };
+export const metadata: Metadata = { title: "LET Network · Admin · PropOps8", robots: { index: false } };
 
 /* ── EDIT HERE ────────────────────────────────────────────────
    Gate status: "open" | "pending" | "blocked" | "unknown".
@@ -17,31 +17,31 @@ type Node = {
 
 const NODES: Node[] = [
   {
-    id: "LVN-01", name: "Eon", lab: "Eon Lab", glyph: "E",
+    id: "LET-01", name: "Eon", lab: "Eon Lab", glyph: "E",
     location: "Twentynine Palms, CA · 0.26-acre city lot", season: "Spring · experimentation · build",
     role: "Single-level desert house + lab at field-station scale. Campus functions move to a future site.",
     tags: ["29! V2", "Solar Bloom", "EDO Droid Phase 0", "Local-first"],
     gates: [["Zoning", "unknown"], ["Septic", "unknown"], ["Earn-It (revenue)", "pending"]],
     note: "Compute is bounded by real roof, energy and site conditions.",
-    labUrl: "/admin/lvn/eon", boardUrl: null,
+    labUrl: "/admin/let/eon", boardUrl: null,
   },
   {
-    id: "LVN-02", name: "Lumen", lab: "Lumen Lab", glyph: "L",
+    id: "LET-02", name: "Lumen", lab: "Lumen Lab", glyph: "L",
     location: "Crestline, CA · two steep lots", season: "Winter · intimacy · depth",
     role: "Modest two-level seasonal reset cabin, WUI-resilient. Not a compute node under CL V2.",
     tags: ["CL V2", "WUI", "Outage mode", "One calm AIM wall"],
     gates: [["Access", "unknown"], ["Septic / OWTS", "unknown"], ["Lot merge", "unknown"]],
     note: "Title, survey and OWTS feasibility come before any design spend.",
-    labUrl: "/admin/lvn/lumen", boardUrl: null,
+    labUrl: "/admin/let/lumen", boardUrl: null,
   },
   {
-    id: "LVN-03", name: "Transect", lab: "Digital Nomad Node", glyph: "T",
+    id: "LET-03", name: "Transect", lab: "Digital Nomad Node", glyph: "T",
     location: "No fixed site · seasonal circuit", season: "Year-round · scouting · in transit",
     role: "Summers at Crestline, winters at Twentynine Palms, Airbnb in between scouting BRRRR / AIM-B5R land across Kern and Fresno Counties.",
     tags: ["Land-survey circuit", "BRRRR / AIM-B5R scouting"],
     gates: [["Circuit defined", "open"], ["BRRRR / AIM-B5R site (Kern/Fresno)", "pending"]],
     note: "No design or acquisition commitment before the site and business gates clear (Canon 12).",
-    labUrl: "/admin/lvn/transect", boardUrl: null,
+    labUrl: "/admin/let/transect", boardUrl: null,
   },
 ];
 
@@ -57,7 +57,7 @@ export default function LvnNetwork() {
         <header className={s.head}>
           <div>
             <p className={s.kicker}>PropOps8 · Admin · Live-Work Node Network</p>
-            <h1 className={s.h1}>LVN <span>Network</span></h1>
+            <h1 className={s.h1}>LET <span>Network</span></h1>
             <p className={s.sub}>Climate-node field sites and labs: current authoritative board, open gates, quick access to each lab.</p>
           </div>
           <ul className={s.legend}>
@@ -97,7 +97,7 @@ export default function LvnNetwork() {
         </div>
 
         <footer className={s.foot}>
-          AIM / PropOps8 — LVN Network · California · Internal admin view · Rev 1 · 27 Sep 2026<br />
+          AIM / PropOps8 — LET Network · California · Internal admin view · Rev 1 · 27 Sep 2026<br />
           Illustrative design concepts. Not construction documents. Site facts governed by 29_v2 and CL_v2 (21 Sep 2026). No approvals, entitlements or engineering implied.
         </footer>
       </div>

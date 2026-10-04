@@ -1,7 +1,7 @@
 /* Inherits --navy2/--gray/--muted/--cyan/--line/--amber from the page's
    ancestors (LabDetail.module.css's .page, ConceptPoster.module.css's
    .wrap) — this file defines no new palette, same convention as the rest
-   of the LVN admin components. */
+   of the LET admin components. */
 .heading{
   margin:0 0 14px;
   font:600 15px/1.3 ui-monospace,Menlo,monospace;
