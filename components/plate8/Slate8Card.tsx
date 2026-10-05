@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface Slate8CardProps {
   isOnline?: boolean;
@@ -37,9 +38,12 @@ export function Slate8Card({ isOnline = true }: Slate8CardProps) {
       </div>
 
       {/* Action Button */}
-      <button className="w-full bg-purple-500/20 border border-purple-500/50 text-purple-400 py-2 rounded-md text-sm font-medium hover:bg-purple-500/30 transition-colors">
-        Add to Watchlist
-      </button>
+      <Link
+        href="/plate8/slate8"
+        className="w-full bg-purple-500/20 border border-purple-500/50 text-purple-400 py-2 rounded-md text-sm font-medium hover:bg-purple-500/30 transition-colors text-center block"
+      >
+        View Discovery
+      </Link>
     </div>
   );
 }

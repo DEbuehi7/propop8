@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface Late8CardProps {
   isOnline?: boolean;
@@ -37,9 +38,12 @@ export function Late8Card({ isOnline = true }: Late8CardProps) {
       </div>
 
       {/* Action Button */}
-      <button className="w-full bg-teal-500/20 border border-teal-500/50 text-teal-400 py-2 rounded-md text-sm font-medium hover:bg-teal-500/30 transition-colors">
-        Read Latest
-      </button>
+      <Link
+        href="/plate8/late8"
+        className="w-full bg-teal-500/20 border border-teal-500/50 text-teal-400 py-2 rounded-md text-sm font-medium hover:bg-teal-500/30 transition-colors text-center block"
+      >
+        View Feed
+      </Link>
     </div>
   );
 }
