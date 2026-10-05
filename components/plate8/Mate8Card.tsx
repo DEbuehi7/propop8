@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface Mate8CardProps {
   isOnline?: boolean;
@@ -37,9 +38,12 @@ export function Mate8Card({ isOnline = true }: Mate8CardProps) {
       </div>
 
       {/* Action Button */}
-      <button className="w-full bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 py-2 rounded-md text-sm font-medium hover:bg-cyan-500/30 transition-colors">
-        Watch Game
-      </button>
+      <Link
+        href="/plate8/mate8"
+        className="w-full bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 py-2 rounded-md text-sm font-medium hover:bg-cyan-500/30 transition-colors text-center block"
+      >
+        View Analysis
+      </Link>
     </div>
   );
 }

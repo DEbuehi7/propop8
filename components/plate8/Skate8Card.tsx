@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface Skate8CardProps {
   isOnline?: boolean;
@@ -37,9 +38,12 @@ export function Skate8Card({ isOnline = true }: Skate8CardProps) {
       </div>
 
       {/* Action Button */}
-      <button className="w-full bg-red-500/20 border border-red-500/50 text-red-400 py-2 rounded-md text-sm font-medium hover:bg-red-500/30 transition-colors">
-        View Track
-      </button>
+      <Link
+        href="/plate8/skate8"
+        className="w-full bg-red-500/20 border border-red-500/50 text-red-400 py-2 rounded-md text-sm font-medium hover:bg-red-500/30 transition-colors text-center block"
+      >
+        View Telemetry
+      </Link>
     </div>
   );
 }

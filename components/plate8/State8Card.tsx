@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface State8CardProps {
   isOnline?: boolean;
@@ -37,9 +38,12 @@ export function State8Card({ isOnline = true }: State8CardProps) {
       </div>
 
       {/* Action Button */}
-      <button className="w-full bg-magenta-500/20 border border-magenta-500/50 text-magenta-400 py-2 rounded-md text-sm font-medium hover:bg-magenta-500/30 transition-colors">
-        Open Session
-      </button>
+      <Link
+        href="/plate8/state8"
+        className="w-full bg-magenta-500/20 border border-magenta-500/50 text-magenta-400 py-2 rounded-md text-sm font-medium hover:bg-magenta-500/30 transition-colors text-center block"
+      >
+        View Analysis
+      </Link>
     </div>
   );
 }
