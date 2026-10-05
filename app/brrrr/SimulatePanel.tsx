@@ -86,9 +86,19 @@ export default function SimulatePanel() {
   const [errors, setErrors] = useState<string[]>([]);
   const [saved, setSaved] = useState<{ id: string; at: string; dealId: string; call: string; dscr: number; left: number }[]>([]);
   const { state, run } = useB5r();
+  const [pipeMsg, setPipeMsg] = useState<string | null>(null);
   const set = (k: string) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const isExample = form.dealId.startsWith("EXAMPLE") || Object.keys(form).filter((k) => k.endsWith(".provenance")).some((k) => form[k] === "assumed");
 
+  // ?deal=ID loads a saved pipeline deal's inputs (admin only; the API enforces it).
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("deal");
+    if (!id) return;
+    fetch(`/api/admin/b5r/deals/${encodeURIComponent(id)}`, { cache: "no-store" })
+      .then(async (res) => { if (!res.ok) throw new Error(res.status === 401 ? "Sign in to admin to load pipeline deals." : "Deal not found."); return res.json(); })
+      .then((d) => { setForm(toForm(d.deal.inputs)); setPipeMsg(`Loaded ${id} from the pipeline.`); })
+      .catch((e: Error) => setPipeMsg(e.message));
+  }, []);
   useEffect(() => { try { const r = window.localStorage.getItem(SAVE_KEY); if (r) setSaved(JSON.parse(r)); } catch { /* storage unavailable */ } }, []);
 
   function go() {
@@ -104,6 +114,16 @@ export default function SimulatePanel() {
     setSaved(next); try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   }
 
+  async function saveToPipeline() {
+    const deal = fromForm(form, EXAMPLE_DEAL);
+    setPipeMsg("Saving…");
+    try {
+      const res = await fetch("/api/admin/b5r/deals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inputs: deal }) });
+      const body = await res.json().catch(() => ({}));
+      setPipeMsg(res.ok ? `Saved ${body.dealId} to the pipeline (re-simulated on the server: ${body.call.call}).` : res.status === 401 ? "Sign in to admin to save to the pipeline." : body.error ?? "Could not save.");
+    } catch { setPipeMsg("Could not reach the server."); }
+  }
+
   const r = state.result;
   const maxSwing = useMemo(() => Math.max(...(state.tornado ?? []).map((t) => t.swing), 1), [state.tornado]);
 
@@ -112,6 +132,8 @@ export default function SimulatePanel() {
       <div style={{ color: T.slate, fontSize: 12.5, maxWidth: 680, lineHeight: 1.55 }}>
         Monte Carlo underwrite for 5+ unit value-add deals: 5,000 draws, fixed seed, P10 / P50 / P90 with policy gates and a ranked list of what to diligence next. Runs in your browser in the background; nothing is sent anywhere.
       </div>
+
+      {pipeMsg && <div role="status" style={{ marginTop: 14, padding: "10px 14px", borderLeft: `3px solid ${T.cyan}`, background: `${T.cyan}12`, fontSize: 12.5 }}>{pipeMsg}</div>}
 
       {isExample && (
         <div role="note" style={{ marginTop: 14, padding: "10px 14px", borderLeft: `3px solid ${T.magenta}`, background: `${T.magenta}12`, fontSize: 12.5, lineHeight: 1.55 }}>
@@ -224,6 +246,9 @@ export default function SimulatePanel() {
             <div style={{ marginTop: 18 }}>
               <button onClick={save} style={{ background: "none", color: T.gray, border: `1px solid ${T.slate}66`, borderRadius: 3, padding: "9px 16px", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>
                 Save this run (this browser)
+              </button>{" "}
+              <button onClick={saveToPipeline} style={{ background: "none", color: T.cyan, border: `1px solid ${T.cyan}`, borderRadius: 3, padding: "9px 16px", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>
+                Save to pipeline (admin)
               </button>
             </div>
           </>

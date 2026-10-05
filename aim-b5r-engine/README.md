@@ -57,3 +57,37 @@ header if the guess is wrong) and correct the map to match.
   live APIs — this sandbox's own network policy blocks outbound calls
   to them, so real verification has to happen wherever this actually
   runs.
+
+## Web app counterpart (TypeScript)
+
+The underwriting math also lives in the Next.js app so the `/brrrr` Simulate
+tab can run it in the browser with no server round-trip:
+
+- `lib/b5r/engine.ts` — TypeScript port of `aim_b5r_engine.py`. **This Python
+  file stays the reference.** `tests/b5r.test.ts` checks the port against a
+  golden run (`tests/fixtures/b5r_golden.json`); if you change the math here,
+  regenerate that fixture and update the port.
+- `lib/b5r/worker.ts` + `app/brrrr/useB5r.ts` — runs it in a Web Worker.
+- Saved deals, run history and the predicted-vs-actual log live in Supabase
+  (`supabase/migrations/007_b5r_pipeline.sql`), behind the admin login at
+  `/admin/b5r`. Saving re-runs the simulation on the server from the submitted
+  inputs, so stored results are always the engine's own output.
+- The weekly data job (`run_scheduled.py`, run by `.github/workflows/b5r-weekly.yml`)
+  keeps the SQLite dataset in a private Supabase Storage bucket (`b5r-data`):
+  restore → `run_weekly.main()` → save + dated backup → record the run in
+  `b5r_job_runs` (migration 008), shown at the top of `/admin/b5r`.
+
+## Scheduled job setup (one time)
+
+1. Run `supabase/migrations/007_b5r_pipeline.sql` then `008_b5r_job_runs.sql`.
+2. GitHub repo → Settings → Secrets and variables → Actions → add:
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CENSUS_API_KEY`, `HUD_API_TOKEN`.
+3. Actions → "AIM-B5R weekly data job" → Run workflow once to test.
+   It then runs Mondays 13:17 UTC. A red run (GitHub emails you) means every
+   context source failed or a stage crashed; individual source failures are
+   recorded but don't fail the run. The Kern/Fresno county-GIS stubs are
+   expected to report "not wired in yet" and are ignored.
+
+The job refuses to run if the saved dataset can't be downloaded (anything other
+than "doesn't exist yet"), so a network blip can never overwrite good data with
+an empty file. Tests: `python3 -m unittest test_scheduled -v` (stub Supabase).
