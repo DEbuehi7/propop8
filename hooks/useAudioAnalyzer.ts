@@ -1,136 +1,197 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+'use client';
 
-interface AudioAnalyzerState {
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+interface AudioAnalyzerResult {
+  spectrum: number[]; // 60-band frequency spectrum (0-1 normalized)
+  frequency: number; // Peak frequency in Hz
+  volume: number; // RMS volume (0-1)
+}
+
+interface UseAudioAnalyzerReturn {
   isRecording: boolean;
   spectrum: number[];
   frequency: number;
   volume: number;
   error: string | null;
+  startRecording: () => Promise<void>;
+  stopRecording: () => void;
 }
 
-export function useAudioAnalyzer() {
-  const [state, setState] = useState<AudioAnalyzerState>({
-    isRecording: false,
-    spectrum: new Array(60).fill(0),
-    frequency: 0,
-    volume: 0,
-    error: null,
-  });
+/**
+ * Custom React hook for real-time audio analysis using Web Audio API
+ * 
+ * Provides:
+ * - Live FFT spectrum visualization (60 frequency bands)
+ * - Peak frequency detection
+ * - Volume (RMS) measurement
+ * 
+ * Usage:
+ * const { isRecording, spectrum, frequency, volume, startRecording, stopRecording } = useAudioAnalyzer();
+ * 
+ * Features:
+ * - Handles microphone permissions
+ * - Real-time updates via requestAnimationFrame
+ * - Automatic cleanup on unmount
+ * - Error handling for browser compatibility
+ */
+export function useAudioAnalyzer(): UseAudioAnalyzerReturn {
+  const [isRecording, setIsRecording] = useState(false);
+  const [spectrum, setSpectrum] = useState<number[]>(Array(60).fill(0));
+  const [frequency, setFrequency] = useState(0);
+  const [volume, setVolume] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
+  // Persistent references across renders
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const microStreamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationIdRef = useRef<number | null>(null);
 
+  // Frequency band mapping: 60 bands covering 20Hz to 20kHz
+  const frequencyBinRef = useRef<number>(0);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+
+  /**
+   * Update spectrum visualization on each animation frame
+   */
+  const updateSpectrum = useCallback(() => {
+    if (!analyserRef.current || !dataArrayRef.current) return;
+
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+
+    // Map 256 FFT bins to 60 visual bands (log scale for perceptual spacing)
+    const spectrum: number[] = [];
+    for (let i = 0; i < 60; i++) {
+      // Logarithmic mapping: lower frequencies get more resolution
+      const binIndex = Math.floor((Math.pow(2, i / 10) - 1) * 256 / 254);
+      const clampedIndex = Math.min(binIndex, 255);
+      spectrum[i] = dataArrayRef.current[clampedIndex] / 255; // Normalize to 0-1
+    }
+
+    // Calculate peak frequency (dominant frequency)
+    const peakBin = dataArrayRef.current.indexOf(Math.max(...dataArrayRef.current));
+    const nyquist = (audioContextRef.current?.sampleRate || 48000) / 2;
+    const peakFrequency = (peakBin / 256) * nyquist;
+
+    // Calculate volume (RMS of frequency data)
+    const sum = dataArrayRef.current.reduce((acc, val) => acc + val * val, 0);
+    const rms = Math.sqrt(sum / dataArrayRef.current.length) / 255;
+
+    setSpectrum(spectrum);
+    setFrequency(peakFrequency);
+    setVolume(rms);
+
+    // Continue animation loop
+    animationIdRef.current = requestAnimationFrame(updateSpectrum);
+  }, []);
+
+  /**
+   * Start microphone recording and analysis
+   */
   const startRecording = useCallback(async () => {
     try {
-      // Get microphone access
+      // Clean up any existing resources
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (analyserRef.current) {
+        analyserRef.current.disconnect();
+      }
+
+      // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false,
-        }
+          autoGainControl: false, // Disable AGC for consistent volume measurements
+        },
       });
-      microStreamRef.current = stream;
 
-      // Create audio context
+      streamRef.current = stream;
+
+      // Initialize Web Audio API
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = audioContext;
 
-      // Create analyser
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.fftSize = 256; // 256-point FFT = 128 frequency bins
+      analyser.smoothingTimeConstant = 0.8; // Smooth visualizations
+
       analyserRef.current = analyser;
 
       // Connect microphone to analyser
-      const source = audioContext.createMediaStreamSource(stream);
-      sourceRef.current = source;
-      source.connect(analyser);
+      const microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
 
-      setState((prev) => ({ ...prev, isRecording: true, error: null }));
+      // Initialize data array for FFT results
+      dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
 
-      // Start animation loop for spectrum analysis
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      const spectrum = new Array(60).fill(0);
+      setError(null);
+      setIsRecording(true);
 
-      const updateSpectrum = () => {
-        analyser.getByteFrequencyData(dataArray);
-
-        // Map 128 frequency bins to 60 bands (log scale for better visualization)
-        for (let i = 0; i < 60; i++) {
-          const start = Math.floor((i / 60) * bufferLength);
-          const end = Math.floor(((i + 1) / 60) * bufferLength);
-          let sum = 0;
-          for (let j = start; j < end; j++) {
-            sum += dataArray[j];
-          }
-          spectrum[i] = (sum / (end - start)) / 255;
-        }
-
-        // Calculate dominant frequency
-        const maxIndex = dataArray.indexOf(Math.max(...dataArray));
-        const dominantFreq = (maxIndex * audioContext.sampleRate) / (2 * bufferLength);
-
-        // Calculate volume (RMS)
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += (dataArray[i] / 255) ** 2;
-        }
-        const rms = Math.sqrt(sum / bufferLength);
-
-        setState((prev) => ({
-          ...prev,
-          spectrum,
-          frequency: dominantFreq,
-          volume: rms,
-        }));
-
-        animationFrameRef.current = requestAnimationFrame(updateSpectrum);
-      };
-
+      // Start animation loop
       updateSpectrum();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to access microphone';
-      setState((prev) => ({ ...prev, error: message }));
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to access microphone. Please check browser permissions.';
+      setError(errorMessage);
+      setIsRecording(false);
     }
-  }, []);
+  }, [updateSpectrum]);
 
+  /**
+   * Stop recording and cleanup resources
+   */
   const stopRecording = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+    // Stop animation loop
+    if (animationIdRef.current) {
+      cancelAnimationFrame(animationIdRef.current);
+      animationIdRef.current = null;
     }
 
-    if (microStreamRef.current) {
-      microStreamRef.current.getTracks().forEach((track) => track.stop());
+    // Stop microphone stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
 
+    // Disconnect audio nodes
+    if (analyserRef.current) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+    }
+
+    // Close audio context (optional, keeps resources)
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
+      audioContextRef.current = null;
     }
 
-    setState((prev) => ({
-      ...prev,
-      isRecording: false,
-      spectrum: new Array(60).fill(0),
-      frequency: 0,
-      volume: 0,
-    }));
+    // Reset state
+    setIsRecording(false);
+    setSpectrum(Array(60).fill(0));
+    setFrequency(0);
+    setVolume(0);
   }, []);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (state.isRecording) {
+      if (isRecording) {
         stopRecording();
       }
     };
-  }, []);
+  }, [isRecording, stopRecording]);
 
   return {
-    ...state,
+    isRecording,
+    spectrum,
+    frequency,
+    volume,
+    error,
     startRecording,
     stopRecording,
   };
