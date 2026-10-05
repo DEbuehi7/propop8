@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import { recordRead } from '@/lib/sessionMonitoring';
 
 interface SessionData {
   id: string;
@@ -22,13 +23,15 @@ interface SessionDataFull extends SessionData {
 const sessions: Map<string, SessionData> = new Map();
 
 /**
- * Phase 1 of migration: Dual-write strategy
- * - New sessions are written to both Map (cache) and Supabase (persistent)
- * - Reads first check Supabase, fallback to Map if not found
- * - Existing sessions remain in Map until migration phase 2
+ * Phase 2C of migration: Supabase-first reads with monitoring
+ * - New sessions write to both Map (cache) and Supabase (persistent)
+ * - Reads prioritize Supabase (authoritative source)
+ * - Fallback to Map only if Supabase fails or returns no data
+ * - All reads logged to monitoring dashboard for observability
+ * - Target: 95%+ of reads from Supabase within 1 week
  *
- * Phase 2 (future): Switch reads to Supabase first
- * Phase 3 (future): Remove Map, keep only Supabase
+ * After 1 week of stable >95% Supabase adoption:
+ * Phase 3 (future): Remove Map entirely, keep only Supabase
  */
 
 async function saveSessionToSupabase(
@@ -71,7 +74,12 @@ async function saveSessionToSupabase(
   }
 }
 
-async function getSessionFromSupabase(sessionId: string) {
+async function getSessionFromSupabase(
+  sessionId: string,
+  recordMetrics = true
+) {
+  const startTime = Date.now();
+
   try {
     const { data, error } = await supabaseAdmin
       .from('sessions')
@@ -79,13 +87,35 @@ async function getSessionFromSupabase(sessionId: string) {
       .eq('id', sessionId)
       .single();
 
+    const latencyMs = Date.now() - startTime;
+
     if (error) {
+      if (recordMetrics) {
+        recordRead({
+          action: 'get',
+          source: 'supabase',
+          latencyMs,
+          success: false,
+          errorMessage: error.message,
+          fallbackUsed: false,
+        });
+      }
       console.debug('Session not found in Supabase:', error.message);
       return null;
     }
 
     // Map Supabase format to in-memory format
     if (data) {
+      if (recordMetrics) {
+        recordRead({
+          action: 'get',
+          source: 'supabase',
+          latencyMs,
+          success: true,
+          fallbackUsed: false,
+        });
+      }
+
       return {
         id: data.id,
         timestamp: new Date(data.started_at).getTime(),
@@ -99,12 +129,28 @@ async function getSessionFromSupabase(sessionId: string) {
 
     return null;
   } catch (error) {
+    const latencyMs = Date.now() - startTime;
+    if (recordMetrics) {
+      recordRead({
+        action: 'get',
+        source: 'supabase',
+        latencyMs,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        fallbackUsed: false,
+      });
+    }
     console.error('Supabase fetch error:', error);
     return null;
   }
 }
 
-async function listSessionsFromSupabase(limit = 10) {
+async function listSessionsFromSupabase(
+  limit = 10,
+  recordMetrics = true
+) {
+  const startTime = Date.now();
+
   try {
     const { data, error } = await supabaseAdmin
       .from('sessions')
@@ -112,13 +158,25 @@ async function listSessionsFromSupabase(limit = 10) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    const latencyMs = Date.now() - startTime;
+
     if (error) {
+      if (recordMetrics) {
+        recordRead({
+          action: 'list',
+          source: 'supabase',
+          latencyMs,
+          success: false,
+          errorMessage: error.message,
+          fallbackUsed: false,
+        });
+      }
       console.debug('Error listing sessions from Supabase:', error.message);
       return [];
     }
 
     // Map Supabase format to in-memory format
-    return (data || []).map((session) => ({
+    const result = (data || []).map((session) => ({
       id: session.id,
       timestamp: new Date(session.started_at).getTime(),
       duration: session.duration_seconds || 0,
@@ -127,7 +185,30 @@ async function listSessionsFromSupabase(limit = 10) {
       transcriptionAccuracy: session.metadata?.transcriptionAccuracy || 0,
       wordsTranscribed: session.metadata?.wordsTranscribed || 0,
     }));
+
+    if (recordMetrics) {
+      recordRead({
+        action: 'list',
+        source: 'supabase',
+        latencyMs,
+        success: true,
+        fallbackUsed: false,
+      });
+    }
+
+    return result;
   } catch (error) {
+    const latencyMs = Date.now() - startTime;
+    if (recordMetrics) {
+      recordRead({
+        action: 'list',
+        source: 'supabase',
+        latencyMs,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        fallbackUsed: false,
+      });
+    }
     console.error('Supabase list error:', error);
     return [];
   }
@@ -161,12 +242,23 @@ export async function POST(request: NextRequest) {
     if (action === 'get') {
       const { sessionId } = body;
 
-      // Phase 1: Try Supabase first, fallback to Map
+      // Phase 2C: Try Supabase first, fallback to Map with monitoring
       let data = await getSessionFromSupabase(sessionId);
 
-      // Fallback to in-memory cache
+      // Fallback to in-memory cache if Supabase fails
       if (!data) {
-        data = sessions.get(sessionId);
+        const mapData = sessions.get(sessionId);
+        if (mapData) {
+          // Record fallback usage
+          recordRead({
+            action: 'get',
+            source: 'map',
+            latencyMs: 0, // Map is in-memory, negligible latency
+            success: true,
+            fallbackUsed: true,
+          });
+          data = mapData;
+        }
       }
 
       if (!data) {
@@ -177,14 +269,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'list') {
-      // Phase 1: Try Supabase first, fallback to Map
+      // Phase 2C: Try Supabase first, fallback to Map with monitoring
       let sessionList = await listSessionsFromSupabase(10);
 
-      // Fallback to in-memory cache
+      // Fallback to in-memory cache if Supabase returns empty
       if (sessionList.length === 0) {
-        sessionList = Array.from(sessions.values())
+        const mapSessions = Array.from(sessions.values())
           .sort((a, b) => b.timestamp - a.timestamp)
           .slice(0, 10);
+
+        if (mapSessions.length > 0) {
+          // Record fallback usage
+          recordRead({
+            action: 'list',
+            source: 'map',
+            latencyMs: 0, // Map is in-memory, negligible latency
+            success: true,
+            fallbackUsed: true,
+          });
+          sessionList = mapSessions;
+        }
       }
 
       return NextResponse.json({ sessions: sessionList });
@@ -198,14 +302,26 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  // Phase 1: Try Supabase first, fallback to Map
+  // Phase 2C: Try Supabase first, fallback to Map with monitoring
   let sessionList = await listSessionsFromSupabase(10);
 
-  // Fallback to in-memory cache
+  // Fallback to in-memory cache if Supabase returns empty
   if (sessionList.length === 0) {
-    sessionList = Array.from(sessions.values())
+    const mapSessions = Array.from(sessions.values())
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
+
+    if (mapSessions.length > 0) {
+      // Record fallback usage
+      recordRead({
+        action: 'list',
+        source: 'map',
+        latencyMs: 0, // Map is in-memory, negligible latency
+        success: true,
+        fallbackUsed: true,
+      });
+      sessionList = mapSessions;
+    }
   }
 
   return NextResponse.json({ sessions: sessionList });
