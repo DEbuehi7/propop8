@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "poses": [
+    { "id": "neutral_upright", "version": 1, "centerOfMass": "mid",  "support": "both",  "extension": "none",      "tags": ["neutral", "reset"] },
+    { "id": "grounded_crouch", "version": 1, "centerOfMass": "low",  "support": "both",  "extension": "none",      "tags": ["grounded"] },
+    { "id": "stride_left",     "version": 1, "centerOfMass": "mid",  "support": "left",  "extension": "none",      "tags": ["travel"] },
+    { "id": "turn_open",       "version": 1, "centerOfMass": "mid",  "support": "left",  "extension": "bilateral", "tags": ["turn"] },
+    { "id": "extended_reach",  "version": 1, "centerOfMass": "high", "support": "both",  "extension": "bilateral", "tags": ["extension"] },
+    { "id": "freeze_hit",      "version": 1, "centerOfMass": "mid",  "support": "both",  "extension": "bilateral", "tags": ["impact", "freeze"] }
+  ]
+}
