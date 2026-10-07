@@ -111,6 +111,8 @@ export const THRESHOLDS = {
   callbackRatePct: 5,
   agedShareOfOpenPct: 15,
   vendorConcentrationPct: 50,
+  /** Below this dollar baseline a percentage change says nothing (a move from $3 to $24,555 is +818,400%). */
+  minComparableBaseline: 100,
 } as const;
 
 export function pctFmt(n: number): string {

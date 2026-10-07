@@ -64,6 +64,11 @@ export interface DiagnosticCalculator {
   ctaLabel: string;
 }
 
+function baselineTooSmall(label: string): CalcResult {
+  const note = `Baseline too small to compare. A ${label} under $${THRESHOLDS.minComparableBaseline} makes any percentage change meaningless.`;
+  return { ...NO_NUMBER, detail: note, note };
+}
+
 const NO_NUMBER = { headline: "—", headlineIsCost: false } as const;
 
 function impossible(message: string): CalcResult {
@@ -190,6 +195,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     visualProps: (v) => ({ spendLastYear: v.past ?? 0, spendThisMonth: v.current ?? 0 }),
     calculate: (v) => {
       if (!v.past) return { headline: "—", headlineIsCost: false, detail: "Enter last year's spend to see the trend." };
+      if (v.past < THRESHOLDS.minComparableBaseline) return baselineTooSmall("starting spend");
       const change = changePct(v.current, v.past) ?? 0;
       return {
         headline: pctFmt(change),
@@ -211,6 +217,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     visualProps: (v) => ({ thisMonthBill: v.current ?? 0, trailingAverage: v.baseline ?? 0 }),
     calculate: (v) => {
       if (!v.baseline) return { headline: "—", headlineIsCost: false, detail: "Enter your trailing average to see the variance." };
+      if (v.baseline < THRESHOLDS.minComparableBaseline) return baselineTooSmall("trailing average");
       const delta = v.current - v.baseline;
       const pct = changePct(v.current, v.baseline) ?? 0;
       return {

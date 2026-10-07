@@ -134,3 +134,21 @@ test("negative input is rejected before any calculation", () => {
   assert.ok(calculateChecked(c, { total: 1000, topVendor: -5 }).error);
   assert.equal(calculateChecked(c, { total: 1000, topVendor: 500 }).headline, "50%");
 });
+
+test("a baseline under $100 is 'too small to compare', not a percentage", () => {
+  for (const [slug, v] of [
+    ["asset-health-nightmare", { past: 3, current: 24555 }],
+    ["utility-energy-bleed", { current: 78, baseline: 10 }],
+  ] as [string, Record<string, number>][]) {
+    const r = calc(slug, v);
+    assert.ok(r.note?.includes("Baseline too small to compare"), slug);
+    assert.equal(r.headline, "—", slug);
+    assert.equal(r.error, undefined, slug);
+    assert.equal(buildAuditHref(slug, r.headline).includes("calculator_headline"), false, slug);
+  }
+  // The floor itself is comparable.
+  assert.equal(calc("asset-health-nightmare", { past: 100, current: 150 }).headline, "+50%");
+  assert.equal(calc("utility-energy-bleed", { current: 150, baseline: 100 }).headline, "$50");
+  // Zero is still "enter a number", not "too small".
+  assert.equal(calc("asset-health-nightmare", { past: 0, current: 5 }).note, undefined);
+});
