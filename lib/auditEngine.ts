@@ -229,36 +229,185 @@ function monthKey(dateStr: string): string | null {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export function parseCsv(text: string): { rows: LedgerRow[]; droppedRows: number; totalRows: number } {
+/* -------------------------------------------------------------------------- */
+/*  Ledger validation -- one reader for the free screener AND the paid engine  */
+/* -------------------------------------------------------------------------- */
+
+export type IssueCode =
+  | "missing_date"
+  | "missing_vendor"
+  | "missing_category"
+  | "blank_amount"
+  | "unreadable_amount"
+  | "unreadable_date";
+
+export interface RowIssue {
+  /** 1-based row number in the file, header = row 1 (same as LedgerRow.sourceRow). */
+  row: number;
+  code: IssueCode;
+  /** true when this row is excluded from the audit; false when it is read but this cell is unusable. */
+  dropped: boolean;
+  /** The cell as written, for amount and date problems. */
+  value?: string;
+}
+
+export interface LedgerValidation {
+  rows: LedgerRow[];
+  totalRows: number;
+  droppedRows: number;
+  columns: {
+    /** canonical field -> true when a header maps to it */
+    found: Partial<Record<keyof LedgerRow, true>>;
+    missingRequired: string[];
+    optionalPresent: string[];
+    optionalMissing: string[];
+  };
+  amounts: { blank: number; unreadable: number; credits: number; creditTotal: number };
+  dates: { unreadable: number; earliest: number | null; latest: number | null };
+  /** In row order, capped at MAX_ISSUES; issueCounts always covers every row. */
+  issues: RowIssue[];
+  issueCounts: Record<IssueCode, number>;
+  /** Exact duplicates by the engine's own key (date, vendor, category, amount). */
+  duplicates: { groups: number; extraRows: number; extraValue: number };
+}
+
+export const REQUIRED_FIELDS = ["date", "vendor", "category", "amount"] as const;
+const MAX_ISSUES = 500;
+
+/**
+ * Columns -> types -> dates -> row-level errors, in that order, on the SAME
+ * parse the engine uses. parseCsv() below is a wrapper over this, so the free
+ * screener and the paid audit cannot disagree about which rows exist.
+ */
+export function validateLedgerText(text: string): LedgerValidation {
   const parsed = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: true,
     transformHeader: (h) => normHeader(h),
   });
 
+  /* 1. columns */
+  const found: Partial<Record<keyof LedgerRow, true>> = {};
+  for (const h of parsed.meta.fields ?? []) {
+    const f = NORM_ALIASES[h];
+    if (f) found[f] = true;
+  }
+  const allFields = [...new Set(Object.values(HEADER_ALIASES))] as (keyof LedgerRow)[];
+  const missingRequired = REQUIRED_FIELDS.filter((f) => !found[f]) as string[];
+  const optional = allFields.filter((f) => !(REQUIRED_FIELDS as readonly string[]).includes(f));
+
+  /* 2-4. types, dates, row-level errors: one pass, same rule as the engine */
   const rows: LedgerRow[] = [];
+  const issues: RowIssue[] = [];
+  const issueCounts: Record<IssueCode, number> = {
+    missing_date: 0, missing_vendor: 0, missing_category: 0,
+    blank_amount: 0, unreadable_amount: 0, unreadable_date: 0,
+  };
   let dropped = 0;
 
   parsed.data.forEach((raw, i) => {
     const row: Partial<LedgerRow> = { sourceRow: i + 2 }; // +2: 1-based, plus header
+    let amountCell: string | undefined;
     for (const [key, value] of Object.entries(raw)) {
       const mapped = NORM_ALIASES[key];
       if (!mapped) continue;
       if (mapped === "amount") {
+        amountCell = String(value ?? "");
         const num = toAmount(value);
         if (!Number.isNaN(num)) row.amount = num;
       } else {
         (row as Record<string, unknown>)[mapped] = String(value ?? "").trim();
       }
     }
-    if (row.date && row.vendor && row.category && typeof row.amount === "number") {
-      rows.push(row as LedgerRow);
-    } else {
-      dropped++;
+
+    const kept = Boolean(row.date && row.vendor && row.category && typeof row.amount === "number");
+    const note = (code: IssueCode, value?: string) => {
+      issueCounts[code]++;
+      if (issues.length < MAX_ISSUES) issues.push({ row: row.sourceRow!, code, dropped: !kept, value });
+    };
+    if (!row.date) note("missing_date");
+    if (!row.vendor) note("missing_vendor");
+    if (!row.category) note("missing_category");
+    if (typeof row.amount !== "number") {
+      const cell = (amountCell ?? "").trim();
+      if (cell === "") note("blank_amount");
+      else note("unreadable_amount", cell);
     }
+    // A date that is present but unreadable (e.g. 13/05/2026: day-first is never guessed).
+    if (row.date && parseLedgerDate(row.date) === null) note("unreadable_date", row.date);
+
+    if (kept) rows.push(row as LedgerRow);
+    else dropped++;
   });
 
-  return { rows, droppedRows: dropped, totalRows: parsed.data.length };
+  let credits = 0;
+  let creditTotal = 0;
+  let earliest: number | null = null;
+  let latest: number | null = null;
+  for (const r of rows) {
+    if (r.amount < 0) { credits++; creditTotal += r.amount; }
+    const t = parseLedgerDate(r.date);
+    if (t !== null) {
+      if (earliest === null || t < earliest) earliest = t;
+      if (latest === null || t > latest) latest = t;
+    }
+  }
+
+  const dupGroups = groupExactDuplicates(rows);
+  return {
+    rows,
+    totalRows: parsed.data.length,
+    droppedRows: dropped,
+    columns: {
+      found,
+      missingRequired,
+      optionalPresent: optional.filter((f) => found[f]) as string[],
+      optionalMissing: optional.filter((f) => !found[f]) as string[],
+    },
+    amounts: { blank: issueCounts.blank_amount, unreadable: issueCounts.unreadable_amount, credits, creditTotal },
+    dates: { unreadable: issueCounts.unreadable_date, earliest, latest },
+    issues,
+    issueCounts,
+    duplicates: {
+      groups: dupGroups.length,
+      extraRows: dupGroups.reduce((n, g) => n + g.length - 1, 0),
+      extraValue: dupGroups.reduce((n, g) => n + g[0].amount * (g.length - 1), 0),
+    },
+  };
+}
+
+export function parseCsv(text: string): { rows: LedgerRow[]; droppedRows: number; totalRows: number } {
+  const v = validateLedgerText(text);
+  return { rows: v.rows, droppedRows: v.droppedRows, totalRows: v.totalRows };
+}
+
+/** Exact duplicate groups by the engine's key: date, vendor, category, amount
+ *  (positive amounts only). Shared by the engine finding and the screener. */
+export function groupExactDuplicates(rows: LedgerRow[]): LedgerRow[][] {
+  const groups = new Map<string, LedgerRow[]>();
+  for (const r of rows) {
+    if (r.amount <= 0) continue;
+    const key = `${r.date}||${r.vendor}||${r.category}||${r.amount}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(r);
+  }
+  return [...groups.values()].filter((g) => g.length > 1);
+}
+
+/** Vendor -> spend within each category. Concentration is only meaningful
+ *  inside a category, never across the whole ledger. */
+export function vendorTotalsByCategory(rows: LedgerRow[]): Map<string, Map<string, number>> {
+  const byCategory = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    if (!byCategory.has(r.category)) byCategory.set(r.category, new Map());
+    byCategory.get(r.category)!.set(r.vendor, (byCategory.get(r.category)!.get(r.vendor) ?? 0) + r.amount);
+  }
+  return byCategory;
+}
+
+/** Top vendor of a category by spend (ties keep insertion order, as before). */
+export function topVendorOf(vendors: Map<string, number>): [string, number] {
+  return [...vendors.entries()].sort((a, b) => b[1] - a[1])[0];
 }
 
 function money(v: number): string {
@@ -446,12 +595,10 @@ function checkCategoryVariance(rows: LedgerRow[], table: SpendRow[], win: AuditW
 /** Vendor concentration. CALCULATION for the share; the dependency
  *  reading is explicitly framed as a signal, not misconduct. */
 function checkVendorConcentration(rows: LedgerRow[]): Finding[] {
-  const byCategory = new Map<string, Map<string, number>>();
+  const byCategory = vendorTotalsByCategory(rows);
   const rowsFor = new Map<string, LedgerRow[]>();
 
   for (const r of rows) {
-    if (!byCategory.has(r.category)) byCategory.set(r.category, new Map());
-    byCategory.get(r.category)!.set(r.vendor, (byCategory.get(r.category)!.get(r.vendor) ?? 0) + r.amount);
     const key = `${r.category}||${r.vendor}`;
     if (!rowsFor.has(key)) rowsFor.set(key, []);
     rowsFor.get(key)!.push(r);
@@ -461,7 +608,7 @@ function checkVendorConcentration(rows: LedgerRow[]): Finding[] {
   for (const [category, vendors] of byCategory) {
     const total = [...vendors.values()].reduce((a, b) => a + b, 0);
     if (total <= 0) continue;
-    const [topVendor, topAmount] = [...vendors.entries()].sort((a, b) => b[1] - a[1])[0];
+    const [topVendor, topAmount] = topVendorOf(vendors);
     const share = ratio(topAmount, total) ?? 0;
 
     if (share >= 0.6 && vendors.size > 1) {
@@ -491,15 +638,7 @@ function checkVendorConcentration(rows: LedgerRow[]): Finding[] {
  *  Still only candidates -- this schema carries no invoice or work-order
  *  identifier, so an exact match cannot be confirmed from the ledger. */
 function checkExactDuplicates(rows: LedgerRow[]): Finding[] {
-  const groups = new Map<string, LedgerRow[]>();
-  for (const r of rows) {
-    if (r.amount <= 0) continue;
-    const key = `${r.date}||${r.vendor}||${r.category}||${r.amount}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(r);
-  }
-
-  const dupeGroups = [...groups.values()].filter((g) => g.length > 1);
+  const dupeGroups = groupExactDuplicates(rows);
   if (dupeGroups.length === 0) return [];
 
   const extraValue = dupeGroups.reduce((sum, g) => sum + g[0].amount * (g.length - 1), 0);
