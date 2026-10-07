@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getCalculator } from "@/lib/diagnosticCalculators";
+import { describeEvent, type IntakeEvent } from "@/lib/reviewEvents";
 
 interface Intake {
   id: string;
@@ -16,6 +17,8 @@ interface Intake {
   fulfillment_error: string | null;
   files_submitted_at: string | null;
   report_sent_at: string | null;
+  resend_message_id: string | null;
+  review_stage: string;
   calculator_snapshot: {
     calculatorSlug?: string | null;
     calculatorHeadline?: string | null;
@@ -27,10 +30,19 @@ const BADGE: Record<string, string> = {
   paid: "#4FD69C",
   files_received: "#03edff",
   in_analysis: "#8B7CF6",
+  delivered: "#A3A9B8",
+};
+
+const STAGE_TEXT: Record<string, string> = {
+  draft: "review: draft saved",
+  approved: "review: approved, not sent",
+  send_failed: "review: SEND FAILED",
+  sent: "review: sent",
 };
 
 function label(i: Intake): string {
   if (i.report_sent_at) return "report sent";
+  if (i.review_stage === "send_failed") return "send FAILED — retry";
   if (i.status === "submitted") return "HELD — payment unconfirmed";
   if (i.files_submitted_at) return "files received";
   if (i.fulfillment_status === "failed") return "link FAILED";
@@ -42,6 +54,7 @@ export default function IntakesPage() {
   const [rows, setRows] = useState<Intake[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [history, setHistory] = useState<Record<string, IntakeEvent[] | "error">>({});
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/intakes", { cache: "no-store" });
@@ -66,6 +79,30 @@ export default function IntakesPage() {
     setMsg(res.ok ? body.message : body.error ?? "Failed.");
     setBusy(null);
     load();
+  }
+
+  async function retry(i: Intake) {
+    if (!window.confirm(`Re-send the APPROVED report to ${i.email}? It sends the stored PDF the reviewer approved.`)) return;
+    setBusy(i.id); setMsg(null);
+    const res = await fetch("/api/admin/reports/retry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intakeId: i.id }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setMsg(res.ok ? (body.warning ?? `Sent. Resend id ${body.messageId ?? "none returned"}.`) : body.error ?? "Retry failed.");
+    setBusy(null);
+    load();
+  }
+
+  async function toggleHistory(i: Intake) {
+    if (history[i.id]) {
+      setHistory((h) => { const n = { ...h }; delete n[i.id]; return n; });
+      return;
+    }
+    const res = await fetch(`/api/admin/intakes/events?id=${encodeURIComponent(i.id)}`, { cache: "no-store" });
+    const events: IntakeEvent[] | "error" = res.ok ? (await res.json()).events : "error";
+    setHistory((h) => ({ ...h, [i.id]: events }));
   }
 
   return (
@@ -97,6 +134,12 @@ export default function IntakesPage() {
               )}
             </div>
             {i.fulfillment_error && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>Last error: {i.fulfillment_error}</div>}
+            {STAGE_TEXT[i.review_stage] && (
+              <div style={{ fontSize: 12, marginBottom: 8, color: i.review_stage === "send_failed" ? "#f87171" : "#A3A9B8" }}>
+                {STAGE_TEXT[i.review_stage]}
+                {i.resend_message_id ? ` · Resend id ${i.resend_message_id}` : ""}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {i.status === "submitted" && (
                 <button disabled={busy === i.id} onClick={() => act(i, "release")} style={btn("#4FD69C")}>Release (payment confirmed)</button>
@@ -104,7 +147,26 @@ export default function IntakesPage() {
               {(i.status === "paid" || i.status === "files_received") && !i.report_sent_at && (
                 <button disabled={busy === i.id} onClick={() => act(i, "resend")} style={btn("#03edff")}>Resend link</button>
               )}
+              {i.review_stage === "send_failed" && !i.report_sent_at && (
+                <button disabled={busy === i.id} onClick={() => retry(i)} style={btn("#f87171")}>Retry send (approved PDF)</button>
+              )}
+              <button onClick={() => toggleHistory(i)} style={btn("#A3A9B8")}>{history[i.id] ? "Hide history" : "History"}</button>
             </div>
+            {history[i.id] && (
+              <ol style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 12, color: "#A3A9B8", display: "grid", gap: 4 }}>
+                {history[i.id] === "error" ? (
+                  <li>Could not load history.</li>
+                ) : (history[i.id] as IntakeEvent[]).length === 0 ? (
+                  <li>No history recorded yet.</li>
+                ) : (
+                  (history[i.id] as IntakeEvent[]).map((e) => (
+                    <li key={e.id}>
+                      <span style={{ color: "#8e9ab3" }}>{new Date(e.created_at).toLocaleString()}</span> — {describeEvent(e)}
+                    </li>
+                  ))
+                )}
+              </ol>
+            )}
           </div>
         ))}
       </div>
