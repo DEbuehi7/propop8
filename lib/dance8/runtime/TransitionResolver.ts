@@ -15,37 +15,29 @@ export function resolveTransition(
   targetClipId: string,
   graph: TransitionGraph
 ): TransitionResolution {
-  // Find direct edge
+  // The ordinary (non-fallback) edge for this pair, if the graph has one.
   const directEdge = graph.edges.find(
-    (e) => e.from === sourceClipId && e.to === targetClipId && !e.fallbackOnly
+    (e) => e.fromClipId === sourceClipId && e.toClipId === targetClipId && !e.fallbackOnly
   );
 
-  if (directEdge) {
+  if (directEdge && directEdge.compatible !== false) {
     return { edge: directEdge, isFallback: false, reason: "direct edge found" };
   }
 
-  // Check if incompatible
-  const incompatibleEdge = graph.edges.find(
-    (e) => e.from === sourceClipId && e.to === targetClipId && !e.fallbackOnly
-  );
-
-  if (incompatibleEdge && !incompatibleEdge.compatible) {
-    // Try fallback
-    const fallbackEdge = graph.edges.find(
-      (e) => e.from === sourceClipId && e.fallbackOnly && e.compatible !== false
-    );
-    if (fallbackEdge) {
-      return { edge: fallbackEdge, isFallback: true, reason: "direct edge incompatible, using fallback" };
-    }
-  }
-
-  // No direct edge found; try fallback
+  // Direct edge is missing or marked incompatible: use the safe fallback
+  // from the same source clip, if one exists.
   const fallbackEdge = graph.edges.find(
-    (e) => e.from === sourceClipId && e.fallbackOnly && e.compatible !== false
+    (e) => e.fromClipId === sourceClipId && e.fallbackOnly && e.compatible !== false
   );
 
   if (fallbackEdge) {
-    return { edge: fallbackEdge, isFallback: true, reason: "direct edge missing, using fallback" };
+    return {
+      edge: fallbackEdge,
+      isFallback: true,
+      reason: directEdge
+        ? "direct edge incompatible, using fallback"
+        : "direct edge missing, using fallback",
+    };
   }
 
   return { edge: null, isFallback: false, reason: "no edge found" };
