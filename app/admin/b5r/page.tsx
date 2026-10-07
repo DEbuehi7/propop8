@@ -68,7 +68,7 @@ export default function B5rPipeline() {
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "28px 16px 80px", color: "#cbd5e1", fontFamily: "Inter, system-ui, sans-serif" }}>
       <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>AIM-B5R pipeline</h1>
       <p style={{ margin: "0 0 18px", fontSize: 13, color: "#8e9ab3", maxWidth: 680, lineHeight: 1.55 }}>
-        Deals saved from the <Link href="/brrrr" style={{ color: "#3DDCE8" }}>simulator</Link>. Every saved run is kept as history. Log what actually happened (the NOI you really got, the real rehab spend) and the model's error is tracked per metric, so you know when to widen a range.
+        Deals saved from the <Link href="/brrrr" style={{ color: "#3DDCE8" }}>simulator</Link>. Every saved run is kept as history. Log what actually happened (the NOI you really got, the real rehab spend) and the model&apos;s error is tracked per metric, so you know when to widen a range.
       </p>
       {job !== null && (() => {
         const last = job === "unavailable" ? null : job[0];

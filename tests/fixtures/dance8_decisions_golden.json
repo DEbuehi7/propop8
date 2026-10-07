@@ -1,0 +1,30 @@
+[
+  {
+    "t": 0,
+    "gate": "execute",
+    "clip": "neutral_reset_06",
+    "reason": "best_candidate",
+    "aggregate": 0.9
+  },
+  {
+    "t": 0.5,
+    "gate": "kill",
+    "clip": null,
+    "reason": "invalid_input",
+    "aggregate": 0
+  },
+  {
+    "t": 1,
+    "gate": "kill",
+    "clip": null,
+    "reason": "invalid_input",
+    "aggregate": 0
+  },
+  {
+    "t": 1.5,
+    "gate": "kill",
+    "clip": null,
+    "reason": "invalid_input",
+    "aggregate": 0
+  }
+]

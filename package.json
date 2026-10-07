@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx --yes tsx --test tests/*.test.ts"
+    "test": "npx --yes tsx --test tests/*.test.ts tests/dance8/*.test.ts",
+    "typecheck": "next typegen && tsc --noEmit",
+    "verify": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",

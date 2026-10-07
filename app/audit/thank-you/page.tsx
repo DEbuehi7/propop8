@@ -20,6 +20,7 @@
  */
 
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import {
   PALETTE,
   MONO,
@@ -171,9 +172,9 @@ export default function ThankYouPage() {
           </p>
 
           <div style={{ marginTop: 24 }}>
-            <a href="/" className="chaos-ghost inline-flex items-center" style={ghostCtaStyle()}>
+            <Link href="/" className="chaos-ghost inline-flex items-center" style={ghostCtaStyle()}>
               Back to PropOps8
-            </a>
+            </Link>
           </div>
         </div>
       </div>

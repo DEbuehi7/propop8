@@ -1,0 +1,23 @@
+{
+  "id": "policy-v1", "schemaVersion": 1, "version": 1,
+  "executeMin": 0.70, "deferMin": 0.45, "escalateMin": 0.20,
+  "minimumSignalConfidence": 0.50,
+  "minimumMappingConfidence": 0.50,
+  "minimumContinuityConfidence": 0.40,
+  "minimumPolicyConfidence": 0.50,
+  "transitionMaxCost": 0.70,
+  "defaultBlendMs": 250,
+  "maximumBlendMs": 500,
+  "planningHorizonBeats": 8,
+  "planningHorizonMs": 4000,
+  "maxLookaheadFrames": 16,
+  "scoringWeights": {
+    "tempo": 0.15, "energy": 0.20, "section": 0.20,
+    "zone": 0.10, "continuity": 0.25, "novelty": 0.10,
+    "transitionCost": 0.10
+  },
+  "safeFallbackClipIds": ["neutral_reset_06"],
+  "outputLatencyCompensationMs": 0,
+  "repetitionPenaltyPerUse": 0.15,
+  "repetitionWindowDecisions": 4
+}

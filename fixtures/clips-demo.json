@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "id": "groove_grounded_01", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 4, "bpmRange": [100, 130], "energyRange": [0.2, 0.6],
+      "entryPose": "neutral_upright", "exitPose": "grounded_crouch",
+      "dominantZones": ["hips", "legs"], "travel": [0, 0], "rotationDeg": 0, "level": "low",
+      "tags": ["groove", "grounded"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    },
+    {
+      "id": "move_directional_02", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 4, "bpmRange": [100, 140], "energyRange": [0.4, 0.7],
+      "entryPose": "grounded_crouch", "exitPose": "stride_left",
+      "dominantZones": ["legs", "feet"], "travel": [1, 0], "rotationDeg": 0, "level": "mid",
+      "tags": ["travel", "directional"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    },
+    {
+      "id": "turn_03", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 4, "bpmRange": [100, 140], "energyRange": [0.5, 0.8],
+      "entryPose": "stride_left", "exitPose": "turn_open",
+      "dominantZones": ["torso", "legs"], "travel": [0, 0], "rotationDeg": 180, "level": "mid",
+      "tags": ["turn"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    },
+    {
+      "id": "extension_04", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 4, "bpmRange": [100, 140], "energyRange": [0.6, 0.9],
+      "entryPose": "turn_open", "exitPose": "extended_reach",
+      "dominantZones": ["arms", "torso"], "travel": [0, 0], "rotationDeg": 0, "level": "high",
+      "tags": ["extension", "arms"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    },
+    {
+      "id": "impact_freeze_05", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 2, "bpmRange": [100, 150], "energyRange": [0.75, 1.0],
+      "entryPose": "extended_reach", "exitPose": "freeze_hit",
+      "dominantZones": ["arms", "torso", "head"], "travel": [0, 0], "rotationDeg": 0, "level": "mid",
+      "tags": ["impact", "freeze"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    },
+    {
+      "id": "neutral_reset_06", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+      "durationBeats": 2, "bpmRange": [60, 200], "energyRange": [0.0, 1.0],
+      "entryPose": "neutral_upright", "exitPose": "neutral_upright",
+      "dominantZones": ["torso"], "travel": [0, 0], "rotationDeg": 0, "level": "mid",
+      "tags": ["neutral", "reset", "fallback"],
+      "source": { "type": "human_authored", "createdBy": "fixture", "createdAt": "2026-10-03T00:00:00Z", "license": "proprietary" }
+    }
+  ]
+}

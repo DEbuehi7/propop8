@@ -1,0 +1,21 @@
+{
+  "id": "graph-demo", "schemaVersion": 1, "version": 1, "dancerFamily": "dancer_a",
+  "edges": [
+    { "id": "e01", "fromClipId": "groove_grounded_01", "toClipId": "move_directional_02", "cost": 0.2, "blendMs": 250, "compatible": true },
+    { "id": "e02", "fromClipId": "move_directional_02", "toClipId": "turn_03",            "cost": 0.3, "blendMs": 250, "compatible": true },
+    { "id": "e03", "fromClipId": "turn_03",             "toClipId": "extension_04",       "cost": 0.3, "blendMs": 300, "compatible": true },
+    { "id": "e04", "fromClipId": "extension_04",        "toClipId": "impact_freeze_05",   "cost": 0.2, "blendMs": 150, "compatible": true },
+    { "id": "e05", "fromClipId": "impact_freeze_05",    "toClipId": "groove_grounded_01", "cost": 0.4, "blendMs": 350, "compatible": true },
+    { "id": "e06", "fromClipId": "move_directional_02", "toClipId": "groove_grounded_01", "cost": 0.3, "blendMs": 250, "compatible": true },
+    { "id": "e07", "fromClipId": "extension_04",        "toClipId": "move_directional_02","cost": 0.4, "blendMs": 300, "compatible": true },
+    { "id": "e08", "fromClipId": "neutral_reset_06",    "toClipId": "groove_grounded_01", "cost": 0.2, "blendMs": 250, "compatible": true },
+    { "id": "e09", "fromClipId": "groove_grounded_01",  "toClipId": "extension_04",       "cost": 0.6, "blendMs": 300, "compatible": true, "bridgeClipId": "turn_03", "reason": "bridged via turn" },
+    { "id": "x01", "fromClipId": "turn_03",             "toClipId": "groove_grounded_01", "cost": 1.0, "blendMs": 0,   "compatible": false, "reason": "support leg mismatch" },
+    { "id": "x02", "fromClipId": "move_directional_02", "toClipId": "impact_freeze_05",   "cost": 1.0, "blendMs": 0,   "compatible": false, "reason": "energy ramp too abrupt" },
+    { "id": "f01", "fromClipId": "groove_grounded_01",  "toClipId": "neutral_reset_06",   "cost": 0.5, "blendMs": 400, "compatible": true, "fallbackOnly": true },
+    { "id": "f02", "fromClipId": "move_directional_02", "toClipId": "neutral_reset_06",   "cost": 0.5, "blendMs": 400, "compatible": true, "fallbackOnly": true },
+    { "id": "f03", "fromClipId": "turn_03",             "toClipId": "neutral_reset_06",   "cost": 0.5, "blendMs": 400, "compatible": true, "fallbackOnly": true },
+    { "id": "f04", "fromClipId": "extension_04",        "toClipId": "neutral_reset_06",   "cost": 0.5, "blendMs": 400, "compatible": true, "fallbackOnly": true },
+    { "id": "f05", "fromClipId": "impact_freeze_05",    "toClipId": "neutral_reset_06",   "cost": 0.5, "blendMs": 400, "compatible": true, "fallbackOnly": true }
+  ]
+}

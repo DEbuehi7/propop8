@@ -188,6 +188,58 @@ interface Pending {
 /*  Component                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------ shells */
+/* Module-level on purpose: components defined inside UploadClient get a new
+   identity every render, which remounts the whole page (file input, focus,
+   drag state) on every progress tick. */
+
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        background: PALETTE.void,
+        padding: '48px 16px',
+        fontFamily: DISPLAY,
+      }}
+    >
+      <style>{sharedCss}</style>
+      <div className="w-full mx-auto overflow-hidden" style={{ ...shellStyle, maxWidth: 680 }}>
+        <div className="p-5 sm:p-7" style={bodyStyle}>
+          {children}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function Message({ title, body }: { title: string; body: string }) {
+  return (
+    <Wrapper>
+      <div className="inline-flex items-center" style={eyebrowTab}>
+        PropOps8 // Secure upload
+      </div>
+      <h1 className="uppercase" style={{ ...headingStyle, margin: '18px 0 12px' }}>
+        {title}
+      </h1>
+      <p style={{ fontSize: 15.5, lineHeight: 1.6, color: hexA('#ffffff', 0.68), margin: 0 }}>
+        {body}
+      </p>
+      <p
+        style={{
+          fontFamily: MONO,
+          fontSize: 12,
+          lineHeight: 1.7,
+          color: hexA('#ffffff', 0.5),
+          marginTop: 20,
+        }}
+      >
+        Email daniel@propops8.com and I&rsquo;ll sort it out the same day.
+      </p>
+    </Wrapper>
+  );
+}
+
 export default function UploadClient({ token }: { token: string }) {
   const [session, setSession] = useState<SessionState | null>(null);
   const [loadError, setLoadError] = useState<'invalid' | 'unpaid' | 'expired' | 'network' | null>(null);
@@ -331,49 +383,6 @@ export default function UploadClient({ token }: { token: string }) {
   );
 
   /* ------------------------------------------------------------ shells */
-
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: PALETTE.void,
-        padding: '48px 16px',
-        fontFamily: DISPLAY,
-      }}
-    >
-      <style>{sharedCss}</style>
-      <div className="w-full mx-auto overflow-hidden" style={{ ...shellStyle, maxWidth: 680 }}>
-        <div className="p-5 sm:p-7" style={bodyStyle}>
-          {children}
-        </div>
-      </div>
-    </main>
-  );
-
-  const Message = ({ title, body }: { title: string; body: string }) => (
-    <Wrapper>
-      <div className="inline-flex items-center" style={eyebrowTab}>
-        PropOps8 // Secure upload
-      </div>
-      <h1 className="uppercase" style={{ ...headingStyle, margin: '18px 0 12px' }}>
-        {title}
-      </h1>
-      <p style={{ fontSize: 15.5, lineHeight: 1.6, color: hexA('#ffffff', 0.68), margin: 0 }}>
-        {body}
-      </p>
-      <p
-        style={{
-          fontFamily: MONO,
-          fontSize: 12,
-          lineHeight: 1.7,
-          color: hexA('#ffffff', 0.5),
-          marginTop: 20,
-        }}
-      >
-        Email daniel@propops8.com and I&rsquo;ll sort it out the same day.
-      </p>
-    </Wrapper>
-  );
 
   if (loadError === 'invalid')
     return (

@@ -72,8 +72,8 @@ export default function DeadlineGraveyardVisual({
       </div>
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
-        Nothing here looks like an emergency individually — that's usually how the aged share gets
-        this large. A ticket that's been open 45 days doesn't announce itself the way a new one does.
+        Nothing here looks like an emergency individually — that&apos;s usually how the aged share gets
+        this large. A ticket that&apos;s been open 45 days doesn&apos;t announce itself the way a new one does.
       </p>
     </div>
   );

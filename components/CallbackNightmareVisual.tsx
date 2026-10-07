@@ -85,8 +85,8 @@ export default function CallbackNightmareVisual({
       </div>
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
-        A reopened ticket doesn't prove the original fix failed — a delivery, a resident schedule
-        conflict, a second unrelated issue can all look identical here. It's a reason to check the
+        A reopened ticket doesn&apos;t prove the original fix failed — a delivery, a resident schedule
+        conflict, a second unrelated issue can all look identical here. It&apos;s a reason to check the
         pattern, not a verdict on any one repair.
       </p>
     </div>

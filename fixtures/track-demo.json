@@ -1,0 +1,43 @@
+{
+  "analysisProfile": {
+    "id": "profile-demo-1", "schemaVersion": 1,
+    "trackId": "suno-neon-drift", "sourceHash": "REPLACE_WITH_SHA256",
+    "analyzerId": "fixture-analyzer", "analyzerVersion": "1.0.0",
+    "sampleRate": 44100, "fftSize": 2048, "hopSize": 512,
+    "estimatedAnalysisLatencyMs": 0, "generatedAt": "2026-10-03T00:00:00Z"
+  },
+  "frames": [
+    { "t": 0.0,  "beatIndex": 0, "barIndex": 0, "beatPhase": 0.0,
+      "bpm": {"value": 124, "confidence": 0.9, "status": "known"},
+      "energy": {"value": 0.3, "confidence": 0.9, "status": "known"},
+      "onset": {"value": 0.8, "confidence": 0.9, "status": "known"},
+      "low": {"value": 0.5, "confidence": 0.9, "status": "known"},
+      "mid": {"value": 0.3, "confidence": 0.9, "status": "known"},
+      "high": {"value": 0.1, "confidence": 0.9, "status": "known"},
+      "section": "intro", "analysisProfileId": "profile-demo-1" },
+    { "t": 0.5,  "beatIndex": 1, "barIndex": 0, "beatPhase": 0.0,
+      "bpm": {"value": 124, "confidence": 0.9, "status": "known"},
+      "energy": {"value": 0, "confidence": 0.9, "status": "known"},
+      "onset": {"value": 0, "confidence": 0.9, "status": "known"},
+      "low": {"value": 0, "confidence": 0.9, "status": "known"},
+      "mid": {"value": 0, "confidence": 0.9, "status": "known"},
+      "high": {"value": 0, "confidence": 0.9, "status": "known"},
+      "section": "break", "analysisProfileId": "profile-demo-1" },
+    { "t": 1.0,  "beatIndex": 2, "barIndex": 0, "beatPhase": 0.0,
+      "bpm": {"value": null, "confidence": 0, "status": "unknown"},
+      "energy": {"value": 0.5, "confidence": 0.8, "status": "known"},
+      "onset": {"value": 0.5, "confidence": 0.8, "status": "known"},
+      "low": {"value": 0.4, "confidence": 0.8, "status": "known"},
+      "mid": {"value": 0.4, "confidence": 0.8, "status": "known"},
+      "high": {"value": 0.2, "confidence": 0.8, "status": "known"},
+      "section": "verse", "analysisProfileId": "profile-demo-1" },
+    { "t": 1.5,  "beatIndex": 3, "barIndex": 0, "beatPhase": 0.0,
+      "bpm": {"value": 124, "confidence": 0.9, "status": "known"},
+      "energy": {"value": null, "confidence": 0, "status": "invalid"},
+      "onset": {"value": 0.5, "confidence": 0.8, "status": "known"},
+      "low": {"value": 0.4, "confidence": 0.8, "status": "known"},
+      "mid": {"value": 0.4, "confidence": 0.8, "status": "known"},
+      "high": {"value": 0.2, "confidence": 0.8, "status": "known"},
+      "section": "verse", "analysisProfileId": "profile-demo-1" }
+  ]
+}

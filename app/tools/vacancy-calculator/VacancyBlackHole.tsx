@@ -59,6 +59,8 @@ import {
   ctaStyle,
   sharedCss,
 } from '@/lib/chaosTokens';
+import { computeVacancy } from '@/lib/calcMath';
+import { buildAuditHref } from '@/lib/calculatorHandoff';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -200,23 +202,7 @@ export default function VacancyBlackHole({
 
   const metrics: Metrics | null = useMemo(() => {
     if (!valid) return null;
-    const operationalDays = daysBetween(moveOutDate, readyDate) ?? 0;
-    const leasingDays = daysBetween(readyDate, leaseDate) ?? 0;
-    const totalDays = operationalDays + leasingDays;
-    const dailyRent = monthlyRent / daysPerMonth;
-    const operationalExposure = Math.round(operationalDays * dailyRent);
-    const totalExposure = Math.round(totalDays * dailyRent);
-    return {
-      operationalDays,
-      leasingDays,
-      totalDays,
-      dailyRent: Math.round(dailyRent),
-      operationalExposure,
-      leasingExposure: totalExposure - operationalExposure,
-      totalExposure,
-      operationalPercent: totalDays > 0 ? (operationalDays / totalDays) * 100 : 0,
-      leasingPercent: totalDays > 0 ? (leasingDays / totalDays) * 100 : 0,
-    };
+    return computeVacancy({ monthlyRent, moveOut: moveOutDate, readyDate, leaseDate, daysPerMonth });
   }, [valid, monthlyRent, moveOutDate, readyDate, leaseDate, daysPerMonth]);
 
   const shareUrl = useMemo(() => {
@@ -241,7 +227,18 @@ export default function VacancyBlackHole({
   }, [shareUrl]);
 
   const ctaHref = metrics
-    ? `${intakeHref}?type=vacancy&days=${metrics.operationalDays}&exposure=${metrics.operationalExposure}&total=${metrics.totalExposure}`
+    ? buildAuditHref(
+        'vacancy-black-hole',
+        `${metrics.operationalDays} days`,
+        {
+          type: 'vacancy',
+          days: metrics.operationalDays,
+          exposure: metrics.operationalExposure,
+          totalDays: metrics.totalDays, // AuditForm reads totalDays and forwards it to Tally as total_days
+          total: metrics.totalExposure,
+        },
+        intakeHref,
+      )
     : intakeHref;
 
   return (

@@ -104,6 +104,25 @@ function initialData(html: string): unknown | null {
   return null;
 }
 
+interface YtText {
+  runs?: { text?: string }[];
+  simpleText?: string;
+  accessibility?: { accessibilityData?: { label?: string } };
+}
+interface YtVideoRenderer {
+  videoId?: unknown;
+  title?: YtText;
+  ownerText?: YtText;
+  longBylineText?: YtText;
+  shortBylineText?: YtText;
+  lengthText?: { simpleText?: string };
+  lengthSeconds?: string | number;
+}
+interface YtSearchItem {
+  id?: { videoId?: string };
+  snippet?: { title?: string; channelTitle?: string };
+}
+
 /** Collect every videoRenderer in the tree, in document order. */
 function collectVideos(node: unknown, out: Item[], cap: number): void {
   if (out.length >= cap || node == null || typeof node !== 'object') return;
@@ -111,12 +130,15 @@ function collectVideos(node: unknown, out: Item[], cap: number): void {
     for (const v of node) collectVideos(v, out, cap);
     return;
   }
-  const o = node as Record<string, any>;
-  const vr = o.videoRenderer || o.compactVideoRenderer || o.gridVideoRenderer;
-  if (vr && typeof vr.videoId === 'string' && ID_RE.test(vr.videoId)) {
-    if (!out.some(x => x.id === vr.videoId)) {
+  const o = node as Record<string, unknown>;
+  const vr = (o.videoRenderer || o.compactVideoRenderer || o.gridVideoRenderer) as
+    | YtVideoRenderer
+    | undefined;
+  const videoId = vr?.videoId;
+  if (vr && typeof videoId === 'string' && ID_RE.test(videoId)) {
+    if (!out.some(x => x.id === videoId)) {
       out.push({
-        id: vr.videoId,
+        id: videoId,
         title:
           vr.title?.runs?.[0]?.text ??
           vr.title?.simpleText ??
@@ -143,9 +165,9 @@ async function searchOfficial(q: string, n: number, key: string): Promise<Item[]
   if (!r.ok) throw new Error(`data api ${r.status}`);
   const j = await r.json();
   return (j.items || [])
-    .filter((it: any) => it?.id?.videoId)
-    .map((it: any) => ({
-      id: it.id.videoId,
+    .filter((it: YtSearchItem) => it?.id?.videoId)
+    .map((it: YtSearchItem) => ({
+      id: it.id!.videoId,
       title: it.snippet?.title || '',
       author: it.snippet?.channelTitle || '',
       dur: 0,

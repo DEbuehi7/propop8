@@ -25,14 +25,10 @@ import {
   ghostCtaStyle,
   hexA,
 } from "@/lib/chaosTokens";
-import { getCalculator, type CalcInput } from "@/lib/diagnosticCalculators";
-import VendorMoneyPitVisual from "./VendorMoneyPitVisual";
-import CallbackNightmareVisual from "./CallbackNightmareVisual";
-import DeadlineGraveyardVisual from "./DeadlineGraveyardVisual";
-import AssetHealthNightmareVisual from "./AssetHealthNightmareVisual";
-import UtilityEnergyBleedVisual from "./UtilityEnergyBleedVisual";
-import OperationsChaosIndexVisual from "./OperationsChaosIndexVisual";
-import AutomationGraveyardVisual from "./AutomationGraveyardVisual";
+import { getCalculator, calculateChecked, type CalcInput } from "@/lib/diagnosticCalculators";
+import { buildAuditHref } from "@/lib/calculatorHandoff";
+import { LINKS } from "@/lib/products";
+import { CALCULATOR_VISUALS } from "./calculatorVisuals";
 
 export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
   const calc = getCalculator(slug);
@@ -46,70 +42,43 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
 
   if (!calc) return null; // page.tsx already calls notFound() before this renders
 
-  const result = calc.calculate(values);
+  const result = calculateChecked(calc, values);
   const resultColor = result.headlineIsCost ? PALETTE.pink : PALETTE.mint;
 
+  // Only calculators whose CTA goes to the audit intake carry the handoff;
+  // product CTAs (kits) link out unchanged. "—" means no usable number yet.
+  const ctaHref =
+    calc.ctaHref === LINKS.audit && result.headline !== "—"
+      ? buildAuditHref(calc.slug, result.headline)
+      : calc.ctaHref;
+
   function renderVisual() {
-    switch (slug) {
-      case "vendor-money-pit":
-        return (
-          <VendorMoneyPitVisual
-            totalSpend={values.total ?? 0}
-            topVendorSpend={values.topVendor ?? 0}
-          />
-        );
-      case "callback-nightmare":
-        return (
-          <CallbackNightmareVisual
-            totalWorkOrders={values.closed ?? 0}
-            reopenedWithin30={values.reopened ?? 0}
-          />
-        );
-      case "deadline-graveyard":
-        return (
-          <DeadlineGraveyardVisual
-            totalOpen={values.open ?? 0}
-            agedPast30={values.aged ?? 0}
-          />
-        );
-      case "asset-health-nightmare":
-        return (
-          <AssetHealthNightmareVisual
-            spendLastYear={values.past ?? 0}
-            spendThisMonth={values.current ?? 0}
-          />
-        );
-      case "utility-energy-bleed":
-        return (
-          <UtilityEnergyBleedVisual
-            thisMonthBill={values.current ?? 0}
-            trailingAverage={values.baseline ?? 0}
-          />
-        );
-      case "operations-chaos-index":
-        return (
-          <OperationsChaosIndexVisual
-            issueCount={values.count ?? 0}
-            avgCostPerIssue={values.avgCost || 150}
-          />
-        );
-      case "automation-graveyard":
-        return (
-          <AutomationGraveyardVisual
-            frequency={values.frequency ?? 0}
-            daysSince={values.daysSince ?? 0}
-          />
-        );
-      default:
-        return (
-          <div style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}>
-            <div style={figureStyle(resultColor)}>{result.headline}</div>
-            <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-              {result.detail}
-            </p>
-          </div>
-        );
+    // Impossible input, or a result that would not mean anything: say so,
+    // and draw no number and no chart.
+    const message = result.error ?? result.note;
+    if (message) {
+      return (
+        <div
+          role={result.error ? "alert" : "status"}
+          style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}
+        >
+          <div style={figureStyle(result.error ? PALETTE.pink : PALETTE.label)}>—</div>
+          <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+            {message}
+          </p>
+        </div>
+      );
     }
+    const Visual = CALCULATOR_VISUALS[slug];
+    if (Visual && calc) return <Visual {...calc.visualProps(values)} />;
+    return (
+      <div style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}>
+        <div style={figureStyle(resultColor)}>{result.headline}</div>
+        <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+          {result.detail}
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -161,7 +130,7 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
       {renderVisual()}
 
       <div style={{ marginTop: 28, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-        <a href={calc.ctaHref} className="chaos-ghost" style={ghostCtaStyle()}>
+        <a href={ctaHref} className="chaos-ghost" style={ghostCtaStyle()}>
           {calc.ctaLabel}
         </a>
       </div>
