@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { randomUUID } from 'node:crypto';
 import { verifySessionCookie, COOKIE_NAME } from '@/lib/adminAuth';
 import {
   validateReviewPayload,
@@ -36,7 +37,7 @@ const supabase = createClient(
 );
 
 /** Engine output plus edits for a big ledger is well under this; anything near it is a bug. */
-const MAX_BODY_CHARS = 4_000_000;
+const MAX_BODY_CHARS = 12_000_000;
 
 export async function POST(req: Request) {
   const store = await cookies();
@@ -87,9 +88,29 @@ export async function POST(req: Request) {
 
   const toStage: ReviewStage = p.approved ? 'approved' : 'draft';
 
+  // Store the approved bytes first. audit_reviews is append-only, so the path has
+  // to be known at insert time; the id is chosen here rather than by the database.
+  const reviewId = randomUUID();
+  let pdfPath: string | null = null;
+  if (p.approved && p.pdfBase64) {
+    pdfPath = `${p.intakeId}/${reviewId}.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from('audit-reports')
+      .upload(pdfPath, Buffer.from(p.pdfBase64, 'base64'), { contentType: 'application/pdf', upsert: false });
+    if (uploadError) {
+      console.error('[admin/reviews] pdf upload failed', uploadError);
+      return NextResponse.json(
+        { error: 'The approved PDF could not be stored (has migration 010 been run?). Nothing was saved.' },
+        { status: 500 }
+      );
+    }
+  }
+
   const { data: review, error: reviewError } = await supabase
     .from('audit_reviews')
     .insert({
+      id: reviewId,
+      pdf_path: pdfPath,
       intake_id: p.intakeId,
       engine_version: p.engineVersion,
       engine_output: p.engineOutput,
@@ -103,6 +124,7 @@ export async function POST(req: Request) {
 
   if (reviewError || !review) {
     console.error('[admin/reviews] review insert failed', reviewError);
+    if (pdfPath) await supabase.storage.from('audit-reports').remove([pdfPath]);
     return NextResponse.json({ error: 'Review was not saved. Nothing changed.' }, { status: 500 });
   }
 

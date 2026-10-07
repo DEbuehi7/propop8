@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { validateReviewPayload, canSaveFrom } from "../lib/reviewPayload";
 import { ENGINE_VERSION } from "../lib/engineVersion";
 import { GATE } from "../lib/reviewGate";
+import { sha256Hex } from "../lib/sendGuard";
+
+const PDF = Buffer.from("%PDF synthetic approved bytes");
 
 const good = () => ({
   intakeId: "00000000-0000-4000-8000-0000000000a1",
@@ -11,7 +14,8 @@ const good = () => ({
   reviewerEdits: { meta: { propertyName: "Synthetic Court" }, findings: [{ id: "f1" }] },
   gateChecks: GATE.map(() => true),
   approved: true,
-  pdfSha256: "a".repeat(64),
+  pdfSha256: sha256Hex(PDF),
+  pdfBase64: PDF.toString("base64"),
 });
 
 test("a complete approved payload is accepted and keeps engine output and edits separate", () => {
@@ -24,7 +28,7 @@ test("a complete approved payload is accepted and keeps engine output and edits 
 });
 
 test("a draft needs no hash and no ticked gate", () => {
-  const r = validateReviewPayload({ ...good(), approved: false, pdfSha256: undefined, gateChecks: GATE.map(() => false) });
+  const r = validateReviewPayload({ ...good(), approved: false, pdfSha256: undefined, pdfBase64: undefined, gateChecks: GATE.map(() => false) });
   assert.equal(r.ok, true);
 });
 
@@ -40,6 +44,18 @@ test("approval without the PDF hash is refused", () => {
   const r = validateReviewPayload({ ...good(), pdfSha256: undefined });
   assert.equal(r.ok, false);
   if (!r.ok) assert.equal(r.status, 422);
+});
+
+test("approval without the PDF bytes is refused (retry needs them)", () => {
+  const r = validateReviewPayload({ ...good(), pdfBase64: undefined });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.status, 422);
+});
+
+test("a hash that does not describe the supplied PDF is refused", () => {
+  const r = validateReviewPayload({ ...good(), pdfSha256: "b".repeat(64) });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /does not match/);
 });
 
 test("a malformed hash is refused", () => {

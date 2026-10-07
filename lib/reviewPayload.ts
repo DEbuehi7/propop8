@@ -15,6 +15,10 @@
 
 import { ENGINE_VERSION } from "./engineVersion";
 import { GATE } from "./reviewGate";
+import { sha256Hex } from "./sendGuard";
+
+/** ~8M base64 chars is ~6 MB of PDF; the bucket allows 5 MB. A ledger review is tens of KB. */
+export const MAX_PDF_BASE64_CHARS = 6_000_000;
 
 export interface ReviewPayload {
   intakeId: string;
@@ -24,6 +28,8 @@ export interface ReviewPayload {
   gateChecks: boolean[];
   approved: boolean;
   pdfSha256: string | null;
+  /** The exact approved PDF, stored privately so a failed send can be retried with the same bytes. */
+  pdfBase64: string | null;
 }
 
 export type PayloadResult = { ok: true; value: ReviewPayload } | { ok: false; error: string; status: number };
@@ -39,7 +45,7 @@ const fail = (error: string, status = 400): PayloadResult => ({ ok: false, error
 export function validateReviewPayload(body: unknown): PayloadResult {
   if (!isObj(body)) return fail("Malformed request body");
 
-  const { intakeId, engineVersion, engineOutput, reviewerEdits, gateChecks, approved, pdfSha256 } = body;
+  const { intakeId, engineVersion, engineOutput, reviewerEdits, gateChecks, approved, pdfSha256, pdfBase64 } = body;
 
   if (typeof intakeId !== "string" || !UUID.test(intakeId)) return fail("intakeId must be a UUID");
 
@@ -73,9 +79,21 @@ export function validateReviewPayload(body: unknown): PayloadResult {
     hash = pdfSha256;
   }
 
+  let pdf: string | null = null;
+  if (pdfBase64 !== undefined && pdfBase64 !== null) {
+    if (typeof pdfBase64 !== "string" || pdfBase64.length === 0) return fail("pdfBase64 must be a base64 string");
+    if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return fail("PDF too large to store", 413);
+    pdf = pdfBase64;
+  }
+
   if (approved) {
     if (!gateChecks.every(Boolean)) return fail("Every release-gate item must be ticked to approve", 422);
     if (!hash) return fail("An approved review needs the SHA-256 of the exact PDF", 422);
+    if (!pdf) return fail("An approved review needs the PDF itself, so a failed send can be retried", 422);
+    // The fingerprint must describe the bytes actually sent to us, not a different file.
+    if (sha256Hex(Buffer.from(pdf, "base64")) !== hash) {
+      return fail("pdfSha256 does not match the PDF supplied", 422);
+    }
   }
 
   return {
@@ -88,6 +106,7 @@ export function validateReviewPayload(body: unknown): PayloadResult {
       gateChecks: gateChecks as boolean[],
       approved,
       pdfSha256: hash,
+      pdfBase64: pdf,
     },
   };
 }

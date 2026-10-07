@@ -175,6 +175,7 @@ export default function ReviewPage() {
             gateChecks: gateChecked,
             approved: true,
             pdfSha256,
+            pdfBase64: await blobToBase64(blob),
           }),
         });
         if (!res.ok) {
