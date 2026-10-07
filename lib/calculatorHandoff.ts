@@ -30,7 +30,9 @@ export function sanitizeHandoff(slug: unknown, headline: unknown): CalculatorHan
   let h: string | null = null;
   if (typeof headline === "string") {
     const cleaned = headline.replace(HEADLINE_ALLOWED, "").replace(/\s+/g, " ").trim().slice(0, HEADLINE_MAX);
-    h = cleaned || null;
+    // A headline is a number the visitor saw. "—" (no result) or any text with
+    // no digit is "unknown", so it is dropped rather than handed to the audit.
+    h = /\d/.test(cleaned) ? cleaned : null;
   }
   // A headline with no valid source calculator has no meaning; drop it.
   return validSlug ? { slug: validSlug, headline: h } : { slug: null, headline: null };

@@ -25,7 +25,7 @@ import {
   ghostCtaStyle,
   hexA,
 } from "@/lib/chaosTokens";
-import { getCalculator, type CalcInput } from "@/lib/diagnosticCalculators";
+import { getCalculator, calculateChecked, type CalcInput } from "@/lib/diagnosticCalculators";
 import { buildAuditHref } from "@/lib/calculatorHandoff";
 import { LINKS } from "@/lib/products";
 import { CALCULATOR_VISUALS } from "./calculatorVisuals";
@@ -42,7 +42,7 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
 
   if (!calc) return null; // page.tsx already calls notFound() before this renders
 
-  const result = calc.calculate(values);
+  const result = calculateChecked(calc, values);
   const resultColor = result.headlineIsCost ? PALETTE.pink : PALETTE.mint;
 
   // Only calculators whose CTA goes to the audit intake carry the handoff;
@@ -53,6 +53,22 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
       : calc.ctaHref;
 
   function renderVisual() {
+    // Impossible input, or a result that would not mean anything: say so,
+    // and draw no number and no chart.
+    const message = result.error ?? result.note;
+    if (message) {
+      return (
+        <div
+          role={result.error ? "alert" : "status"}
+          style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}
+        >
+          <div style={figureStyle(result.error ? PALETTE.pink : PALETTE.label)}>—</div>
+          <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+            {message}
+          </p>
+        </div>
+      );
+    }
     const Visual = CALCULATOR_VISUALS[slug];
     if (Visual && calc) return <Visual {...calc.visualProps(values)} />;
     return (

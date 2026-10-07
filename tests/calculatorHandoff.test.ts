@@ -15,8 +15,14 @@ test("sanitizeHandoff rejects unknown slugs and drops the headline with them", (
 
 test("sanitizeHandoff strips markup, collapses space, caps length", () => {
   assert.equal(sanitizeHandoff("vendor-money-pit", "<b>71%</b>\n").headline, "b71%b");
-  assert.equal(sanitizeHandoff("vendor-money-pit", "x".repeat(200)).headline?.length, 40);
+  assert.equal(sanitizeHandoff("vendor-money-pit", "7".repeat(200)).headline?.length, 40);
   assert.equal(sanitizeHandoff("vendor-money-pit", "<>").headline, null);
+});
+
+test("a headline with no digit (the em dash placeholder) is dropped", () => {
+  assert.equal(sanitizeHandoff("vendor-money-pit", "\u2014").headline, null);
+  assert.equal(sanitizeHandoff("vendor-money-pit", "n/a").headline, null);
+  assert.equal(sanitizeHandoff("vendor-money-pit", "0%").headline, "0%");
 });
 
 test("buildAuditHref -> parseHandoff round-trips", () => {

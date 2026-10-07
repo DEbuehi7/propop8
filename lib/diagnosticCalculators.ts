@@ -35,6 +35,12 @@ export interface CalcResult {
    *  convention as Finding.amountIsCost in lib/auditEngine.ts. */
   headlineIsCost: boolean;
   detail: string;
+  /** Impossible input (e.g. more aged than open). The UI shows this instead of
+   *  any number or visual, and nothing is handed to the audit link. */
+  error?: string;
+  /** Input is possible but the result would not mean anything (e.g. a $3
+   *  baseline). Shown instead of the percentage. */
+  note?: string;
 }
 
 export interface DiagnosticCalculator {
@@ -56,6 +62,12 @@ export interface DiagnosticCalculator {
    *  matches the widget's theme yet -- see the note in each entry. */
   ctaHref: string;
   ctaLabel: string;
+}
+
+const NO_NUMBER = { headline: "—", headlineIsCost: false } as const;
+
+function impossible(message: string): CalcResult {
+  return { ...NO_NUMBER, detail: message, error: message };
 }
 
 export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
@@ -89,6 +101,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     visualProps: (v) => ({ totalWorkOrders: v.closed ?? 0, reopenedWithin30: v.reopened ?? 0 }),
     calculate: (v) => {
       if (!v.closed) return { headline: "—", headlineIsCost: false, detail: "Enter your closed work order count to see your callback rate." };
+      if (v.reopened > v.closed) return impossible("Reopened work orders can't be more than the number closed.");
       const rate = sharePct(v.reopened, v.closed) ?? 0;
       return {
         headline: pctFmt(rate) === "+0%" ? "0%" : pctFmt(rate),
@@ -110,6 +123,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     visualProps: (v) => ({ totalSpend: v.total ?? 0, topVendorSpend: v.topVendor ?? 0 }),
     calculate: (v) => {
       if (!v.total) return { headline: "—", headlineIsCost: false, detail: "Enter total category spend to see vendor concentration." };
+      if (v.topVendor > v.total) return impossible("Your top vendor's spend can't be more than the category total.");
       const share = sharePct(v.topVendor, v.total) ?? 0;
       return {
         headline: `${share.toFixed(0)}%`,
@@ -131,6 +145,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     visualProps: (v) => ({ totalOpen: v.open ?? 0, agedPast30: v.aged ?? 0 }),
     calculate: (v) => {
       if (!v.open) return { headline: "—", headlineIsCost: false, detail: "Enter your open work order count to see the aging share." };
+      if (v.aged > v.open) return impossible("Work orders past 30 days can't be more than the total open.");
       const rate = sharePct(v.aged, v.open) ?? 0;
       return {
         headline: `${rate.toFixed(0)}%`,
@@ -226,6 +241,12 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     },
   },
 ];
+
+/** The one entry point the UI uses: rejects negative input, then calculates. */
+export function calculateChecked(c: DiagnosticCalculator, v: Record<string, number>): CalcResult {
+  if (c.inputs.some((i) => (v[i.key] ?? 0) < 0)) return impossible("Enter 0 or more in every field.");
+  return c.calculate(v);
+}
 
 /** Calculators rendered by app/tools/[slug] (everything without its own page). */
 export function renderableCalculators(): DiagnosticCalculator[] {

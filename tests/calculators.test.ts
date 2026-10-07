@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIAGNOSTIC_CALCULATORS, getCalculator, renderableCalculators } from "../lib/diagnosticCalculators";
+import { DIAGNOSTIC_CALCULATORS, getCalculator, renderableCalculators, calculateChecked } from "../lib/diagnosticCalculators";
+import { buildAuditHref } from "../lib/calculatorHandoff";
 import { sharePct, changePct, missedCycles, computeVacancy } from "../lib/calcMath";
 import { runEngine, parseCsv } from "../lib/auditEngine";
 
@@ -104,4 +105,32 @@ test("parity: calculator and audit engine agree on vendor concentration", () => 
   const calcShare = sharePct(700, 1000)!;
   assert.equal(Math.round((f.visual as { sharePct: number }).sharePct), Math.round(calcShare));
   assert.equal(calc("vendor-money-pit", { total: 1000, topVendor: 700 }).headline, `${Math.round(calcShare)}%`);
+});
+
+test("impossible input shows an error, no number, and no audit handoff", () => {
+  const cases: [string, Record<string, number>][] = [
+    ["deadline-graveyard", { open: 34, aged: 234 }],
+    ["callback-nightmare", { closed: 23, reopened: 30 }],
+    ["vendor-money-pit", { total: 1000, topVendor: 1500 }],
+  ];
+  for (const [slug, v] of cases) {
+    const r = calc(slug, v);
+    assert.ok(r.error, `${slug} should reject ${JSON.stringify(v)}`);
+    assert.equal(r.headline, "—", slug);
+    assert.equal(r.headlineIsCost, false, slug);
+    // The client only builds the handoff for a real headline; "—" is not one.
+    assert.equal(buildAuditHref(slug, r.headline).includes("calculator_headline"), false, slug);
+  }
+});
+
+test("limits are inclusive: all of it is still possible", () => {
+  assert.equal(calc("deadline-graveyard", { open: 34, aged: 34 }).headline, "100%");
+  assert.equal(calc("callback-nightmare", { closed: 23, reopened: 23 }).error, undefined);
+  assert.equal(calc("vendor-money-pit", { total: 1000, topVendor: 1000 }).headline, "100%");
+});
+
+test("negative input is rejected before any calculation", () => {
+  const c = getCalculator("vendor-money-pit")!;
+  assert.ok(calculateChecked(c, { total: 1000, topVendor: -5 }).error);
+  assert.equal(calculateChecked(c, { total: 1000, topVendor: 500 }).headline, "50%");
 });
