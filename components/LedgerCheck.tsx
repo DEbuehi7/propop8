@@ -38,21 +38,24 @@
  * reads a ledger, so this no longer says "work-order export" or implies it can
  * tell whether a repair held. Per the release gate — no work-order language
  * unless the source file is actually a work-order export.
+ *
+ * NOW: no screening logic lives here. validateLedgerText() in lib/auditEngine.ts
+ * reads the file the way the paid audit does (columns -> types -> dates ->
+ * row-level errors with row numbers), and this component only displays it.
+ * The duplicate key and per-category concentration come from the same helpers
+ * the engine's findings use, so a file cannot pass here and be flagged there
+ * for a reason this screen never looked at.
  */
 
-import Papa from 'papaparse';
 import { useCallback, useRef, useState } from 'react';
-import { HEADER_ALIASES, normHeader, toAmount, parseLedgerDate } from '@/lib/auditEngine';
-
-const norm = normHeader;
-
-/** The engine's alias table, normalised so "Opened Date", "opened_date" and
- *  "openeddate" all resolve to the same field. */
-const ALIAS_LOOKUP: Record<string, string> = Object.fromEntries(
-  Object.entries(HEADER_ALIASES).map(([header, field]) => [norm(header), field as string])
-);
-
-const REQUIRED = ['date', 'vendor', 'category', 'amount'] as const;
+import {
+  validateLedgerText,
+  vendorTotalsByCategory,
+  topVendorOf,
+  type IssueCode,
+  type RowIssue,
+} from '@/lib/auditEngine';
+import { sharePct } from '@/lib/calcMath';
 
 const FIELD_LABELS: Record<string, string> = {
   date: 'date',
@@ -67,8 +70,14 @@ const FIELD_LABELS: Record<string, string> = {
   workOrderId: 'work order id',
 };
 
-/** Same reader as the engine, so the screener and the paid review cannot disagree about a cell. */
-const toNumber = toAmount;
+const ISSUE_TEXT: Record<IssueCode, string> = {
+  missing_date: 'no date',
+  missing_vendor: 'no vendor',
+  missing_category: 'no category',
+  blank_amount: 'amount is blank',
+  unreadable_amount: 'amount cannot be read',
+  unreadable_date: 'date cannot be read (day-first dates are never guessed)',
+};
 
 type Tone = 'ok' | 'warn' | 'flag' | 'idle';
 type Badge = { tone: Tone; label: string; n?: string };
@@ -78,12 +87,16 @@ type Concentration = { category: string; vendor: string; share: number; total: n
 type Result = {
   fileName: string;
   rows: number;
+  keptRows: number;
+  droppedRows: number;
   missingRequired: string[];
   optionalPresent: string[];
   optionalMissing: string[];
   badges: Badge[];
   concentration: Concentration | null;
   agingAvailable: boolean;
+  issues: RowIssue[];
+  issuesTotal: number;
 };
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -97,138 +110,106 @@ const DOT_CLASS: Record<Tone, string> = {
   ok: 'bg-emerald-400', warn: 'bg-amber-500', flag: 'bg-rose-500', idle: 'bg-slate-600',
 };
 
-function screen(fileName: string, rows: Record<string, unknown>[], headers: string[]): Result {
-  // header -> canonical field
-  const map: Record<string, string> = {};
-  for (const h of headers) {
-    const field = ALIAS_LOOKUP[norm(h)];
-    if (field && !map[field]) map[field] = h;
-  }
-
-  const missingRequired = REQUIRED.filter((f) => !map[f]);
-  const optionalFields = Object.values(HEADER_ALIASES)
-    .map((f) => f as string)
-    .filter((f, i, a) => a.indexOf(f) === i && !REQUIRED.includes(f as typeof REQUIRED[number]) && f !== 'sourceRow');
-  const optionalPresent = optionalFields.filter((f) => map[f]);
-  const optionalMissing = optionalFields.filter((f) => !map[f]);
-
+function screen(fileName: string, text: string): Result {
+  const v = validateLedgerText(text);
+  const required = v.columns.missingRequired;
   const badges: Badge[] = [{ tone: 'ok', label: 'Valid CSV' }];
 
+  /* 1. columns */
   badges.push({
-    tone: missingRequired.length === 0 ? 'ok' : 'flag',
-    label: missingRequired.length === 0 ? 'Required columns' : 'Missing required columns',
-    n: `${REQUIRED.length - missingRequired.length}/${REQUIRED.length}`,
+    tone: required.length === 0 ? 'ok' : 'flag',
+    label: required.length === 0 ? 'Required columns' : 'Missing required columns',
+    n: `${4 - required.length}/4`,
   });
 
-  /* ---- amounts, credits, per-category concentration ---------------- */
-  let blankCost = 0;
-  let credits = 0;
-  let creditTotal = 0;
-  const byCategory = new Map<string, Map<string, number>>();
-
-  if (map.amount) {
-    for (const r of rows) {
-      const n = toNumber(r[map.amount]);
-      if (!Number.isFinite(n)) { blankCost++; continue; }
-      if (n < 0) { credits++; creditTotal += n; }
-
-      if (map.vendor && map.category) {
-        const cat = String(r[map.category] ?? '').trim() || '(uncategorised)';
-        const ven = String(r[map.vendor] ?? '').trim() || '(unnamed)';
-        if (!byCategory.has(cat)) byCategory.set(cat, new Map());
-        byCategory.get(cat)!.set(ven, (byCategory.get(cat)!.get(ven) ?? 0) + n);
-      }
-    }
+  /* 2. types: amounts */
+  if (v.columns.found.amount) {
+    const bad = v.amounts.blank + v.amounts.unreadable;
     badges.push({
-      tone: blankCost === 0 ? 'ok' : 'warn',
-      label: blankCost === 0 ? 'Amount column parsed' : 'Blank or unparsed amounts',
-      n: blankCost ? String(blankCost) : '100%',
+      tone: bad === 0 ? 'ok' : 'warn',
+      label: bad === 0 ? 'Amount column parsed' : 'Blank or unreadable amounts',
+      n: bad ? String(bad) : '100%',
     });
   } else {
     badges.push({ tone: 'idle', label: 'No amount column found' });
   }
-
-  if (credits > 0) {
+  if (v.amounts.credits > 0) {
     badges.push({
       tone: 'warn',
       label: 'Credits / reversals',
-      n: `${credits} · $${Math.round(Math.abs(creditTotal)).toLocaleString()}`,
+      n: `${v.amounts.credits} · $${Math.round(Math.abs(v.amounts.creditTotal)).toLocaleString()}`,
     });
   }
 
-  /* Worst per-category concentration. Same 60% threshold and the same
-     "more than one vendor" guard the engine uses, so the free screening
-     and the paid review never contradict each other on the same file. */
-  let concentration: Concentration | null = null;
-  for (const [category, vendors] of byCategory) {
-    const total = [...vendors.values()].reduce((a, b) => a + b, 0);
-    if (total <= 0 || vendors.size < 2) continue;
-    const [vendor, amount] = [...vendors.entries()].sort((a, b) => b[1] - a[1])[0];
-    const share = (amount / total) * 100;
-    if (!concentration || share > concentration.share) {
-      concentration = { category, vendor, share, total };
-    }
+  /* 3. dates */
+  if (v.dates.unreadable > 0) {
+    badges.push({ tone: 'warn', label: 'Dates that cannot be read', n: String(v.dates.unreadable) });
+  }
+  if (v.dates.earliest !== null && v.dates.latest !== null) {
+    const days = Math.round((v.dates.latest - v.dates.earliest) / 86400000);
+    const months = Math.round(days / 30);
+    badges.push({
+      tone: months >= 3 ? 'ok' : 'warn',
+      label: 'Date range',
+      n: months >= 2 ? `${months} months` : `${days}d`,
+    });
   }
 
+  /* 4. row-level: what the paid audit would actually read */
+  badges.push({
+    tone: v.droppedRows === 0 ? 'ok' : 'warn',
+    label: v.droppedRows === 0 ? 'Every row readable' : 'Rows the audit would skip',
+    n: v.droppedRows ? `${v.droppedRows} of ${v.totalRows}` : undefined,
+  });
+
+  /* Worst per-category concentration, from the engine's own helpers. Same 60%
+     threshold and the same "more than one vendor" guard as the engine. */
+  let concentration: Concentration | null = null;
+  for (const [category, vendors] of vendorTotalsByCategory(v.rows)) {
+    const total = [...vendors.values()].reduce((a, b) => a + b, 0);
+    if (total <= 0 || vendors.size < 2) continue;
+    const [vendor, amount] = topVendorOf(vendors);
+    const share = sharePct(amount, total) ?? 0;
+    if (!concentration || share > concentration.share) concentration = { category, vendor, share, total };
+  }
   if (concentration) {
     badges.push({
       tone: concentration.share >= 60 ? 'flag' : concentration.share >= 40 ? 'warn' : 'ok',
       label: `Top vendor share, ${concentration.category}`,
       n: `${concentration.share.toFixed(0)}%`,
     });
-  } else if (map.vendor && map.category) {
+  } else if (v.columns.found.vendor && v.columns.found.category) {
     badges.push({ tone: 'idle', label: 'No category has two or more vendors' });
   }
 
-  /* ---- exact duplicate rows --------------------------------------- */
-  const seen = new Set<string>();
-  let dupes = 0;
-  for (const r of rows) {
-    const key = JSON.stringify(r);
-    if (seen.has(key)) dupes++;
-    else seen.add(key);
-  }
+  /* Exact duplicates by the engine's key: date + vendor + category + amount. */
   badges.push({
-    tone: dupes === 0 ? 'ok' : 'warn',
-    label: dupes === 0 ? 'No duplicate rows' : 'Duplicate row candidates',
-    n: dupes ? String(dupes) : undefined,
+    tone: v.duplicates.groups === 0 ? 'ok' : 'warn',
+    label: v.duplicates.groups === 0 ? 'No exact duplicates' : 'Exact duplicate candidates',
+    n: v.duplicates.groups ? `${v.duplicates.groups} group(s)` : undefined,
   });
 
-  /* ---- date range ------------------------------------------------- */
-  if (map.date) {
-    const ds = rows
-      .map((r) => parseLedgerDate(String(r[map.date])))
-      .filter((d): d is number => d !== null)
-      .sort((a, b) => a - b);
-    if (ds.length) {
-      const days = Math.round((ds[ds.length - 1] - ds[0]) / 86400000);
-      const months = Math.round(days / 30);
-      badges.push({
-        tone: months >= 3 ? 'ok' : 'warn',
-        label: 'Date range',
-        n: months >= 2 ? `${months} months` : `${days}d`,
-      });
-    }
-  }
-
-  /* ---- aging availability ----------------------------------------- */
-  const agingAvailable = Boolean(map.status && map.openedDate);
+  const agingAvailable = Boolean(v.columns.found.status && v.columns.found.openedDate);
   badges.push({
     tone: agingAvailable ? 'ok' : 'idle',
     label: agingAvailable ? 'Aging analysis available' : 'Aging needs status + opened date',
   });
-
   badges.push({ tone: 'idle', label: 'Interpretation not run' });
 
+  const label = (f: string) => FIELD_LABELS[f] ?? f;
   return {
     fileName,
-    rows: rows.length,
-    missingRequired: missingRequired.map((f) => FIELD_LABELS[f] ?? f),
-    optionalPresent: optionalPresent.map((f) => FIELD_LABELS[f] ?? f),
-    optionalMissing: optionalMissing.map((f) => FIELD_LABELS[f] ?? f),
+    rows: v.totalRows,
+    keptRows: v.rows.length,
+    droppedRows: v.droppedRows,
+    missingRequired: required.map(label),
+    optionalPresent: v.columns.optionalPresent.map(label),
+    optionalMissing: v.columns.optionalMissing.map(label),
     badges,
     concentration,
     agingAvailable,
+    issues: v.issues,
+    issuesTotal: Object.values(v.issueCounts).reduce((a, b) => a + b, 0),
   };
 }
 
@@ -247,23 +228,20 @@ export default function LedgerCheck({ ctaHref }: { ctaHref: string }) {
     }
     setError(null);
     setBusy(true);
-    Papa.parse<Record<string, unknown>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (out) => {
-        setBusy(false);
-        const rows = out.data ?? [];
-        if (!rows.length) {
+    file
+      .text()
+      .then((text) => {
+        const out = screen(file.name, text);
+        if (out.rows === 0) {
           setError('No data rows were found. Check that the first line of the file is the header row.');
           return;
         }
-        setResult(screen(file.name, rows, out.meta.fields ?? []));
-      },
-      error: () => {
-        setBusy(false);
+        setResult(out);
+      })
+      .catch(() => {
         setError('The file could not be read. It may be open in another program, or not valid CSV.');
-      },
-    });
+      })
+      .finally(() => setBusy(false));
   }, []);
 
   return (
@@ -342,6 +320,28 @@ export default function LedgerCheck({ ctaHref }: { ctaHref: string }) {
               Missing required columns: {result.missingRequired.join(', ')}. Without these the
               ledger cannot be screened at all — check whether your export names them differently.
             </p>
+          )}
+
+          {result.issues.length > 0 && (
+            <div className="mt-5 border-t border-slate-800 pt-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-amber-500">
+                Row-level problems ({result.issuesTotal.toLocaleString()})
+              </p>
+              <ul className="mt-2 space-y-1 font-mono text-[11px] leading-relaxed text-slate-400">
+                {result.issues.slice(0, 10).map((i, k) => (
+                  <li key={`${i.row}-${i.code}-${k}`}>
+                    Row {i.row}: {ISSUE_TEXT[i.code]}
+                    {i.value ? <span className="text-slate-500"> (&ldquo;{i.value}&rdquo;)</span> : null}
+                    {i.dropped ? <span className="text-rose-400"> &middot; skipped by the audit</span> : null}
+                  </li>
+                ))}
+              </ul>
+              {result.issuesTotal > 10 && (
+                <p className="mt-2 font-mono text-[11px] text-slate-600">
+                  &hellip;and {(result.issuesTotal - 10).toLocaleString()} more. Row 1 is the header.
+                </p>
+              )}
+            </div>
           )}
 
           {result.concentration && (
