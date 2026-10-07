@@ -54,6 +54,7 @@
  * minimum-spend floor rather than by dropping the guard.
  */
 import Papa from "papaparse";
+import { ratio, sharePct, changePct } from "./calcMath";
 
 export interface LedgerRow {
   date: string;
@@ -388,7 +389,7 @@ function buildSpendTable(rows: LedgerRow[], win: AuditWindow | null): SpendRow[]
       category,
       thisPeriod: money(current),
       baseline: money(mean),
-      variancePct: Math.round(((current - mean) / mean) * 100),
+      variancePct: Math.round(changePct(current, mean) ?? 0),
       baselineUsable: true,
     });
   }
@@ -418,7 +419,7 @@ function checkCategoryVariance(rows: LedgerRow[], table: SpendRow[], win: AuditW
     const inMonth = rows.filter((r) => r.category === row.category && monthKey(r.date) === win.latestMonth);
     const monthTotal = inMonth.reduce((a, b) => a + b.amount, 0);
     const largest = [...inMonth].sort((a, b) => b.amount - a.amount)[0];
-    const largestShare = monthTotal > 0 && largest ? (largest.amount / monthTotal) * 100 : 0;
+    const largestShare = largest ? (sharePct(largest.amount, monthTotal) ?? 0) : 0;
 
     findings.push({
       id: findingId(),
@@ -461,7 +462,7 @@ function checkVendorConcentration(rows: LedgerRow[]): Finding[] {
     const total = [...vendors.values()].reduce((a, b) => a + b, 0);
     if (total <= 0) continue;
     const [topVendor, topAmount] = [...vendors.entries()].sort((a, b) => b[1] - a[1])[0];
-    const share = topAmount / total;
+    const share = ratio(topAmount, total) ?? 0;
 
     if (share >= 0.6 && vendors.size > 1) {
       findings.push({
