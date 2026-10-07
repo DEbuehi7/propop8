@@ -16,7 +16,7 @@ interface SessionDataFull extends SessionData {
   userId?: string;
   instrument?: string;
   status?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // In-memory storage for MVP (fallback cache during migration)
@@ -312,7 +312,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Phase 2C: Try Supabase first, fallback to Map with monitoring
   let sessionList = await listSessionsFromSupabase(10);
 

@@ -35,10 +35,11 @@ interface MetricsSnapshot {
 const metricsBuffer: ReadMetric[] = [];
 const maxBufferSize = 1000;
 
-export function recordRead(metric: ReadMetric) {
+/** Callers describe the read; the timestamp is always assigned here. */
+export function recordRead(metric: Omit<ReadMetric, 'timestamp'>) {
   metricsBuffer.push({
-    timestamp: Date.now(),
     ...metric,
+    timestamp: Date.now(),
   });
 
   // Maintain buffer size
