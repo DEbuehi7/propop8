@@ -1,0 +1,171 @@
+{
+  "parse": {
+    "totalRows": 50,
+    "droppedRows": 1,
+    "rowCount": 49
+  },
+  "result": {
+    "findings": [
+      {
+        "id": "f1",
+        "category": "HVAC variance",
+        "title": "HVAC spend in 2026-06 was +72% against its own baseline",
+        "description": "$1,810 in 2026-06 versus a baseline mean of $1,050. No single entry dominates the month.",
+        "amount": "$1,810",
+        "amountLabel": "2026-06 TOTAL",
+        "amountIsCost": true,
+        "recommendation": "Verify invoice scope and coding. Treat the variance as explained only after confirming whether this was one-time work, recurring work, or a miscoded charge.",
+        "include": true,
+        "claimType": "CALCULATION",
+        "sourceRows": [
+          34,
+          35,
+          49
+        ]
+      },
+      {
+        "id": "f2",
+        "category": "Vendor concentration",
+        "title": "Acme HVAC accounts for 88.3% of HVAC spend",
+        "description": "$7,960 of $9,010 total hvac spend across 2 vendors in this file. Concentration is a dependency signal, not evidence of bad pricing or misconduct.",
+        "amount": "$7,960",
+        "amountLabel": "CONCENTRATED WITH ONE VENDOR",
+        "amountIsCost": true,
+        "recommendation": "Compare scope, response time, pricing and backup-vendor capacity before changing procurement.",
+        "include": true,
+        "claimType": "CALCULATION",
+        "sourceRows": [
+          4,
+          10,
+          16,
+          22,
+          28,
+          34,
+          42,
+          43,
+          49
+        ],
+        "visual": {
+          "kind": "concentration",
+          "sharePct": 88.34628190899001,
+          "topSpend": 7960,
+          "totalSpend": 9010
+        }
+      },
+      {
+        "id": "f3",
+        "category": "Exact duplicate candidates",
+        "title": "1 exact duplicate group(s) found, extra-row face value $650",
+        "description": "Each group shares an identical date, vendor, category and amount. The ledger has no invoice number or work-order ID, so even an exact match is only a candidate until source documents are checked.",
+        "amount": "$650",
+        "amountLabel": "EXTRA-ROW FACE VALUE",
+        "amountIsCost": true,
+        "recommendation": "Match each group to invoice number, work order, unit/location and proof of service before requesting any credit.",
+        "include": true,
+        "claimType": "FACT",
+        "sourceRows": [
+          40,
+          41
+        ]
+      },
+      {
+        "id": "f4",
+        "category": "Near-duplicate candidates",
+        "title": "1 same-vendor, same-amount charge pair(s) within 7 days on different dates",
+        "description": "Acme HVAC: $900 on 2026-07-16 and 2026-07-19. Same amount on nearby dates is not enough to call this duplicate billing -- split invoices, staged work and recurring service all look identical here.",
+        "amount": "$900",
+        "amountLabel": "FACE VALUE OF ONE SIDE",
+        "amountIsCost": true,
+        "recommendation": "Compare invoice and job identifiers. Keep this separate from exact-duplicate counts unless the supporting documents match.",
+        "include": true,
+        "claimType": "INFERENCE",
+        "sourceRows": [
+          42,
+          43
+        ]
+      },
+      {
+        "id": "f5",
+        "category": "Credits and reversals",
+        "title": "1 credit/reversal line(s) totalling -$180",
+        "description": "Spread across 1 category. Credits offset spend in the same category, which can make a monthly baseline non-positive and its variance unreportable.",
+        "amount": "-$180",
+        "amountLabel": "NET CREDIT",
+        "amountIsCost": false,
+        "recommendation": "Confirm each credit is matched to the original charge, and that the offset landed in the period you expect.",
+        "include": true,
+        "claimType": "FACT",
+        "sourceRows": [
+          47
+        ]
+      },
+      {
+        "id": "f6",
+        "category": "Open-item aging",
+        "title": "2 open item(s) older than 30 days, totalling $1,180",
+        "description": "1 are older than 90 days, totalling $420. They span 2 different categories, so this file does not support a claim that aging is concentrated in any one of them. Age is measured to 2026-08-01.",
+        "amount": "$1,180",
+        "amountLabel": "OPEN >30 DAYS",
+        "amountIsCost": true,
+        "recommendation": "Confirm what 'open' means in the source system -- unpaid, unresolved, awaiting approval or uncleared -- before assigning an operational cause.",
+        "include": true,
+        "claimType": "FACT",
+        "sourceRows": [
+          48,
+          49
+        ],
+        "visual": {
+          "kind": "aging",
+          "totalOpen": 3,
+          "agedCount": 2
+        }
+      }
+    ],
+    "spendTable": [
+      {
+        "category": "HVAC",
+        "thisPeriod": "$1,810",
+        "baseline": "$1,050",
+        "variancePct": 72,
+        "baselineUsable": true
+      },
+      {
+        "category": "Landscaping",
+        "thisPeriod": "$500",
+        "baseline": "$500",
+        "variancePct": 0,
+        "baselineUsable": true
+      },
+      {
+        "category": "Electrical",
+        "thisPeriod": "$250",
+        "baseline": "$250",
+        "variancePct": 0,
+        "baselineUsable": true
+      },
+      {
+        "category": "Plumbing",
+        "thisPeriod": "$750",
+        "baseline": "$804",
+        "variancePct": -7,
+        "baselineUsable": true
+      }
+    ],
+    "reviewTriggerCount": 6,
+    "window": {
+      "firstDate": "2026-01-05",
+      "lastDate": "2026-07-25",
+      "latestMonth": "2026-06",
+      "baselineMonths": [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05"
+      ],
+      "partialMonthExcluded": "2026-07",
+      "baselineFormula": "Arithmetic mean of monthly category spend, 2026-01 through 2026-05 (5 month(s))"
+    },
+    "netLedger": 23450
+  }
+}
