@@ -9,7 +9,7 @@ export type { CandidateScore };
  * Computes fit for a scalar value within a range [min, max].
  * Returns 1.0 at midpoint, linearly declines to 0 at edges, clamped [0, 1].
  */
-function computeFit(value: number | null, range: [number, number]): number {
+function computeFit(value: number | null, range: readonly [number, number]): number {
   if (value === null) return 0;
   const [min, max] = range;
   const mid = (min + max) / 2;

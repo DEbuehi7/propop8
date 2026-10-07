@@ -50,7 +50,7 @@ export function useAudioAnalyzer(): UseAudioAnalyzerReturn {
 
   // Frequency band mapping: 60 bands covering 20Hz to 20kHz
   const frequencyBinRef = useRef<number>(0);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   /**
    * Update spectrum visualization on each animation frame

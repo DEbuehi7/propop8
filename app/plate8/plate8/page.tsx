@@ -75,7 +75,7 @@ export default function Plate8Page() {
                     type="text"
                     placeholder="e.g., 2FAST4U"
                     defaultValue="2FAST4U"
-                    maxLength="7"
+                    maxLength={7}
                     className="flex-1 bg-[#0F1220] border border-orange-500/30 rounded px-4 py-2 text-[#E8EAEF] placeholder-[#A0A7B8] focus:outline-none focus:border-orange-400"
                   />
                   <button className="bg-orange-500/20 border border-orange-500/50 text-orange-400 px-6 py-2 rounded font-medium hover:bg-orange-500/30 transition-colors">
