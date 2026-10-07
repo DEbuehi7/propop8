@@ -118,7 +118,7 @@ export default function Plate8Dashboard() {
               Six computational instruments for a more intelligent tomorrow.
             </p>
             <p className="text-sm text-[#A0A7B8] mt-2">
-              "A smarter you. A more livable world."
+              &quot;A smarter you. A more livable world.&quot;
             </p>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function Plate8Dashboard() {
             <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-6">
               <h4 className="text-lg font-bold text-[#E8EAEF] mb-2">Horizon</h4>
               <p className="text-sm text-[#A0A7B8] mb-4">
-                "Intelligence should make the world more interesting, not the interface more complicated."
+                &quot;Intelligence should make the world more interesting, not the interface more complicated.&quot;
               </p>
               <p className="text-xs text-purple-300 font-semibold">
                 REAL PLACES. REAL IDEAS. A BRIGHTER TOMORROW.
