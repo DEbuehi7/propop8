@@ -111,7 +111,7 @@ export function useAudioAnalyzer(): UseAudioAnalyzerReturn {
       streamRef.current = stream;
 
       // Initialize Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       audioContextRef.current = audioContext;
 
       const analyser = audioContext.createAnalyser();

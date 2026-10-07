@@ -16,7 +16,7 @@ interface Instrument {
   name: string;
   description: string;
   icon: string;
-  component: React.ComponentType<any>;
+  component: React.ComponentType<{ isOnline: boolean }>;
 }
 
 const instruments: Instrument[] = [
@@ -64,8 +64,15 @@ const instruments: Instrument[] = [
   },
 ];
 
+interface Activity {
+  time: string;
+  text: string;
+  color: string;
+  label: string;
+}
+
 export default function Plate8Dashboard() {
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [systemStatus, setSystemStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {

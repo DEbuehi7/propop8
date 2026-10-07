@@ -4,10 +4,20 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAudioAnalyzer } from '@/hooks/useAudioAnalyzer';
 
+interface SessionSummary {
+  id: string;
+  timestamp: number;
+  duration: number;
+  avgFrequency: number;
+  peakFrequency: number;
+  transcriptionAccuracy: number;
+  wordsTranscribed: number;
+}
+
 export default function State8Page() {
   const [activeTab, setActiveTab] = useState('waveform');
   const [sessionDuration, setSessionDuration] = useState(0);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
   const { isRecording, spectrum, frequency, volume, error, startRecording, stopRecording } = useAudioAnalyzer();
 

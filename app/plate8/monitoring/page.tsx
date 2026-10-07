@@ -23,7 +23,7 @@ interface Metrics {
 
 export default function MonitoringPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [errors, setErrors] = useState<any[]>([]);
+  const [errors, setErrors] = useState<{ errorMessage?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
