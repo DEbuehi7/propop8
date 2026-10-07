@@ -46,8 +46,13 @@ test("deadline-graveyard fixtures", () => {
 });
 
 test("automation-graveyard fixtures", () => {
-  assert.equal(calc("automation-graveyard", { frequency: 7, daysSince: 30 }).headline, "3");
-  assert.equal(calc("automation-graveyard", { frequency: 7, daysSince: 10 }).headline, "0");
+  assert.equal(calc("automation-graveyard", { frequency: 7, daysSince: 30 }).headline, "4");
+  assert.equal(calc("automation-graveyard", { frequency: 7, daysSince: 10 }).headline, "1");
+  assert.equal(calc("automation-graveyard", { frequency: 7, daysSince: 6 }).headline, "0");
+  // Reported case: due on days 23, 46, 69, 92, 115 -> five missed.
+  assert.equal(calc("automation-graveyard", { frequency: 23, daysSince: 133 }).headline, "5");
+  assert.equal(missedCycles(23, 133), 5);
+  assert.equal(missedCycles(23, 46), 2); // a run due exactly now counts
   assert.equal(calc("automation-graveyard", { frequency: 0, daysSince: 10 }).headline, "—");
 });
 

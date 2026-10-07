@@ -29,11 +29,16 @@ export function changePct(current: number, baseline: number): number | null {
   return ((current - baseline) / baseline) * 100;
 }
 
-/** Whole cycles of a recurring job that almost certainly never ran. */
+/**
+ * Runs that were due, and have not been confirmed, since the last confirmed run.
+ * Runs are due at frequency, 2*frequency, ... so a job confirmed 133 days ago on a
+ * 23-day cycle was due on days 23, 46, 69, 92 and 115: five runs. This is the
+ * single source for both the number and the dots in the automation calculator.
+ */
 export function missedCycles(frequencyDays: number, daysSinceConfirmed: number): number | null {
   if (!Number.isFinite(frequencyDays) || frequencyDays <= 0) return null;
   if (!Number.isFinite(daysSinceConfirmed) || daysSinceConfirmed < 0) return null;
-  return Math.max(0, Math.floor(daysSinceConfirmed / frequencyDays) - 1);
+  return Math.floor(daysSinceConfirmed / frequencyDays);
 }
 
 export interface VacancyInput {
