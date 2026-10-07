@@ -36,6 +36,7 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { fulfillIntake } from '@/lib/fulfill';
 import { sendUploadInstructions, notifyOwner } from '@/lib/email';
+import { sanitizeHandoff } from '@/lib/calculatorHandoff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -275,6 +276,10 @@ export async function POST(req: Request) {
     }
 
     if (!intake) {
+      const handoff = sanitizeHandoff(
+        pick(fields, 'calculator_slug'),
+        pick(fields, 'calculator_headline'),
+      );
       const { data: created, error: dbError } = await supabase
         .from('audit_intakes')
         .insert({
@@ -289,6 +294,10 @@ export async function POST(req: Request) {
           data_availability: pick(fields, 'Data you can export', 'data_availability'),
           authority_confirmed: true,
           calculator_snapshot: {
+            // Source calculator. Re-validated here: hidden fields come from a
+            // query string anyone can edit, so only registry slugs are kept.
+            calculatorSlug: handoff.slug,
+            calculatorHeadline: handoff.headline,
             operationalDays: pickNumber(fields, 'days', 'operational_days'),
             operationalExposure: pickNumber(fields, 'exposure', 'operational_exposure'),
             totalDays: pickNumber(fields, 'total_days'),

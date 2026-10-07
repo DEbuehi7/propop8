@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getCalculator } from "@/lib/diagnosticCalculators";
 
 interface Intake {
   id: string;
@@ -15,6 +16,10 @@ interface Intake {
   fulfillment_error: string | null;
   files_submitted_at: string | null;
   report_sent_at: string | null;
+  calculator_snapshot: {
+    calculatorSlug?: string | null;
+    calculatorHeadline?: string | null;
+  } | null;
 }
 
 const BADGE: Record<string, string> = {
@@ -80,6 +85,17 @@ export default function IntakesPage() {
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: ".08em", color: BADGE[i.status] ?? "#A3A9B8" }}>{label(i)}</span>
             </div>
             <div style={{ fontSize: 13, margin: "4px 0 8px" }}>{i.name} · {i.email} · {i.portfolio_size} · {new Date(i.created_at).toLocaleDateString()}</div>
+            <div style={{ fontSize: 12, marginBottom: 8, color: "#A3A9B8" }}>
+              Source calculator:{" "}
+              {i.calculator_snapshot?.calculatorSlug ? (
+                <strong style={{ color: "#fff" }}>
+                  {getCalculator(i.calculator_snapshot.calculatorSlug)?.name ?? i.calculator_snapshot.calculatorSlug}
+                  {i.calculator_snapshot.calculatorHeadline ? ` · ${i.calculator_snapshot.calculatorHeadline}` : ""}
+                </strong>
+              ) : (
+                "none recorded"
+              )}
+            </div>
             {i.fulfillment_error && <div style={{ fontSize: 12, color: "#f87171", marginBottom: 8 }}>Last error: {i.fulfillment_error}</div>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {i.status === "submitted" && (

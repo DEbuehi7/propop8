@@ -60,6 +60,7 @@ import {
   sharedCss,
 } from '@/lib/chaosTokens';
 import { computeVacancy } from '@/lib/calcMath';
+import { buildAuditHref } from '@/lib/calculatorHandoff';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -226,7 +227,18 @@ export default function VacancyBlackHole({
   }, [shareUrl]);
 
   const ctaHref = metrics
-    ? `${intakeHref}?type=vacancy&days=${metrics.operationalDays}&exposure=${metrics.operationalExposure}&total=${metrics.totalExposure}`
+    ? buildAuditHref(
+        'vacancy-black-hole',
+        `${metrics.operationalDays} days`,
+        {
+          type: 'vacancy',
+          days: metrics.operationalDays,
+          exposure: metrics.operationalExposure,
+          totalDays: metrics.totalDays, // AuditForm reads totalDays and forwards it to Tally as total_days
+          total: metrics.totalExposure,
+        },
+        intakeHref,
+      )
     : intakeHref;
 
   return (

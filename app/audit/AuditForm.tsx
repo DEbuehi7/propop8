@@ -41,6 +41,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { parseHandoff } from '@/lib/calculatorHandoff';
 import {
   PALETTE,
   MONO,
@@ -79,6 +80,8 @@ const WHAT_TO_SEND = [
 ];
 
 interface Snapshot {
+  calculatorSlug?: string;
+  calculatorHeadline?: string;
   days?: number;
   exposure?: number;
   totalDays?: number;
@@ -98,7 +101,10 @@ export default function AuditForm() {
       const v = Number(q.get(k));
       return Number.isFinite(v) && v > 0 ? Math.round(v) : undefined;
     };
+    const handoff = parseHandoff(q);
     setSnapshot({
+      calculatorSlug: handoff.slug ?? undefined,
+      calculatorHeadline: handoff.headline ?? undefined,
       days: n('days'),
       exposure: n('exposure'),
       totalDays: n('totalDays'),
@@ -118,6 +124,8 @@ export default function AuditForm() {
       transparentBackground: '1',
       dynamicHeight: '1',
     });
+    if (snapshot.calculatorSlug) p.set('calculator_slug', snapshot.calculatorSlug);
+    if (snapshot.calculatorHeadline) p.set('calculator_headline', snapshot.calculatorHeadline);
     if (snapshot.days !== undefined) p.set('days', String(snapshot.days));
     if (snapshot.exposure !== undefined) p.set('exposure', String(snapshot.exposure));
     if (snapshot.totalDays !== undefined) p.set('total_days', String(snapshot.totalDays));

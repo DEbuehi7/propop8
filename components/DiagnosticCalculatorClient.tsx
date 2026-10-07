@@ -26,6 +26,8 @@ import {
   hexA,
 } from "@/lib/chaosTokens";
 import { getCalculator, type CalcInput } from "@/lib/diagnosticCalculators";
+import { buildAuditHref } from "@/lib/calculatorHandoff";
+import { LINKS } from "@/lib/products";
 import { CALCULATOR_VISUALS } from "./calculatorVisuals";
 
 export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
@@ -42,6 +44,13 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
 
   const result = calc.calculate(values);
   const resultColor = result.headlineIsCost ? PALETTE.pink : PALETTE.mint;
+
+  // Only calculators whose CTA goes to the audit intake carry the handoff;
+  // product CTAs (kits) link out unchanged. "—" means no usable number yet.
+  const ctaHref =
+    calc.ctaHref === LINKS.audit && result.headline !== "—"
+      ? buildAuditHref(calc.slug, result.headline)
+      : calc.ctaHref;
 
   function renderVisual() {
     const Visual = CALCULATOR_VISUALS[slug];
@@ -105,7 +114,7 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
       {renderVisual()}
 
       <div style={{ marginTop: 28, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-        <a href={calc.ctaHref} className="chaos-ghost" style={ghostCtaStyle()}>
+        <a href={ctaHref} className="chaos-ghost" style={ghostCtaStyle()}>
           {calc.ctaLabel}
         </a>
       </div>

@@ -37,7 +37,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('audit_intakes')
     .select(
-      'id, created_at, name, email, company, portfolio_size, primary_concern, status, fulfillment_status, fulfillment_error, files_submitted_at, report_sent_at'
+      'id, created_at, name, email, company, portfolio_size, primary_concern, status, fulfillment_status, fulfillment_error, files_submitted_at, report_sent_at, calculator_snapshot'
     )
     .in('status', ['submitted', 'paid', 'files_received', 'in_analysis'])
     .order('created_at', { ascending: false })
