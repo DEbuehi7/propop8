@@ -73,8 +73,8 @@ export default function VendorMoneyPitVisual({
       </div>
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
-        Concentration isn't proof of overbilling. It's a reason to investigate pricing, SLAs, and
-        dependency — a comparison quote either confirms you're fine or catches it before renewal.
+        Concentration isn&apos;t proof of overbilling. It&apos;s a reason to investigate pricing, SLAs, and
+        dependency — a comparison quote either confirms you&apos;re fine or catches it before renewal.
       </p>
     </div>
   );

@@ -64,7 +64,7 @@ export default function AutomationGraveyardVisual({
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
         Auto-late-fees, a maintenance routing rule, a smart-thermostat shutoff on a vacant unit —
-        most of these fail silently. A dashboard that still says "active" is checking that the
+        most of these fail silently. A dashboard that still says &quot;active&quot; is checking that the
         automation exists, not that it ran.
       </p>
     </div>

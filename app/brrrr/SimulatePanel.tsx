@@ -197,7 +197,7 @@ export default function SimulatePanel() {
               <div style={{ fontSize: 12, color: T.slate, letterSpacing: ".08em" }}>MECHANICAL CALL (policy {state.call.policyId})</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: callColor[state.call.call] }}>{state.call.call}</div>
               <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>{state.call.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
-              <div style={{ color: T.slate, fontSize: 11.5, marginTop: 8 }}>The mechanical floor only. It doesn't replace judgment on anything the policy doesn't cover.</div>
+              <div style={{ color: T.slate, fontSize: 11.5, marginTop: 8 }}>The mechanical floor only. It doesn&apos;t replace judgment on anything the policy doesn&apos;t cover.</div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12, marginTop: 14 }}>

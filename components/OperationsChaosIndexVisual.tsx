@@ -70,8 +70,8 @@ export default function OperationsChaosIndexVisual({
       </div>
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
-        None of these individually looked worth escalating. That's the pattern — nothing here is a
-        single finding, it's what happens when nobody adds the small ones together.
+        None of these individually looked worth escalating. That&apos;s the pattern — nothing here is a
+        single finding, it&apos;s what happens when nobody adds the small ones together.
       </p>
     </div>
   );

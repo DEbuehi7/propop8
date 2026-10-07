@@ -91,8 +91,8 @@ export default function UtilityEnergyBleedVisual({
       </div>
 
       <p style={{ color: PALETTE.body, fontSize: 14, lineHeight: 1.6, marginTop: 22, textAlign: "center" }}>
-        A bill inside normal range doesn't need a story. One that doesn't — a leak, a rate change, a
-        meter reading a vacant unit as occupied — usually does, and the bill by itself won't say which.
+        A bill inside normal range doesn&apos;t need a story. One that doesn&apos;t — a leak, a rate change, a
+        meter reading a vacant unit as occupied — usually does, and the bill by itself won&apos;t say which.
       </p>
     </div>
   );
