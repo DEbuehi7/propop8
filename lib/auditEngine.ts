@@ -55,6 +55,7 @@
  */
 import Papa from "papaparse";
 import { ratio, sharePct, changePct } from "./calcMath";
+export { ENGINE_VERSION } from "./engineVersion";
 
 export interface LedgerRow {
   date: string;
