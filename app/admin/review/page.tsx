@@ -30,7 +30,8 @@
  *    turns that from an intention into a step.
  */
 import { useState, useCallback, useEffect } from "react";
-import { parseCsv, runEngine, type Finding, type SpendRow, type ClaimType, type AuditWindow } from "@/lib/auditEngine";
+import { parseCsv, runEngine, ENGINE_VERSION, type Finding, type SpendRow, type ClaimType, type AuditWindow, type EngineResult } from "@/lib/auditEngine";
+import { GATE } from "@/lib/reviewGate";
 import type { AuditReport } from "@/lib/reportTypes";
 
 const VOID = "#070b14", CARD = "#161f33", SHELL = "#0b1220", BRIGHT = "#f4f8ff";
@@ -41,16 +42,6 @@ const CLAIM_TYPES: ClaimType[] = ["FACT", "CALCULATION", "INFERENCE", "PREDICTIO
 const CLAIM_COLOR: Record<ClaimType, string> = {
   FACT: MINT, CALCULATION: CYAN, INFERENCE: AMBER, PREDICTION: PINK,
 };
-
-/** The release gate. Every item is something that has actually shipped wrong
- *  in a draft at some point -- this is a list of past mistakes, not hygiene
- *  theatre. */
-const GATE = [
-  "Numbers in the report match the source rows I spot-checked",
-  "No causal language where the file only shows variance",
-  "Duplicate findings are still labelled candidates",
-  "Claim type on every finding is right after my edits",
-];
 
 type Stage = "upload" | "review" | "done";
 
@@ -72,6 +63,9 @@ export default function ReviewPage() {
     reportDate: new Date().toISOString().slice(0, 10),
     summary: "",
   });
+  // Exactly what the engine returned. Never edited: the reviewer's changes live
+  // in `findings` and are saved separately, so the two can always be compared.
+  const [engineOutput, setEngineOutput] = useState<EngineResult | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [spendTable, setSpendTable] = useState<SpendRow[]>([]);
   const [auditWindow, setAuditWindow] = useState<AuditWindow | null>(null);
@@ -115,6 +109,7 @@ export default function ReviewPage() {
         return;
       }
       const result = runEngine(rows);
+      setEngineOutput({ ...result, droppedRows, totalRows });
       setFindings(result.findings);
       setSpendTable(result.spendTable);
       setAuditWindow(result.window);
@@ -160,6 +155,34 @@ export default function ReviewPage() {
       const { pdf } = await import("@react-pdf/renderer");
       const { AuditPdf } = await import("@/lib/reportPdf");
       const blob = await pdf(<AuditPdf report={buildReport()} />).toBlob();
+
+      // A linked intake is saved BEFORE anything is downloaded or sendable.
+      // If the save fails the reviewer stays here and nothing is offered.
+      if (selectedIntakeId) {
+        if (!engineOutput) throw new Error("Engine output is missing. Re-upload the ledger.");
+        const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+        const pdfSha256 = Array.from(new Uint8Array(digest))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        const res = await fetch("/api/admin/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            intakeId: selectedIntakeId,
+            engineVersion: ENGINE_VERSION,
+            engineOutput,
+            reviewerEdits: { meta, findings, triggerCount },
+            gateChecks: gateChecked,
+            approved: true,
+            pdfSha256,
+          }),
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(`Review was not saved, so nothing was downloaded or sent. ${payload?.error ?? `Server returned ${res.status}.`}`);
+        }
+      }
+
       setApprovedPdf(blob);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
