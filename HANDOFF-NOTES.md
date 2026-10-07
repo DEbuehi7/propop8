@@ -16,3 +16,7 @@ Open items carried forward from the Phase 0/1 session (2026-10-06/07).
 ## Calculators
 - Rules: subset limits (aged <= open, reopened <= closed, top vendor <= total), no negatives, and "baseline too small to compare" under $100.
 - Missed runs = `floor(daysSince / frequency)` via `calcMath.missedCycles`, used for both the number and the dots.
+
+## Plate8 vs audit database (before Plate8 goes public)
+- Plate8 (`lib/supabaseServer.ts`) and the audit routes (`send-report`, `tally-webhook`, `admin/intakes`) all read the same `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. On the live site they point at the audit project, which has no Plate8 tables, so Plate8 session saves would fail. The audit is unaffected.
+- Plate8 needs its own project settings (separate variable names, or a separate deploy) before it is public. The session route's Supabase write is also fire-and-forget today (not awaited), so failures are silent; fix that in the same step.
