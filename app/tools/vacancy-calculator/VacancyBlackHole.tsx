@@ -59,6 +59,7 @@ import {
   ctaStyle,
   sharedCss,
 } from '@/lib/chaosTokens';
+import { computeVacancy } from '@/lib/calcMath';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -200,23 +201,7 @@ export default function VacancyBlackHole({
 
   const metrics: Metrics | null = useMemo(() => {
     if (!valid) return null;
-    const operationalDays = daysBetween(moveOutDate, readyDate) ?? 0;
-    const leasingDays = daysBetween(readyDate, leaseDate) ?? 0;
-    const totalDays = operationalDays + leasingDays;
-    const dailyRent = monthlyRent / daysPerMonth;
-    const operationalExposure = Math.round(operationalDays * dailyRent);
-    const totalExposure = Math.round(totalDays * dailyRent);
-    return {
-      operationalDays,
-      leasingDays,
-      totalDays,
-      dailyRent: Math.round(dailyRent),
-      operationalExposure,
-      leasingExposure: totalExposure - operationalExposure,
-      totalExposure,
-      operationalPercent: totalDays > 0 ? (operationalDays / totalDays) * 100 : 0,
-      leasingPercent: totalDays > 0 ? (leasingDays / totalDays) * 100 : 0,
-    };
+    return computeVacancy({ monthlyRent, moveOut: moveOutDate, readyDate, leaseDate, daysPerMonth });
   }, [valid, monthlyRent, moveOutDate, readyDate, leaseDate, daysPerMonth]);
 
   const shareUrl = useMemo(() => {

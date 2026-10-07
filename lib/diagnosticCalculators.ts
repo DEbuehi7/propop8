@@ -1,10 +1,10 @@
 /**
  * lib/diagnosticCalculators.ts
  * ----------------------------------------------------------------
- * Config + math for the 7 non-vacancy diagnostic widgets. Vacancy
- * Black Hole isn't here -- that one already has a real calculator at
- * /tools/vacancy-calculator, this covers the rest of the DIAGNOSTICS
- * array that currently just links there regardless of topic.
+ * The single registry of diagnostic calculators. Seven are rendered by
+ * app/tools/[slug]; Vacancy Black Hole is date-driven and keeps its own
+ * page, so its entry carries `externalHref` instead of numeric inputs.
+ * Its math lives in lib/calcMath.ts (computeVacancy) like everything else.
  *
  * Same principle as lib/auditEngine.ts: every calculate() function
  * here is plain arithmetic on what the visitor typed, nothing
@@ -19,6 +19,7 @@
  */
 
 import { LINKS } from "./products";
+import { sharePct, changePct, missedCycles, THRESHOLDS, pctFmt, moneyFmt } from "./calcMath";
 
 export interface CalcInput {
   key: string;
@@ -42,6 +43,13 @@ export interface DiagnosticCalculator {
   line: string;
   inputs: CalcInput[];
   calculate: (v: Record<string, number>) => CalcResult;
+  /** Maps the typed values to the props of this slug's visual. The slug ->
+   *  component map lives in components/calculatorVisuals.ts so this file
+   *  stays free of React. */
+  visualProps: (v: Record<string, number>) => Record<string, number>;
+  /** Set for calculators that have their own page (vacancy). These are
+   *  excluded from app/tools/[slug] and linked to this href instead. */
+  externalHref?: string;
   /** Pulled from lib/products.ts, never hardcoded, so a price/slug
    *  change there is never something this file can drift out of sync
    *  with. Falls back to the full audit when no narrower product
@@ -50,15 +58,24 @@ export interface DiagnosticCalculator {
   ctaLabel: string;
 }
 
-function pctFmt(n: number): string {
-  return `${n >= 0 ? "+" : ""}${n.toFixed(0)}%`;
-}
-function moneyFmt(n: number): string {
-  const sign = n < 0 ? "-" : "";
-  return `${sign}$${Math.round(Math.abs(n)).toLocaleString()}`;
-}
-
 export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
+  {
+    slug: "vacancy-black-hole",
+    name: "Vacancy Black Hole",
+    line: "The unit wasn't waiting for a tenant. It was waiting for operations.",
+    ctaHref: LINKS.audit,
+    ctaLabel: "Find my make-ready bottleneck",
+    // Date-driven: move-out / rent-ready / lease-signed, not numbers. The page
+    // at externalHref computes with computeVacancy() from lib/calcMath.ts.
+    externalHref: "/tools/vacancy-calculator",
+    inputs: [],
+    visualProps: () => ({}),
+    calculate: () => ({
+      headline: "—",
+      headlineIsCost: false,
+      detail: "Open the vacancy calculator to enter move-out, rent-ready and lease-signed dates.",
+    }),
+  },
   {
     slug: "callback-nightmare",
     name: "Callback Nightmare",
@@ -69,12 +86,13 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "closed", label: "Work orders closed this period" },
       { key: "reopened", label: "Of those, reopened within 30 days" },
     ],
+    visualProps: (v) => ({ totalWorkOrders: v.closed ?? 0, reopenedWithin30: v.reopened ?? 0 }),
     calculate: (v) => {
       if (!v.closed) return { headline: "—", headlineIsCost: false, detail: "Enter your closed work order count to see your callback rate." };
-      const rate = (v.reopened / v.closed) * 100;
+      const rate = sharePct(v.reopened, v.closed) ?? 0;
       return {
         headline: pctFmt(rate) === "+0%" ? "0%" : pctFmt(rate),
-        headlineIsCost: rate > 5,
+        headlineIsCost: rate > THRESHOLDS.callbackRatePct,
         detail: `${v.reopened} of ${v.closed} closed work orders came back within 30 days. Above roughly 5%, a callback rate usually points to a specific vendor or category, not random bad luck.`,
       };
     },
@@ -89,12 +107,13 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "total", label: "Total category spend", prefix: "$" },
       { key: "topVendor", label: "Spend with your top vendor in that category", prefix: "$" },
     ],
+    visualProps: (v) => ({ totalSpend: v.total ?? 0, topVendorSpend: v.topVendor ?? 0 }),
     calculate: (v) => {
       if (!v.total) return { headline: "—", headlineIsCost: false, detail: "Enter total category spend to see vendor concentration." };
-      const share = (v.topVendor / v.total) * 100;
+      const share = sharePct(v.topVendor, v.total) ?? 0;
       return {
         headline: `${share.toFixed(0)}%`,
-        headlineIsCost: share >= 50,
+        headlineIsCost: share >= THRESHOLDS.vendorConcentrationPct,
         detail: `Your top vendor holds ${share.toFixed(0)}% of this category. Concentration by itself isn't a problem -- concentration nobody's gotten a comparison quote against usually is.`,
       };
     },
@@ -109,12 +128,13 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "open", label: "Total open work orders right now" },
       { key: "aged", label: "How many have been open past 30 days" },
     ],
+    visualProps: (v) => ({ totalOpen: v.open ?? 0, agedPast30: v.aged ?? 0 }),
     calculate: (v) => {
       if (!v.open) return { headline: "—", headlineIsCost: false, detail: "Enter your open work order count to see the aging share." };
-      const rate = (v.aged / v.open) * 100;
+      const rate = sharePct(v.aged, v.open) ?? 0;
       return {
         headline: `${rate.toFixed(0)}%`,
-        headlineIsCost: rate > 15,
+        headlineIsCost: rate > THRESHOLDS.agedShareOfOpenPct,
         detail: `${v.aged} of ${v.open} open work orders are past 30 days. Each one individually still looks minor -- that's exactly how a graveyard fills up.`,
       };
     },
@@ -129,9 +149,10 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "frequency", label: "How often it's supposed to run (days)", suffix: "days" },
       { key: "daysSince", label: "Days since you last actually confirmed it ran", suffix: "days" },
     ],
+    visualProps: (v) => ({ frequency: v.frequency ?? 0, daysSince: v.daysSince ?? 0 }),
     calculate: (v) => {
       if (!v.frequency) return { headline: "—", headlineIsCost: false, detail: "Enter the expected run frequency to see how many cycles were missed." };
-      const missed = Math.max(0, Math.floor(v.daysSince / v.frequency) - 1);
+      const missed = missedCycles(v.frequency, v.daysSince) ?? 0;
       return {
         headline: `${missed}`,
         headlineIsCost: missed > 0,
@@ -151,9 +172,10 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "past", label: "Maintenance spend, 12 months ago", prefix: "$" },
       { key: "current", label: "Maintenance spend, this month", prefix: "$" },
     ],
+    visualProps: (v) => ({ spendLastYear: v.past ?? 0, spendThisMonth: v.current ?? 0 }),
     calculate: (v) => {
       if (!v.past) return { headline: "—", headlineIsCost: false, detail: "Enter last year's spend to see the trend." };
-      const change = ((v.current - v.past) / v.past) * 100;
+      const change = changePct(v.current, v.past) ?? 0;
       return {
         headline: pctFmt(change),
         headlineIsCost: change > 0,
@@ -171,10 +193,11 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "current", label: "This month's utility bill", prefix: "$" },
       { key: "baseline", label: "Trailing 12-month average bill", prefix: "$" },
     ],
+    visualProps: (v) => ({ thisMonthBill: v.current ?? 0, trailingAverage: v.baseline ?? 0 }),
     calculate: (v) => {
       if (!v.baseline) return { headline: "—", headlineIsCost: false, detail: "Enter your trailing average to see the variance." };
       const delta = v.current - v.baseline;
-      const pct = (delta / v.baseline) * 100;
+      const pct = changePct(v.current, v.baseline) ?? 0;
       return {
         headline: moneyFmt(delta),
         headlineIsCost: delta > 0,
@@ -192,6 +215,7 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
       { key: "count", label: "Separate small issues logged this quarter" },
       { key: "avgCost", label: "Average cost per issue", prefix: "$", defaultValue: 150 },
     ],
+    visualProps: (v) => ({ issueCount: v.count ?? 0, avgCostPerIssue: v.avgCost || 150 }),
     calculate: (v) => {
       const total = v.count * (v.avgCost || 150);
       return {
@@ -202,6 +226,15 @@ export const DIAGNOSTIC_CALCULATORS: DiagnosticCalculator[] = [
     },
   },
 ];
+
+/** Calculators rendered by app/tools/[slug] (everything without its own page). */
+export function renderableCalculators(): DiagnosticCalculator[] {
+  return DIAGNOSTIC_CALCULATORS.filter((c) => !c.externalHref);
+}
+
+export function calculatorHref(c: DiagnosticCalculator): string {
+  return c.externalHref ?? `/tools/${c.slug}`;
+}
 
 export function getCalculator(slug: string): DiagnosticCalculator | undefined {
   return DIAGNOSTIC_CALCULATORS.find((c) => c.slug === slug);

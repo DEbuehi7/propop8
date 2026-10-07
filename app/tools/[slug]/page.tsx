@@ -13,11 +13,11 @@
  */
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { DIAGNOSTIC_CALCULATORS, getCalculator } from "@/lib/diagnosticCalculators";
+import { renderableCalculators, getCalculator } from "@/lib/diagnosticCalculators";
 import DiagnosticCalculatorClient from "@/components/DiagnosticCalculatorClient";
 
 export function generateStaticParams() {
-  return DIAGNOSTIC_CALCULATORS.map((c) => ({ slug: c.slug }));
+  return renderableCalculators().map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({
@@ -41,6 +41,6 @@ export default async function ToolPage({
 }) {
   const { slug } = await params;
   const calc = getCalculator(slug);
-  if (!calc) notFound();
+  if (!calc || calc.externalHref) notFound();
   return <DiagnosticCalculatorClient slug={slug} />;
 }

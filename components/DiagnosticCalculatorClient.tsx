@@ -26,13 +26,7 @@ import {
   hexA,
 } from "@/lib/chaosTokens";
 import { getCalculator, type CalcInput } from "@/lib/diagnosticCalculators";
-import VendorMoneyPitVisual from "./VendorMoneyPitVisual";
-import CallbackNightmareVisual from "./CallbackNightmareVisual";
-import DeadlineGraveyardVisual from "./DeadlineGraveyardVisual";
-import AssetHealthNightmareVisual from "./AssetHealthNightmareVisual";
-import UtilityEnergyBleedVisual from "./UtilityEnergyBleedVisual";
-import OperationsChaosIndexVisual from "./OperationsChaosIndexVisual";
-import AutomationGraveyardVisual from "./AutomationGraveyardVisual";
+import { CALCULATOR_VISUALS } from "./calculatorVisuals";
 
 export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
   const calc = getCalculator(slug);
@@ -50,66 +44,16 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
   const resultColor = result.headlineIsCost ? PALETTE.pink : PALETTE.mint;
 
   function renderVisual() {
-    switch (slug) {
-      case "vendor-money-pit":
-        return (
-          <VendorMoneyPitVisual
-            totalSpend={values.total ?? 0}
-            topVendorSpend={values.topVendor ?? 0}
-          />
-        );
-      case "callback-nightmare":
-        return (
-          <CallbackNightmareVisual
-            totalWorkOrders={values.closed ?? 0}
-            reopenedWithin30={values.reopened ?? 0}
-          />
-        );
-      case "deadline-graveyard":
-        return (
-          <DeadlineGraveyardVisual
-            totalOpen={values.open ?? 0}
-            agedPast30={values.aged ?? 0}
-          />
-        );
-      case "asset-health-nightmare":
-        return (
-          <AssetHealthNightmareVisual
-            spendLastYear={values.past ?? 0}
-            spendThisMonth={values.current ?? 0}
-          />
-        );
-      case "utility-energy-bleed":
-        return (
-          <UtilityEnergyBleedVisual
-            thisMonthBill={values.current ?? 0}
-            trailingAverage={values.baseline ?? 0}
-          />
-        );
-      case "operations-chaos-index":
-        return (
-          <OperationsChaosIndexVisual
-            issueCount={values.count ?? 0}
-            avgCostPerIssue={values.avgCost || 150}
-          />
-        );
-      case "automation-graveyard":
-        return (
-          <AutomationGraveyardVisual
-            frequency={values.frequency ?? 0}
-            daysSince={values.daysSince ?? 0}
-          />
-        );
-      default:
-        return (
-          <div style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}>
-            <div style={figureStyle(resultColor)}>{result.headline}</div>
-            <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-              {result.detail}
-            </p>
-          </div>
-        );
-    }
+    const Visual = CALCULATOR_VISUALS[slug];
+    if (Visual && calc) return <Visual {...calc.visualProps(values)} />;
+    return (
+      <div style={{ ...cardStyle, padding: 28, marginTop: 20, textAlign: "center" }}>
+        <div style={figureStyle(resultColor)}>{result.headline}</div>
+        <p style={{ color: PALETTE.body, fontSize: 14.5, lineHeight: 1.6, marginTop: 14, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+          {result.detail}
+        </p>
+      </div>
+    );
   }
 
   return (
