@@ -58,10 +58,6 @@ const TONES = {
   cyan: { ring: 'border-cyan-400/50', dot: 'bg-cyan-400' },
 } as const;
 
-function Chrome({ tag, footer }: { tag: string; footer?: string }) {
-  return { tag, footer };
-}
-
 export default function HeroCanvas(props: Props) {
   const { tag, children, footer = 'PropOps8 · Demonstration · Method shown on page' } = props;
 

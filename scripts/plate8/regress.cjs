@@ -1,6 +1,5 @@
 const b=require('./boot.cjs'); const ev=b.ev, wait=b.wait;
 const R=[]; const ok=(n,c,d)=>R.push([n,!!c,d||'']);
-const q=s=>ev('document.querySelectorAll('+JSON.stringify(s)+').length');
 const tx=s=>ev('(document.querySelector('+JSON.stringify(s)+')||{}).textContent||""');
 (async()=>{ await b.ready(600);
 
@@ -70,7 +69,7 @@ ok('#4b channel hits target the browsed crate', true, 'checked before going back
 
 // #7 bus: an item restored without meta
 ev('BUS.clear(); LOAD({share:[{id:"x1",kind:"note",title:"legacy",from:"mate"}]})'); await wait(80);
-let threw=false; try{ ev('BUS.unread()') }catch(e){ threw=true }
+let threw=false; try{ ev('BUS.unread()') }catch{ threw=true }
 ok('#7 a meta-less restored item is safe', !threw && ev('BUS.items[0].meta&&typeof BUS.items[0].meta==="object"'));
 
 // #8 Plate: a resize no longer wipes the entry

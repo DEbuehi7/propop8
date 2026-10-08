@@ -23,7 +23,7 @@ const AUDIO=process.env.AUDIO||'/tmp/claude-0/aud/Test Groove.mp3';
   // Mate: a short opening, so the geometry has something to say
   if(process.env.MATE!=='0')await p.evaluate(async()=>{go('mate');setPane('play');
     const idx=n=>(8-(+n[1]))*8+'abcdefgh'.indexOf(n[0]);
-    const click=n=>{const s=document.querySelector('#board .sq[data-i="'+idx(n)+'"]');s&&s.click()};
+    const click=n=>{const s=document.querySelector('#board .sq[data-i="'+idx(n)+'"]');if(s)s.click()};
     for(const [a,b] of [['e2','e4'],['g1','f3'],['f1','c4'],['d2','d3']]){click(a);await new Promise(r=>setTimeout(r,60));click(b);await new Promise(r=>setTimeout(r,2600))}
   }).catch(()=>{});
   await p.waitForTimeout(600);
@@ -52,7 +52,6 @@ const AUDIO=process.env.AUDIO||'/tmp/claude-0/aud/Test Groove.mp3';
     });
     await p.waitForTimeout(+(process.env.PK_MS||900));
   }
-  let i=0;
   for(const spec of (pages.length?pages:['state:graph','home:hub'])){
     const [id,pane]=spec.split(':');
     await p.evaluate(([a,q])=>{go(a);if(q)setPane(q)},[id,pane]); await p.waitForTimeout(1500);
@@ -62,7 +61,7 @@ const AUDIO=process.env.AUDIO||'/tmp/claude-0/aud/Test Groove.mp3';
       document.getElementById('stage').style.position='relative';}}); await p.waitForTimeout(300)}
     const out=prefix+'-'+id+'-'+(pane||'x')+'-'+w+'.png';
     await p.screenshot({path:path.join(__dirname,'..',out),fullPage:full});
-    console.log(out); i++;
+    console.log(out);
   }
   console.log('faults',await p.evaluate(()=>JSON.stringify(FAULTS.map(f=>f.where+': '+f.msg))),'| errors',errs.slice(0,3).join(' / ')||'none',
     '| state',await p.evaluate(()=>document.querySelector('#npG')&&document.querySelector('#npG').textContent));

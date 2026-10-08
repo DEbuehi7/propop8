@@ -2,12 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-interface AudioAnalyzerResult {
-  spectrum: number[]; // 60-band frequency spectrum (0-1 normalized)
-  frequency: number; // Peak frequency in Hz
-  volume: number; // RMS volume (0-1)
-}
-
 interface UseAudioAnalyzerReturn {
   isRecording: boolean;
   spectrum: number[];
@@ -49,7 +43,6 @@ export function useAudioAnalyzer(): UseAudioAnalyzerReturn {
   const animationIdRef = useRef<number | null>(null);
 
   // Frequency band mapping: 60 bands covering 20Hz to 20kHz
-  const frequencyBinRef = useRef<number>(0);
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
   /**
