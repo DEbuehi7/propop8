@@ -192,6 +192,7 @@ function ScreenPanel() {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reads browser storage once on mount; it does not exist during server render
       if (raw) setSaved(JSON.parse(raw));
     } catch { /* nothing saved yet */ }
   }, []);

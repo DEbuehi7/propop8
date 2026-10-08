@@ -40,12 +40,14 @@ export default function B5rPipeline() {
     setDetail(d); setForm((f) => ({ ...f, runId: d.runs[0]?.id ?? "" }));
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the awaited request, not synchronously
   useEffect(() => { loadList(); }, [loadList]);
   useEffect(() => {
     fetch("/api/admin/b5r/job", { cache: "no-store" })
       .then(async (r) => (r.ok ? setJob((await r.json()).runs) : setJob("unavailable")))
       .catch(() => setJob("unavailable"));
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the detail pane when another deal opens, then fetches it
   useEffect(() => { if (open) { setDetail(null); loadDetail(open); } }, [open, loadDetail]);
 
   async function setStatus(dealId: string, status: string) {

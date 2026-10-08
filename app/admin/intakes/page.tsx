@@ -62,6 +62,7 @@ export default function IntakesPage() {
     setRows((await res.json()).intakes);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the awaited request, not synchronously
   useEffect(() => { load(); }, [load]);
 
   async function act(i: Intake, action: "release" | "resend") {
