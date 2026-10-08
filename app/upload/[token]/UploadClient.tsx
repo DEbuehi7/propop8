@@ -266,6 +266,7 @@ export default function UploadClient({ token }: { token: string }) {
   }, [api]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the awaited request, not synchronously
     load();
   }, [load]);
 

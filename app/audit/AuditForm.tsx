@@ -102,6 +102,7 @@ export default function AuditForm() {
       return Number.isFinite(v) && v > 0 ? Math.round(v) : undefined;
     };
     const handoff = parseHandoff(q);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the page URL once on mount; it does not exist during server render
     setSnapshot({
       calculatorSlug: handoff.slug ?? undefined,
       calculatorHeadline: handoff.headline ?? undefined,
