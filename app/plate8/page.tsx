@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   State8Card,
   Mate8Card,
@@ -71,29 +71,20 @@ interface Activity {
   label: string;
 }
 
+const MOCK_ACTIVITIES: Activity[] = [
+  { time: '12:52', text: 'New plate game started', color: 'orange', label: 'PLATE' },
+  { time: '12:49', text: 'Chess analysis completed (+2.1)', color: 'cyan', label: 'MATE' },
+  { time: '12:46', text: 'Best lap: 28.4s (2,101 km/h)', color: 'coral', label: 'SKATE' },
+  { time: '12:42', text: 'Real-time speech transcription', color: 'magenta', label: 'STATE' },
+  { time: '12:38', text: 'Added to watchlist', color: 'purple', label: 'SLATE' },
+  { time: '12:34', text: '3 new dispatches', color: 'teal', label: 'LATE' },
+];
+
 export default function Plate8Dashboard() {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [systemStatus, setSystemStatus] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    // Initialize system status
-    const initialStatus: Record<string, boolean> = {};
-    instruments.forEach((instrument) => {
-      initialStatus[instrument.id] = true;
-    });
-    setSystemStatus(initialStatus);
-
-    // Mock activity feed
-    const mockActivities = [
-      { time: '12:52', text: 'New plate game started', color: 'orange', label: 'PLATE' },
-      { time: '12:49', text: 'Chess analysis completed (+2.1)', color: 'cyan', label: 'MATE' },
-      { time: '12:46', text: 'Best lap: 28.4s (2,101 km/h)', color: 'coral', label: 'SKATE' },
-      { time: '12:42', text: 'Real-time speech transcription', color: 'magenta', label: 'STATE' },
-      { time: '12:38', text: 'Added to watchlist', color: 'purple', label: 'SLATE' },
-      { time: '12:34', text: '3 new dispatches', color: 'teal', label: 'LATE' },
-    ];
-    setActivities(mockActivities);
-  }, []);
+  const [activities] = useState<Activity[]>(MOCK_ACTIVITIES);
+  const [systemStatus] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(instruments.map((instrument) => [instrument.id, true]))
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1A1F3A] text-[#E8EAEF]">
