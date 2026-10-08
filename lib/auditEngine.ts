@@ -812,6 +812,121 @@ function checkAging(rows: LedgerRow[], asOf: number, thresholdDays = 30): Findin
   }];
 }
 
+/** Spend by unit. Only claims what the file supports: it has no unit count,
+ *  so it never reports a per-unit average across the portfolio. It compares
+ *  units that APPEAR in the file against each other, and flags a unit whose net
+ *  spend is more than UNIT_OUTLIER_MULTIPLE times the median unit's. Skipped,
+ *  not estimated, when too few rows carry a unit. */
+const UNIT_OUTLIER_MULTIPLE = 3;
+const UNIT_MIN_COVERAGE = 0.6;
+const UNIT_MIN_DISTINCT = 8;
+
+function medianOf(values: number[]): number {
+  const v = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+}
+
+function checkUnitSpend(rows: LedgerRow[]): Finding[] {
+  const withUnit = rows.filter((r) => r.unit && r.unit.trim() !== "");
+  if (rows.length === 0 || withUnit.length / rows.length < UNIT_MIN_COVERAGE) return [];
+
+  const totals = new Map<string, number>();
+  const rowsByUnit = new Map<string, number[]>();
+  for (const r of withUnit) {
+    const u = (r.unit as string).trim();
+    totals.set(u, (totals.get(u) ?? 0) + r.amount);
+    rowsByUnit.set(u, [...(rowsByUnit.get(u) ?? []), r.sourceRow]);
+  }
+  if (totals.size < UNIT_MIN_DISTINCT) return [];
+
+  const med = medianOf([...totals.values()]);
+  if (med <= 0) return [];
+  const limit = med * UNIT_OUTLIER_MULTIPLE;
+  const flagged = [...totals.entries()].filter(([, t]) => t > limit).sort((a, b) => b[1] - a[1]);
+  if (flagged.length === 0) return [];
+
+  const flaggedTotal = flagged.reduce((a, [, t]) => a + t, 0);
+  const grand = [...totals.values()].reduce((a, b) => a + b, 0);
+  const share = sharePct(flaggedTotal, grand);
+  const top = flagged.slice(0, 3).map(([u, t]) => `unit ${u} ${money(t)}`).join(", ");
+
+  return [{
+    id: findingId(),
+    category: "Spend by unit",
+    title: `${flagged.length} unit(s) with net spend over ${UNIT_OUTLIER_MULTIPLE}x the median unit`,
+    description:
+      `Median unit net spend in this file is ${money(med)}; the line is ${UNIT_OUTLIER_MULTIPLE} x ${money(med)} = ${money(limit)}. ` +
+      `Highest: ${top}. The ${flagged.length} flagged unit(s) hold ${money(flaggedTotal)}` +
+      `${share === null ? "" : `, ${share.toFixed(1)}% of the ${money(grand)} that carries a unit`}. ` +
+      `${withUnit.length} of ${rows.length} rows carry a unit; this compares only units that appear in the file, not every unit you own.`,
+    amount: money(flaggedTotal),
+    amountLabel: "SPEND IN FLAGGED UNITS",
+    amountIsCost: false,
+    recommendation:
+      "Check each flagged unit's work orders for turnover, repeat repairs or a mistyped unit number before treating any of it as excess.",
+    include: true,
+    claimType: "CALCULATION",
+    sourceRows: flagged.flatMap(([u]) => rowsByUnit.get(u) ?? []).sort((a, b) => a - b),
+  }];
+}
+
+/** Open-item aging against THIS file's own history. The fixed 30-day check
+ *  says nothing about how long this operation normally takes. Here the
+ *  baseline is the file's own closed items (opened_date and closed_date both
+ *  present): an open item is flagged when it is already older than the 90th
+ *  percentile (nearest rank) of how long those closed items took. Skipped,
+ *  not estimated, with fewer than AGING_MIN_CLOSED closed items. */
+const AGING_MIN_CLOSED = 8;
+
+function nearestRank(sorted: number[], p: number): number {
+  const rank = Math.max(1, Math.ceil(p * sorted.length));
+  return sorted[rank - 1];
+}
+
+function checkAgingBaseline(rows: LedgerRow[], asOf: number): Finding[] {
+  const days: number[] = [];
+  for (const r of rows) {
+    if (r.status?.toLowerCase() !== "closed") continue;
+    const o = parseLedgerDate(r.openedDate);
+    const c = parseLedgerDate(r.closedDate);
+    if (o === null || c === null || c < o) continue;
+    days.push((c - o) / 86_400_000);
+  }
+  if (days.length < AGING_MIN_CLOSED) return [];
+  days.sort((a, b) => a - b);
+  const median = medianOf(days);
+  const p90 = nearestRank(days, 0.9);
+
+  const asOfDay = Date.parse(new Date(asOf).toISOString().slice(0, 10));
+  const open = rows
+    .filter((r) => r.status?.toLowerCase() === "open")
+    .map((r) => ({ r, o: parseLedgerDate(r.openedDate) }))
+    .filter((x): x is { r: LedgerRow; o: number } => x.o !== null)
+    .map((x) => ({ r: x.r, age: (asOfDay - x.o) / 86_400_000 }));
+  const slow = open.filter((x) => x.age > p90);
+  if (slow.length === 0) return [];
+
+  const slowTotal = slow.reduce((a, x) => a + x.r.amount, 0);
+  const oldest = Math.max(...slow.map((x) => x.age));
+  return [{
+    id: findingId(),
+    category: "Open-item aging vs this file's history",
+    title: `${slow.length} open item(s) older than 90% of this file's closed items took to close`,
+    description:
+      `${days.length} closed items with both dates took a median of ${median} day(s) and a 90th percentile of ${p90} day(s) (nearest rank). ` +
+      `${slow.length} of ${open.length} open items are older than ${p90} day(s) as of ${new Date(asOfDay).toISOString().slice(0, 10)}, totalling ${money(slowTotal)}; the oldest is ${Math.round(oldest)} day(s).`,
+    amount: money(slowTotal),
+    amountLabel: `OPEN >${p90} DAYS`,
+    amountIsCost: true,
+    recommendation:
+      "Confirm what 'open' means in the source system before assigning a cause; the comparison is only to how this same file's closed items behaved.",
+    include: true,
+    claimType: "CALCULATION",
+    sourceRows: slow.map((x) => x.r.sourceRow),
+  }];
+}
+
 /* -------------------------------------------------------------------------- */
 
 export function runEngine(
@@ -830,6 +945,8 @@ export function runEngine(
     ...checkNearDuplicates(rows),
     ...checkCredits(rows),
     ...checkAging(rows, asOf),
+    ...checkUnitSpend(rows),
+    ...checkAgingBaseline(rows, asOf),
   ];
 
   return {

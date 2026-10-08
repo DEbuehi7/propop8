@@ -119,6 +119,26 @@
           "totalOpen": 3,
           "agedCount": 2
         }
+      },
+      {
+        "id": "f7",
+        "category": "Spend by unit",
+        "title": "3 unit(s) with net spend over 3x the median unit",
+        "description": "Median unit net spend in this file is $420; the line is 3 x $420 = $1,260. Highest: unit 204 $2,700, unit 501 $1,800, unit 503 $1,300. The 3 flagged unit(s) hold $5,800, 24.7% of the $23,450 that carries a unit. 49 of 49 rows carry a unit; this compares only units that appear in the file, not every unit you own.",
+        "amount": "$5,800",
+        "amountLabel": "SPEND IN FLAGGED UNITS",
+        "amountIsCost": false,
+        "recommendation": "Check each flagged unit's work orders for turnover, repeat repairs or a mistyped unit number before treating any of it as excess.",
+        "include": true,
+        "claimType": "CALCULATION",
+        "sourceRows": [
+          22,
+          38,
+          40,
+          41,
+          42,
+          43
+        ]
       }
     ],
     "spendTable": [
@@ -151,7 +171,7 @@
         "baselineUsable": true
       }
     ],
-    "reviewTriggerCount": 6,
+    "reviewTriggerCount": 7,
     "window": {
       "firstDate": "2026-01-05",
       "lastDate": "2026-07-25",

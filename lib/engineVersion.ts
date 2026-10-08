@@ -13,4 +13,4 @@
  * change what a report says. The golden test (tests/auditGolden.test.ts) fails
  * when that happens; bumping the version is part of updating the golden.
  */
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.1.0";
