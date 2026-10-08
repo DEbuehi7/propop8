@@ -55,7 +55,7 @@ export function useAudioAnalyzer(): UseAudioAnalyzerReturn {
   /**
    * Update spectrum visualization on each animation frame
    */
-  const updateSpectrum = useCallback(() => {
+  const updateSpectrum = useCallback(function updateSpectrum() {
     if (!analyserRef.current || !dataArrayRef.current) return;
 
     analyserRef.current.getByteFrequencyData(dataArrayRef.current);
