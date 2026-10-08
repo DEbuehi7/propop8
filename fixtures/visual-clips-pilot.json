@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "id": "aim-drone-wide-01",
+      "schemaVersion": 1,
+      "sceneId": "aim_b5r",
+      "camera": "drone_wide",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "aim-drone-wide-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-aim_b5r",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.08,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "aim-medium-01",
+      "schemaVersion": 1,
+      "sceneId": "aim_b5r",
+      "camera": "medium",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "aim-medium-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-aim_b5r",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "street-tracking-01",
+      "schemaVersion": 1,
+      "sceneId": "street",
+      "camera": "tracking",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "street-tracking-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-stuttr-crew",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.18,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "street-tracking-02",
+      "schemaVersion": 1,
+      "sceneId": "street",
+      "camera": "tracking",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "street-tracking-02.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-stuttr-crew",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.22,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "street-wide-01",
+      "schemaVersion": 1,
+      "sceneId": "street",
+      "camera": "wide",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "street-wide-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-stuttr-crew",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.1,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "street-close-01",
+      "schemaVersion": 1,
+      "sceneId": "street",
+      "camera": "close",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "street-close-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-stuttr-crew",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.2,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "stage-wide-01",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "wide",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "stage-wide-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.11,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "stage-wide-02",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "wide",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "stage-wide-02.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.14,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "stage-medium-01",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "medium",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "stage-medium-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.16,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "stage-close-01",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "stage-close-01.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.19,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "stage-close-02-draft",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "durationSec": 5,
+      "aspect": "9:16",
+      "file": "stage-close-02-draft.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "unknown",
+        "driftScore": null
+      },
+      "approvalStatus": "draft"
+    }
+  ]
+}

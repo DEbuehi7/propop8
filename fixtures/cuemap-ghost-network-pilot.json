@@ -1,0 +1,94 @@
+{
+  "id": "cuemap-ghost-network-pilot",
+  "schemaVersion": 1,
+  "version": 1,
+  "trackId": "ghost-network-pilot-synthetic",
+  "analysisProfileId": "profile-ghost-network-synthetic",
+  "aspect": "9:16",
+  "tempo": [
+    {
+      "startBar": 0,
+      "bpm": 124,
+      "beatsPerBar": 4
+    }
+  ],
+  "cues": [
+    {
+      "id": "intro",
+      "section": "intro",
+      "startBar": 0,
+      "endBar": 4,
+      "sceneId": "aim_b5r",
+      "cameras": [
+        "drone_wide"
+      ],
+      "shotBars": 4
+    },
+    {
+      "id": "verse-1",
+      "section": "verse",
+      "startBar": 4,
+      "endBar": 12,
+      "sceneId": "street",
+      "cameras": [
+        "tracking",
+        "wide",
+        "close"
+      ],
+      "shotBars": 2
+    },
+    {
+      "id": "build",
+      "section": "build",
+      "startBar": 12,
+      "endBar": 16,
+      "sceneId": "street",
+      "cameras": [
+        "close",
+        "tracking"
+      ],
+      "shotBars": 1
+    },
+    {
+      "id": "chorus-1",
+      "section": "chorus",
+      "startBar": 16,
+      "endBar": 24,
+      "sceneId": "dance_stage",
+      "cameras": [
+        "wide",
+        "medium",
+        "close"
+      ],
+      "shotBars": 2
+    },
+    {
+      "id": "break",
+      "section": "break",
+      "startBar": 24,
+      "endBar": 28,
+      "sceneId": "aim_b5r",
+      "cameras": [
+        "medium",
+        "drone_wide"
+      ],
+      "shotBars": 2
+    },
+    {
+      "id": "chorus-2",
+      "section": "chorus",
+      "startBar": 28,
+      "endBar": 36,
+      "sceneId": "dance_stage",
+      "cameras": [
+        "close",
+        "wide",
+        "medium"
+      ],
+      "shotBars": 1
+    }
+  ],
+  "fallbackClipId": "stage-wide-01",
+  "maxDriftScore": 0.25,
+  "approvalStatus": "draft"
+}
