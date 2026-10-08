@@ -246,6 +246,7 @@ function ScreenPanel() {
 
   function savePaperTrade() {
     const rec = {
+      // eslint-disable-next-line react-hooks/purity -- runs in a click handler, not during render
       id: Date.now(), address: address || "Address not verified", county, unitCount,
       price, grossRent, piti: Math.round(piti.total),
       margin: isFinite(margin) ? Number(margin.toFixed(3)) : null,

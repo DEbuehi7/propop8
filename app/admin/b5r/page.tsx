@@ -19,6 +19,8 @@ interface JobRun { id: string; started_at: string; ok: boolean; summary: string;
 const STALE_DAYS = 9; // job is weekly; a run older than this means it stopped
 
 export default function B5rPipeline() {
+  // Fixed once per page load, so render stays pure.
+  const [now] = useState(() => Date.now());
   const [job, setJob] = useState<JobRun[] | "unavailable" | null>(null);
   const [deals, setDeals] = useState<DealRow[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export default function B5rPipeline() {
       </p>
       {job !== null && (() => {
         const last = job === "unavailable" ? null : job[0];
-        const ageDays = last ? (Date.now() - new Date(last.started_at).getTime()) / 864e5 : Infinity;
+        const ageDays = last ? (now - new Date(last.started_at).getTime()) / 864e5 : Infinity;
         const bad = job === "unavailable" || !last || !last.ok || ageDays > STALE_DAYS;
         const text = job === "unavailable" ? "Weekly data job: status unavailable (has migration 008 been run?)."
           : !last ? "Weekly data job: no runs recorded yet. Check the GitHub Actions workflow “AIM-B5R weekly data job”."
