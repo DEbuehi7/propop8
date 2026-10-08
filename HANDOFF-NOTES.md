@@ -37,3 +37,7 @@ Run in the AUDIT Supabase project (`tjxnxescjcvpzthmhvuh`), in order:
 - Live pipeline check with synthetic data: `BASE_URL=... npm run e2e:audit`
   (secrets read from env by name; `--dry` prints the plan). Not yet run against production.
 - Bump `lib/engineVersion.ts` whenever a change would alter what a report says.
+
+## Plate8 session write (done)
+- `app/api/plate8/state8/session/route.ts` now awaits the Supabase save. A failed save returns 502 with `success:false` (session still kept in memory); the page ignores the status, so the UI is unchanged.
+- `lib/supabaseServer.ts` reads `PLATE8_SUPABASE_URL` / `PLATE8_SUPABASE_SERVICE_ROLE_KEY` first and falls back to the shared variables. Set the PLATE8_ pair in Netlify, pointing at a Plate8 project, before Plate8 goes public.
