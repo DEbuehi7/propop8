@@ -21,7 +21,16 @@ export type CameraShot =
   | "tracking"
   | "orbit";
 
-export type AspectRatio = "9:16" | "16:9" | "4:5" | "1:1";
+export type AspectRatio = "9:16" | "16:9" | "4:5" | "1:1" | "21:9";
+
+/** Output frame size for each aspect ratio (even numbers, 1080 short side). */
+export const FRAME_SIZE: Record<AspectRatio, readonly [number, number]> = {
+  "9:16": [1080, 1920],
+  "16:9": [1920, 1080],
+  "4:5": [1080, 1350],
+  "1:1": [1080, 1080],
+  "21:9": [2520, 1080],
+};
 
 /**
  * Drift check result for a generated clip, measured against its reference set.
@@ -83,6 +92,8 @@ export interface VocalPhrase {
   voice: string;
   startBar: number;
   endBar: number;
+  /** Lyric line, shown as a caption when lyric captions are on. */
+  text?: string;
 }
 
 export interface VisualClipLibrary {

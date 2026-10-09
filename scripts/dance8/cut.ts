@@ -12,15 +12,23 @@
  *   --punch 0.05      zoom punch on every bar line (0 = off)
  *   --font FILE       font for the "All characters are fictional and AI-generated." caption
  *   --no-caption      leave the caption off (drafts only; --approved always adds it)
+ *   --lyrics          burn in the lyric line during each sung phrase (uses vocals[].text)
+ *   --edl FILE        also write a CMX 3600 EDL (open the cut in Resolve/Premiere)
+ *   --briefs draft|final   list the shots still to generate, sized for
+ *                     Kling 4.0 Flash (draft) or Kling 4.0 (final); --briefs-out FILE saves JSON
  *
  * A render also writes OUT.manifest.json: every clip used, where it came from,
  * its drift score, the seed and the caption. That is the provenance record.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import type { Cut, CueMap, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
+import { FRAME_SIZE, type Cut, type CueMap, type VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import { planCuts, sliceCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { buildFfmpegArgs } from "../../lib/dance8/render/ffmpegArgs";
+import { toEdl } from "../../lib/dance8/render/edl";
+import { barToSec } from "../../lib/dance8/authoring/validateCueMap";
+import { GENERATORS } from "../../lib/dance8/authoring/generators";
+import { shotBriefs } from "../../lib/dance8/authoring/shotBriefs";
 
 const DISCLOSURE = "All characters are fictional and AI-generated.";
 const FONT_GUESSES = [
@@ -32,7 +40,7 @@ const FONT_GUESSES = [
 ];
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font"]);
+const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out"]);
 const flag = (name: string) => argv.includes(name);
 const opt = (name: string) => {
   const i = argv.indexOf(name);
@@ -56,6 +64,26 @@ if (!plan.ok) {
   console.error("Cue map did not validate:");
   for (const i of plan.issues) console.error(`  ${i.code}  ${i.path}  ${i.message}`);
   process.exit(1);
+}
+
+const briefTier = opt("--briefs");
+if (briefTier) {
+  const g = briefTier === "final" ? GENERATORS["kling-4.0"] : briefTier === "draft" ? GENERATORS["kling-4.0-flash"] : fail("--briefs takes draft or final");
+  const briefs = shotBriefs(map, lib, g);
+  console.log(`Shots still to generate for ${g.label}: ${briefs.length}`);
+  for (const b of briefs) {
+    console.log(
+      `  ${b.kind.padEnd(9)} ${b.cueId.padEnd(9)} ${b.sceneId}/${b.camera}`.padEnd(46) +
+        ` song ${b.songStartSec.toFixed(2)}-${b.songEndSec.toFixed(2)}s  generate ${b.generateSec}s` +
+        (b.voice ? `  voice ${b.voice}` : "") + (b.mouth === "hidden" ? "  NO MOUTH" : ""),
+    );
+  }
+  const out = opt("--briefs-out");
+  if (out) {
+    writeFileSync(out, JSON.stringify(briefs, null, 2) + "\n");
+    console.log(`Saved ${out}`);
+  }
+  console.log("");
 }
 
 let cuts: Cut[] = plan.cuts;
@@ -85,6 +113,12 @@ console.log(`\n${cuts.length} cuts, ${totalSec.toFixed(2)} s, seed ${seed}, lip-
 if (standIns.length > 0) {
   console.log(`${standIns.length} shot(s) use the stand-in clip; --approved will refuse until footage exists:`);
   for (const c of standIns) console.log(`  bars ${c.startBar}-${c.endBar} ${c.cueId} ${c.sceneId}`);
+}
+
+const edlPath = opt("--edl");
+if (edlPath) {
+  writeFileSync(edlPath, toEdl(`${map.id} seed ${seed}${shortId ? ` ${shortId}` : ""}`, cuts, lib, 30));
+  console.log(`Saved ${edlPath}`);
 }
 
 if (flag("--render")) {
@@ -118,12 +152,24 @@ if (flag("--render")) {
     caption = { text: DISCLOSURE, fontFile: font!, seconds: Math.min(4, totalSec) };
   }
 
-  const [w, h] =
-    map.aspect === "9:16" ? [1080, 1920] : map.aspect === "16:9" ? [1920, 1080] : map.aspect === "4:5" ? [1080, 1350] : [1080, 1080];
+  const [w, h] = FRAME_SIZE[map.aspect];
   const punch = opt("--punch") === undefined ? 0 : Number(opt("--punch"));
+  let lyrics: { fontFile: string; lines: { text: string; startSec: number; endSec: number }[] } | undefined;
+  if (flag("--lyrics")) {
+    const font = opt("--font") ?? FONT_GUESSES.find((f) => existsSync(f)) ?? fail("No font found for lyrics; pass --font FILE.");
+    const lines = (map.vocals ?? [])
+      .filter((v) => v.text)
+      .map((v) => ({
+        text: v.text!,
+        startSec: Math.max(0, barToSec(map.tempo, v.startBar) - offsetSec),
+        endSec: Math.min(totalSec, barToSec(map.tempo, v.endBar) - offsetSec),
+      }))
+      .filter((l) => l.endSec > l.startSec);
+    lyrics = { fontFile: font, lines };
+  }
   const args = buildFfmpegArgs(cuts, lib, {
     clipDir: clipDir!, audioPath: audioPath!, outPath: outPath!, width: w, height: h, fps: 30,
-    audioOffsetSec: offsetSec, punch, caption,
+    audioOffsetSec: offsetSec, punch, caption, lyrics,
   });
   const r = spawnSync("ffmpeg", args, { stdio: "inherit" });
   if (r.status !== 0) process.exit(r.status ?? 1);
@@ -147,5 +193,6 @@ if (flag("--render")) {
     }),
   };
   writeFileSync(`${outPath}.manifest.json`, JSON.stringify(manifest, null, 2) + "\n");
+
   console.log(`Rendered ${outPath} (+ manifest)`);
 }

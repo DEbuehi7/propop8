@@ -23,11 +23,29 @@ export interface RenderOptions {
   punch?: number;
   /** Small caption burned in for the first `seconds` (e.g. the AI disclosure). */
   caption?: { text: string; fontFile: string; seconds: number };
+  /** Bold lyric captions, each shown for its own time range (render time). */
+  lyrics?: { fontFile: string; lines: { text: string; startSec: number; endSec: number }[] };
 }
 
 /** Escapes text for ffmpeg drawtext inside a filtergraph. */
 export function escapeDrawtext(t: string): string {
   return t.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\u2019").replace(/%/g, "\\%");
+}
+
+/** Greedy word wrap; a single word longer than the row stays whole. */
+export function wrapWords(text: string, maxChars: number): string[] {
+  const rows: string[] = [];
+  let cur = "";
+  for (const word of text.trim().split(/\s+/)) {
+    if (cur && cur.length + 1 + word.length > maxChars) {
+      rows.push(cur);
+      cur = word;
+    } else {
+      cur = cur ? `${cur} ${word}` : word;
+    }
+  }
+  if (cur) rows.push(cur);
+  return rows;
 }
 
 export function frameAt(sec: number, fps: number): number {
@@ -70,17 +88,31 @@ export function buildFfmpegArgs(cuts: Cut[], library: VisualClipLibrary, o: Rend
     parts.push(`${chain}[v${i}]`);
   });
   const concat = `${cuts.map((_, i) => `[v${i}]`).join("")}concat=n=${cuts.length}:v=1:a=0`;
+  const overlays: string[] = [];
+  // Lyric lines are wrapped to the frame width and each row centred.
+  const lyricPx = Math.round(Math.min(o.height / 26, o.width / 14));
+  const perRow = Math.max(8, Math.floor(o.width / (lyricPx * 0.66)));
+  for (const line of o.lyrics?.lines ?? []) {
+    const rows = wrapWords(line.text, perRow);
+    rows.forEach((row, r) => {
+      const y = Math.round(o.height * 0.7 + (r - (rows.length - 1) / 2) * lyricPx * 1.25);
+      overlays.push(
+        `drawtext=fontfile='${o.lyrics!.fontFile}':text='${escapeDrawtext(row)}':` +
+          `fontsize=${lyricPx}:fontcolor=white:borderw=${Math.max(2, Math.round(lyricPx / 18))}:bordercolor=black@0.85:` +
+          `x=(w-tw)/2:y=${y}:enable='between(t\\,${line.startSec.toFixed(3)}\\,${line.endSec.toFixed(3)})'`,
+      );
+    });
+  }
   if (o.caption) {
     const c = o.caption;
-    parts.push(`${concat}[vcat]`);
-    parts.push(
-      `[vcat]drawtext=fontfile='${c.fontFile}':text='${escapeDrawtext(c.text)}':` +
+    overlays.push(
+      `drawtext=fontfile='${c.fontFile}':text='${escapeDrawtext(c.text)}':` +
         `fontsize=h/48:fontcolor=white@0.9:box=1:boxcolor=black@0.45:boxborderw=8:` +
-        `x=(w-tw)/2:y=h-th-h/14:enable='lt(t\\,${c.seconds})'[vout]`,
+        `x=(w-tw)/2:y=h-th-h/14:enable='lt(t\\,${c.seconds})'`,
     );
-  } else {
-    parts.push(`${concat}[vout]`);
   }
+  parts.push(overlays.length ? `${concat}[vcat]` : `${concat}[vout]`);
+  if (overlays.length) parts.push(`[vcat]${overlays.join(",")}[vout]`);
 
   const totalFrames = frameAt(cuts[cuts.length - 1].endSec, o.fps) - frameAt(cuts[0].startSec, o.fps);
   args.push(

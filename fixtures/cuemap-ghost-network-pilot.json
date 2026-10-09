@@ -93,19 +93,22 @@
       "id": "v1-ja",
       "voice": "Ja",
       "startBar": 4,
-      "endBar": 12
+      "endBar": 12,
+      "text": "Signal in the static, we move through the wire"
     },
     {
       "id": "c1-jabo",
       "voice": "JaBo",
       "startBar": 16,
-      "endBar": 24
+      "endBar": 24,
+      "text": "Ghost network, we don't fade, we multiply"
     },
     {
       "id": "c2-jabo",
       "voice": "JaBo",
       "startBar": 28,
-      "endBar": 36
+      "endBar": 36,
+      "text": "Ghost network, every city is a node"
     }
   ],
   "fallbackClipId": "stage-wide-01",

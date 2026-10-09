@@ -15,7 +15,10 @@ import libraryData from "../../fixtures/visual-clips-pilot.json";
 import type { CueMap, Cut, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import { validateCueMap, barToSec } from "../../lib/dance8/authoring/validateCueMap";
 import { planCuts, sliceCuts } from "../../lib/dance8/runtime/CutPlanner";
-import { buildFfmpegArgs, frameAt } from "../../lib/dance8/render/ffmpegArgs";
+import { buildFfmpegArgs, frameAt, wrapWords } from "../../lib/dance8/render/ffmpegArgs";
+import { toEdl, timecode } from "../../lib/dance8/render/edl";
+import { GENERATORS, generateAspect } from "../../lib/dance8/authoring/generators";
+import { shotBriefs } from "../../lib/dance8/authoring/shotBriefs";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 const baseMap = () => clone(cueMapData) as unknown as CueMap;
@@ -269,6 +272,7 @@ test("renders a short with beat punch and the AI caption to the exact length", {
     const r = spawnSync("ffmpeg", buildFfmpegArgs(s.cuts, lib, {
       clipDir: dir, audioPath: audio, outPath: out, width: 90, height: 160, fps,
       audioOffsetSec: s.offsetSec, punch: 0.06,
+      lyrics: { fontFile: FONT, lines: [{ text: "Ghost network, we don't fade: 100% here", startSec: 0, endSec: 5 }] },
       caption: { text: "All characters are fictional and AI-generated.", fontFile: FONT, seconds: 3 },
     }));
     assert.equal(r.status, 0, String(r.stderr));
@@ -278,4 +282,86 @@ test("renders a short with beat punch and the AI caption to the exact length", {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("shot briefs: within generator limits, start on bar lines, deterministic", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  for (const g of Object.values(GENERATORS)) {
+    const a = shotBriefs(map, lib, g);
+    assert.deepEqual(a, shotBriefs(map, lib, g));
+    assert.ok(a.length > 0);
+    const ids = new Set(a.map((b) => b.id));
+    assert.equal(ids.size, a.length, "brief ids are unique");
+    for (const b of a) {
+      assert.ok(b.generateSec >= g.minSec && b.generateSec <= g.maxSec, `${b.id} length ${b.generateSec}`);
+      assert.ok(Number.isInteger(b.generateSec));
+      assert.ok(b.generateSec >= b.songEndSec - b.songStartSec - 1e-6 || b.songEndSec - b.songStartSec > g.maxSec);
+      if (g.maxKeyframes) assert.ok(b.keyframesSec.length <= g.maxKeyframes);
+      assert.equal(b.keyframesSec[0], 0);
+      const onBar = Array.from({ length: 37 }, (_, i) => barToSec(map.tempo, i)).some((t) => Math.abs(t - b.songStartSec) < 1e-3);
+      assert.ok(onBar, `${b.id} does not start on a bar line`);
+      assert.ok(g.aspects.includes(b.aspect));
+    }
+  }
+});
+
+test("shot briefs close the loop: generating what a brief asks for removes it", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const g = GENERATORS["kling-4.0"];
+  const before = shotBriefs(map, lib, g);
+  const first = before.find((b) => b.kind === "lip_sync")!;
+  lib.clips.push({
+    id: "ls-filled", schemaVersion: 1, sceneId: first.sceneId, camera: first.camera,
+    durationSec: first.generateSec, aspect: map.aspect, file: "ls-filled.mp4",
+    source: { type: "ai_generated", generator: g.id, referenceSetId: first.referenceSetId ?? undefined, createdAt: "2026-10-08T00:00:00Z", license: "proprietary" },
+    drift: { status: "known", driftScore: 0.1, method: "human_review" },
+    approvalStatus: "approved", mouthVisible: true,
+    lipSync: { voice: first.voice!, songStartSec: first.songStartSec },
+  });
+  const after = shotBriefs(map, lib, g);
+  assert.ok(!after.some((b) => b.id === first.id), "filled brief should disappear");
+  assert.equal(validateCueMap(map, lib).ok, true);
+  assertLipSyncRules(map, lib, planCuts(map, lib).cuts);
+});
+
+test("shot briefs ask for mouth-free b-roll when only singer shots exist during vocals", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  for (const c of lib.clips) if (c.sceneId === "street" && c.camera === "wide") c.mouthVisible = true;
+  const b = shotBriefs(map, lib, GENERATORS["kling-4.0"]).find((x) => x.id === "broll-verse-1-wide");
+  assert.ok(b, "expected a b-roll brief for the street wide shot");
+  assert.equal(b!.mouth, "hidden");
+});
+
+test("aspect not offered by a generator is generated nearby and cropped", () => {
+  assert.deepEqual(generateAspect("4:5", GENERATORS["kling-4.0"]), { aspect: "1:1", cropped: true });
+  assert.deepEqual(generateAspect("9:16", GENERATORS["kling-4.0"]), { aspect: "9:16", cropped: false });
+  assert.deepEqual(generateAspect("21:9", GENERATORS["kling-3.0"]), { aspect: "16:9", cropped: true });
+});
+
+test("EDL: contiguous record timecodes that add up to the song", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const plan = planCuts(map, lib, { seed: 5 });
+  const edl = toEdl("pilot", plan.cuts, lib, 30);
+  const events = edl.split("\n").filter((l) => /^\d{3} /.test(l));
+  assert.equal(events.length, plan.cuts.length);
+  assert.equal(timecode(3600 * 30, 30), "01:00:00:00");
+  let prevOut = "01:00:00:00";
+  for (const e of events) {
+    const tc = e.trim().split(/\s+/).slice(-4);
+    assert.equal(tc[2], prevOut, "record in = previous record out");
+    prevOut = tc[3];
+  }
+  assert.equal(prevOut, timecode(3600 * 30 + frameAt(plan.totalSec, 30), 30));
+  assert.match(edl, /\* FROM CLIP NAME: ls-jabo-chorus/);
+});
+
+test("lyric wrap keeps every word and respects the row width", () => {
+  const text = "Ghost network, we don't fade, we multiply across every city";
+  const rows = wrapWords(text, 20);
+  assert.equal(rows.join(" "), text);
+  for (const r of rows) assert.ok(r.length <= 20 || !r.includes(" "));
 });
