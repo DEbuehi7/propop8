@@ -58,6 +58,31 @@ export interface VisualClip {
   source: VisualClipSource;
   drift: DriftCheck;
   approvalStatus: "draft" | "approved" | "retired";
+  /**
+   * A singer's mouth is clearly on screen. Such a clip may only appear during
+   * vocals if it is lip-synced to that exact moment (see lipSync), so viewers
+   * never see a mouth that is out of sync with the song.
+   */
+  mouthVisible?: boolean;
+  /**
+   * Present on lip-synced clips: frame 0 of the file matches songStartSec of
+   * the song for this voice. The planner may only place the clip where it
+   * lines up with the song, which keeps the sync exact in every variation.
+   */
+  lipSync?: LipSyncLock;
+}
+
+export interface LipSyncLock {
+  voice: string; // e.g. "Ja", "Bo", "JaBo"
+  songStartSec: number;
+}
+
+/** A sung line. Bars are half-open, like cues. */
+export interface VocalPhrase {
+  id: string;
+  voice: string;
+  startBar: number;
+  endBar: number;
 }
 
 export interface VisualClipLibrary {
@@ -105,12 +130,18 @@ export interface CueMap {
   fallbackClipId: string;
   /** Approved clips must have a measured drift score at or below this. */
   maxDriftScore: number;
+  /** Sung lines. Optional; without it no mouth rule applies. */
+  vocals?: VocalPhrase[];
   approvalStatus: "draft" | "validated" | "approved";
   approvedBy?: string;
   approvedAt?: string;
 }
 
-export type CutReason = "cue_rotation" | "shortened_to_clip" | "fallback_no_match";
+export type CutReason =
+  | "cue_rotation"
+  | "shortened_to_clip"
+  | "lip_sync"
+  | "fallback_no_match";
 
 /** One line of the edit decision list. */
 export interface Cut {

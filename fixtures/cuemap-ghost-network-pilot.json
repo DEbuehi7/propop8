@@ -88,6 +88,26 @@
       "shotBars": 1
     }
   ],
+  "vocals": [
+    {
+      "id": "v1-ja",
+      "voice": "Ja",
+      "startBar": 4,
+      "endBar": 12
+    },
+    {
+      "id": "c1-jabo",
+      "voice": "JaBo",
+      "startBar": 16,
+      "endBar": 24
+    },
+    {
+      "id": "c2-jabo",
+      "voice": "JaBo",
+      "startBar": 28,
+      "endBar": 36
+    }
+  ],
   "fallbackClipId": "stage-wide-01",
   "maxDriftScore": 0.25,
   "approvalStatus": "draft"

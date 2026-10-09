@@ -137,7 +137,8 @@
         "method": "human_review",
         "checkedAt": "2026-10-08T00:00:00Z"
       },
-      "approvalStatus": "approved"
+      "approvalStatus": "approved",
+      "mouthVisible": true
     },
     {
       "id": "stage-wide-01",
@@ -206,7 +207,8 @@
         "method": "human_review",
         "checkedAt": "2026-10-08T00:00:00Z"
       },
-      "approvalStatus": "approved"
+      "approvalStatus": "approved",
+      "mouthVisible": true
     },
     {
       "id": "stage-close-01",
@@ -229,7 +231,8 @@
         "method": "human_review",
         "checkedAt": "2026-10-08T00:00:00Z"
       },
-      "approvalStatus": "approved"
+      "approvalStatus": "approved",
+      "mouthVisible": true
     },
     {
       "id": "stage-close-02-draft",
@@ -251,6 +254,174 @@
         "driftScore": null
       },
       "approvalStatus": "draft"
+    },
+    {
+      "id": "ls-ja-verse1-close",
+      "schemaVersion": 1,
+      "sceneId": "street",
+      "camera": "close",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-ja-verse1-close.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-stuttr-crew",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "Ja",
+        "songStartSec": 7.741935
+      }
+    },
+    {
+      "id": "ls-jabo-chorus1-close-a",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-jabo-chorus1-close-a.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "JaBo",
+        "songStartSec": 30.967742
+      }
+    },
+    {
+      "id": "ls-jabo-chorus1-close-b",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-jabo-chorus1-close-b.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "JaBo",
+        "songStartSec": 30.967742
+      }
+    },
+    {
+      "id": "ls-jabo-chorus1-medium",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "medium",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-jabo-chorus1-medium.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "JaBo",
+        "songStartSec": 34.83871
+      }
+    },
+    {
+      "id": "ls-jabo-chorus2-close",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-jabo-chorus2-close.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "JaBo",
+        "songStartSec": 54.193548
+      }
+    },
+    {
+      "id": "ls-jabo-chorus2-medium",
+      "schemaVersion": 1,
+      "sceneId": "dance_stage",
+      "camera": "medium",
+      "durationSec": 10,
+      "aspect": "9:16",
+      "file": "ls-jabo-chorus2-medium.mp4",
+      "source": {
+        "type": "ai_generated",
+        "generator": "kling-3.0+lipsync",
+        "referenceSetId": "ref-dancer",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "license": "proprietary"
+      },
+      "drift": {
+        "status": "known",
+        "driftScore": 0.15,
+        "method": "human_review",
+        "checkedAt": "2026-10-08T00:00:00Z"
+      },
+      "approvalStatus": "approved",
+      "mouthVisible": true,
+      "lipSync": {
+        "voice": "JaBo",
+        "songStartSec": 56.129032
+      }
     }
   ]
 }

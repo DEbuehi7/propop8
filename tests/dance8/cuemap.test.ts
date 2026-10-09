@@ -12,15 +12,33 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import cueMapData from "../../fixtures/cuemap-ghost-network-pilot.json";
 import libraryData from "../../fixtures/visual-clips-pilot.json";
-import type { CueMap, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
+import type { CueMap, Cut, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import { validateCueMap, barToSec } from "../../lib/dance8/authoring/validateCueMap";
-import { planCuts } from "../../lib/dance8/runtime/CutPlanner";
+import { planCuts, sliceCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { buildFfmpegArgs, frameAt } from "../../lib/dance8/render/ffmpegArgs";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 const baseMap = () => clone(cueMapData) as unknown as CueMap;
 const baseLib = () => clone(libraryData) as unknown as VisualClipLibrary;
 const codes = (r: { issues: { code: string }[] }) => r.issues.map((i) => i.code);
+const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+
+/** The two promises every plan must keep, whatever the seed. */
+function assertLipSyncRules(map: CueMap, lib: VisualClipLibrary, cuts: Cut[], offsetSec = 0) {
+  const byId = new Map(lib.clips.map((c) => [c.id, c]));
+  const vocals = map.vocals ?? [];
+  for (const c of cuts) {
+    const clip = byId.get(c.clipId)!;
+    if (c.reason === "lip_sync") {
+      // Clip time + where the clip starts in the song = song time, to the microsecond.
+      assert.ok(Math.abs(clip.lipSync!.songStartSec + c.clipInSec - (c.startSec + offsetSec)) < 1e-5, `cut ${c.index} out of sync`);
+      assert.ok(c.clipInSec + (c.endSec - c.startSec) <= clip.durationSec + 1e-6, `cut ${c.index} runs past its lip-synced clip`);
+    } else {
+      const sung = vocals.some((v) => v.startBar < c.endBar && c.startBar < v.endBar);
+      assert.ok(!(sung && clip.mouthVisible), `cut ${c.index} shows an unsynced mouth during vocals`);
+    }
+  }
+}
 
 test("pilot cue map validates as a draft", () => {
   const r = validateCueMap(baseMap(), baseLib());
@@ -74,9 +92,9 @@ test("clips for the same scene + camera rotate instead of repeating", () => {
 
 test("a shot is shortened to fit a 5 second clip, never stretched", () => {
   const map = baseMap();
-  map.cues[3].shotBars = 4; // chorus-1: 4 bars = 7.74 s, stage-medium/close clips are 5 s
+  map.cues[1].shotBars = 4; // verse-1: 4 bars = 7.74 s, street-wide-01 is 5 s
   const plan = planCuts(map, baseLib());
-  const short = plan.cuts.filter((c) => c.cueId === "chorus-1" && c.reason === "shortened_to_clip");
+  const short = plan.cuts.filter((c) => c.cueId === "verse-1" && c.reason === "shortened_to_clip");
   assert.ok(short.length > 0);
   for (const c of short) assert.equal(c.endBar - c.startBar, 2);
 });
@@ -161,6 +179,102 @@ test("renders a synthetic pilot to the exact song length", { skip: !hasFfmpeg &&
     const probe = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-count_frames",
       "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", out]);
     assert.equal(Number(String(probe.stdout).trim()), frameAt(plan.totalSec, fps));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("lip sync: synced shots line up with the song; no unsynced mouth during vocals", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const plan = planCuts(map, lib);
+  assert.ok(plan.cuts.some((c) => c.reason === "lip_sync"));
+  assertLipSyncRules(map, lib, plan.cuts);
+});
+
+test("seeds: same seed same video; different seeds differ; rules hold for every seed", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const seen = new Set<string>();
+  for (let seed = 0; seed < 25; seed++) {
+    const a = planCuts(map, lib, { seed });
+    const b = planCuts(map, lib, { seed });
+    assert.equal(JSON.stringify(a), JSON.stringify(b), `seed ${seed} is not repeatable`);
+    assert.equal(a.ok, true);
+    assert.equal(a.totalSec, planCuts(map, lib).totalSec);
+    assertLipSyncRules(map, lib, a.cuts);
+    seen.add(JSON.stringify(a.cuts.map((c) => [c.clipId, c.startBar])));
+  }
+  assert.ok(seen.size >= 10, `only ${seen.size} distinct edits from 25 seeds`);
+  assert.equal(planCuts(map, lib, { seed: -1 }).ok, false);
+});
+
+test("final render refuses shots that would need the stand-in clip", () => {
+  const map = baseMap();
+  map.approvalStatus = "approved";
+  map.approvedBy = "Daniel";
+  map.approvedAt = "2026-10-08T00:00:00Z";
+  const plan = planCuts(map, baseLib(), { requireApproved: true });
+  assert.equal(plan.ok, false);
+  assert.ok(plan.issues.every((i) => i.code === "no_clip_for_shot"));
+  assert.match(plan.issues[0].message, /without a visible singer/);
+});
+
+test("validator catches broken lip-sync clips, vocal lines and a fallback with a mouth", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const ls = lib.clips.find((c) => c.lipSync)!;
+  ls.lipSync!.songStartSec = -1;
+  map.vocals!.push({ id: "bad", voice: "", startBar: 30, endBar: 99 });
+  lib.clips.find((c) => c.id === map.fallbackClipId)!.mouthVisible = true;
+  const c = codes(validateCueMap(map, lib));
+  for (const want of ["lip_sync_invalid", "vocal_invalid", "mouth_unsynced"]) {
+    assert.ok(c.includes(want), `expected ${want} in ${c.join(", ")}`);
+  }
+});
+
+test("shorts: a sliced chorus starts at 0, keeps its length and stays in sync", () => {
+  const map = baseMap();
+  const lib = baseLib();
+  const plan = planCuts(map, lib, { seed: 7 });
+  const chorus = map.cues.find((c) => c.id === "chorus-2")!;
+  const s = sliceCuts(plan, map.tempo, chorus.startBar, chorus.endBar);
+  assert.equal(s.cuts[0].startSec, 0);
+  assert.equal(s.offsetSec, barToSec(map.tempo, chorus.startBar));
+  assert.ok(Math.abs(s.cuts.at(-1)!.endSec - s.totalSec) < 1e-6);
+  assertLipSyncRules(map, lib, s.cuts, s.offsetSec);
+  // A slice that starts mid-shot moves the in-point with it.
+  const mid = sliceCuts(plan, map.tempo, 17, 20);
+  assertLipSyncRules(map, lib, mid.cuts, mid.offsetSec);
+});
+
+test("renders a short with beat punch and the AI caption to the exact length", {
+  skip: (!hasFfmpeg && "ffmpeg not installed") || (!existsSync(FONT) && "font not installed"),
+}, () => {
+  const dir = mkdtempSync(join(tmpdir(), "dance8-short-"));
+  try {
+    const map = baseMap();
+    const lib = baseLib();
+    for (const c of lib.clips) {
+      assert.equal(spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i",
+        `testsrc2=size=90x160:rate=12:duration=${c.durationSec}`, "-pix_fmt", "yuv420p", join(dir, c.file)]).status, 0);
+    }
+    const audio = join(dir, "song.m4a");
+    assert.equal(spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i",
+      "sine=frequency=220:duration=75", "-c:a", "aac", audio]).status, 0);
+    const plan = planCuts(map, lib, { seed: 3 });
+    const s = sliceCuts(plan, map.tempo, 16, 24);
+    const out = join(dir, "short.mp4");
+    const fps = 12;
+    const r = spawnSync("ffmpeg", buildFfmpegArgs(s.cuts, lib, {
+      clipDir: dir, audioPath: audio, outPath: out, width: 90, height: 160, fps,
+      audioOffsetSec: s.offsetSec, punch: 0.06,
+      caption: { text: "All characters are fictional and AI-generated.", fontFile: FONT, seconds: 3 },
+    }));
+    assert.equal(r.status, 0, String(r.stderr));
+    const probe = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-count_frames",
+      "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", out]);
+    assert.equal(Number(String(probe.stdout).trim()), frameAt(s.cuts.at(-1)!.endSec, fps));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

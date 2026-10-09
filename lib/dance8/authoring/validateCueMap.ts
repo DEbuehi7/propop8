@@ -17,6 +17,9 @@ export type CueMapIssueCode =
   | "drift_unmeasured"
   | "drift_too_high"
   | "fallback_invalid"
+  | "lip_sync_invalid"
+  | "vocal_invalid"
+  | "mouth_unsynced"
   | "not_approved"
   | "approval_incomplete";
 
@@ -51,15 +54,37 @@ export function isEligible(clip: VisualClip, map: Pick<CueMap, "aspect" | "maxDr
   );
 }
 
-/** Eligible clips for one scene + camera, in stable id order. */
+/**
+ * Free (not lip-synced) eligible clips for one scene + camera, in stable id
+ * order. With hideMouth, clips showing a singer's mouth are left out.
+ */
 export function candidatesFor(
   library: VisualClipLibrary,
   map: Pick<CueMap, "aspect" | "maxDriftScore">,
   sceneId: string,
   camera: CameraShot,
+  opts: { hideMouth?: boolean } = {},
 ): VisualClip[] {
   return library.clips
-    .filter((c) => c.sceneId === sceneId && c.camera === camera && isEligible(c, map))
+    .filter(
+      (c) =>
+        c.sceneId === sceneId &&
+        c.camera === camera &&
+        !c.lipSync &&
+        !(opts.hideMouth && c.mouthVisible) &&
+        isEligible(c, map),
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Eligible lip-synced clips for one scene, in stable id order. */
+export function lipSyncedFor(
+  library: VisualClipLibrary,
+  map: Pick<CueMap, "aspect" | "maxDriftScore">,
+  sceneId: string,
+): VisualClip[] {
+  return library.clips
+    .filter((c) => c.sceneId === sceneId && !!c.lipSync && isEligible(c, map))
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -93,6 +118,18 @@ export function validateCueMap(
     if (seen.has(c.id)) add("duplicate_id", `${p}.id`, `duplicate clip id ${c.id}`);
     seen.add(c.id);
     if (!isPosNum(c.durationSec)) add("invalid_number", `${p}.durationSec`, "must be a number > 0");
+    if (c.lipSync) {
+      const ls = c.lipSync;
+      if (typeof ls.voice !== "string" || ls.voice.length === 0) {
+        add("lip_sync_invalid", `${p}.lipSync.voice`, "voice is required");
+      }
+      if (!(typeof ls.songStartSec === "number" && Number.isFinite(ls.songStartSec) && ls.songStartSec >= 0)) {
+        add("lip_sync_invalid", `${p}.lipSync.songStartSec`, "must be a number >= 0");
+      }
+      if (c.mouthVisible === false) {
+        add("lip_sync_invalid", `${p}.mouthVisible`, "a lip-synced clip shows a mouth; mouthVisible cannot be false");
+      }
+    }
     if (c.approvalStatus === "approved") {
       if (c.drift.status !== "known" || c.drift.driftScore === null) {
         add("drift_unmeasured", `${p}.drift`, `${c.id} is approved but its drift has not been measured`);
@@ -152,6 +189,24 @@ export function validateCueMap(
     add("fallback_invalid", "fallbackClipId", `clip ${fallback.id} must be approved, ${map.aspect}, and drift-checked within the limit`);
   }
 
+  // Vocal phrases: whole bars, inside the song, in order, with a voice.
+  const songEnd = map.cues?.length ? map.cues[map.cues.length - 1].endBar : 0;
+  const vocals = map.vocals ?? [];
+  const vocalIds = new Set<string>();
+  vocals.forEach((v, i) => {
+    const p = `vocals[${i}]`;
+    if (vocalIds.has(v.id)) add("duplicate_id", `${p}.id`, `duplicate vocal id ${v.id}`);
+    vocalIds.add(v.id);
+    if (!isBar(v.startBar) || !isBar(v.endBar) || v.endBar <= v.startBar || v.endBar > songEnd) {
+      add("vocal_invalid", p, `startBar/endBar must be whole bars inside the song (0-${songEnd})`);
+    }
+    if (typeof v.voice !== "string" || v.voice.length === 0) add("vocal_invalid", `${p}.voice`, "voice is required");
+    if (i > 0 && v.startBar < vocals[i - 1].startBar) add("vocal_invalid", p, "vocal phrases must be in bar order");
+  });
+  if (vocals.length > 0 && fallback?.mouthVisible) {
+    add("mouth_unsynced", "fallbackClipId", "the fallback shows a mouth; pick one without a visible singer when the song has vocals");
+  }
+
   // Every cue/camera needs an eligible clip long enough for at least one bar.
   if (tempoOk) {
     for (const c of cuesOk) {
@@ -161,7 +216,9 @@ export function validateCueMap(
       }
       for (const cam of [...new Set(c.cameras)]) {
         const cands = candidatesFor(library, map, c.sceneId, cam);
+        const locked = lipSyncedFor(library, map, c.sceneId).filter((v) => v.camera === cam);
         const path = `cues[${map.cues.indexOf(c)}]`;
+        if (cands.length === 0 && locked.length > 0) continue; // covered by lip-synced footage; checked when planning
         if (cands.length === 0) {
           // Drafts may preview with the fallback clip standing in (the cut is
           // marked fallback_no_match). A render-ready map needs real footage.

@@ -49,23 +49,23 @@
       "cueId": "verse-1",
       "section": "verse",
       "startBar": 8,
-      "endBar": 10,
+      "endBar": 9,
       "startSec": 15.483871,
-      "endSec": 19.354839,
+      "endSec": 17.419355,
       "sceneId": "street",
       "camera": "close",
-      "clipId": "street-close-01",
-      "clipInSec": 0,
-      "reason": "cue_rotation"
+      "clipId": "ls-ja-verse1-close",
+      "clipInSec": 7.741936,
+      "reason": "lip_sync"
     },
     {
       "index": 4,
       "cueId": "verse-1",
       "section": "verse",
-      "startBar": 10,
-      "endBar": 12,
-      "startSec": 19.354839,
-      "endSec": 23.225806,
+      "startBar": 9,
+      "endBar": 11,
+      "startSec": 17.419355,
+      "endSec": 21.290323,
       "sceneId": "street",
       "camera": "tracking",
       "clipId": "street-tracking-02",
@@ -74,6 +74,20 @@
     },
     {
       "index": 5,
+      "cueId": "verse-1",
+      "section": "verse",
+      "startBar": 11,
+      "endBar": 12,
+      "startSec": 21.290323,
+      "endSec": 23.225806,
+      "sceneId": "street",
+      "camera": "wide",
+      "clipId": "street-wide-01",
+      "clipInSec": 0,
+      "reason": "cue_rotation"
+    },
+    {
+      "index": 6,
       "cueId": "build",
       "section": "build",
       "startBar": 12,
@@ -87,7 +101,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 6,
+      "index": 7,
       "cueId": "build",
       "section": "build",
       "startBar": 13,
@@ -101,7 +115,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 7,
+      "index": 8,
       "cueId": "build",
       "section": "build",
       "startBar": 14,
@@ -115,7 +129,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 8,
+      "index": 9,
       "cueId": "build",
       "section": "build",
       "startBar": 15,
@@ -129,7 +143,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 9,
+      "index": 10,
       "cueId": "chorus-1",
       "section": "chorus",
       "startBar": 16,
@@ -143,7 +157,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 10,
+      "index": 11,
       "cueId": "chorus-1",
       "section": "chorus",
       "startBar": 18,
@@ -152,32 +166,32 @@
       "endSec": 38.709677,
       "sceneId": "dance_stage",
       "camera": "medium",
-      "clipId": "stage-medium-01",
+      "clipId": "ls-jabo-chorus1-medium",
       "clipInSec": 0,
-      "reason": "cue_rotation"
-    },
-    {
-      "index": 11,
-      "cueId": "chorus-1",
-      "section": "chorus",
-      "startBar": 20,
-      "endBar": 22,
-      "startSec": 38.709677,
-      "endSec": 42.580645,
-      "sceneId": "dance_stage",
-      "camera": "close",
-      "clipId": "stage-close-01",
-      "clipInSec": 0,
-      "reason": "cue_rotation"
+      "reason": "lip_sync"
     },
     {
       "index": 12,
       "cueId": "chorus-1",
       "section": "chorus",
-      "startBar": 22,
-      "endBar": 24,
-      "startSec": 42.580645,
-      "endSec": 46.451613,
+      "startBar": 20,
+      "endBar": 21,
+      "startSec": 38.709677,
+      "endSec": 40.645161,
+      "sceneId": "dance_stage",
+      "camera": "close",
+      "clipId": "ls-jabo-chorus1-close-a",
+      "clipInSec": 7.741935,
+      "reason": "lip_sync"
+    },
+    {
+      "index": 13,
+      "cueId": "chorus-1",
+      "section": "chorus",
+      "startBar": 21,
+      "endBar": 23,
+      "startSec": 40.645161,
+      "endSec": 44.516129,
       "sceneId": "dance_stage",
       "camera": "wide",
       "clipId": "stage-wide-02",
@@ -185,7 +199,21 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 13,
+      "index": 14,
+      "cueId": "chorus-1",
+      "section": "chorus",
+      "startBar": 23,
+      "endBar": 24,
+      "startSec": 44.516129,
+      "endSec": 46.451613,
+      "sceneId": "dance_stage",
+      "camera": "wide",
+      "clipId": "stage-wide-01",
+      "clipInSec": 3.870968,
+      "reason": "fallback_no_match"
+    },
+    {
+      "index": 15,
       "cueId": "break",
       "section": "break",
       "startBar": 24,
@@ -199,7 +227,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 14,
+      "index": 16,
       "cueId": "break",
       "section": "break",
       "startBar": 26,
@@ -213,7 +241,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 15,
+      "index": 17,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 28,
@@ -222,12 +250,12 @@
       "endSec": 56.129032,
       "sceneId": "dance_stage",
       "camera": "close",
-      "clipId": "stage-close-01",
+      "clipId": "ls-jabo-chorus2-close",
       "clipInSec": 0,
-      "reason": "cue_rotation"
+      "reason": "lip_sync"
     },
     {
-      "index": 16,
+      "index": 18,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 29,
@@ -237,11 +265,11 @@
       "sceneId": "dance_stage",
       "camera": "wide",
       "clipId": "stage-wide-01",
-      "clipInSec": 3.870968,
+      "clipInSec": 5.806452,
       "reason": "cue_rotation"
     },
     {
-      "index": 17,
+      "index": 19,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 30,
@@ -250,12 +278,12 @@
       "endSec": 60,
       "sceneId": "dance_stage",
       "camera": "medium",
-      "clipId": "stage-medium-01",
-      "clipInSec": 0,
-      "reason": "cue_rotation"
+      "clipId": "ls-jabo-chorus2-medium",
+      "clipInSec": 1.935484,
+      "reason": "lip_sync"
     },
     {
-      "index": 18,
+      "index": 20,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 31,
@@ -264,12 +292,12 @@
       "endSec": 61.935484,
       "sceneId": "dance_stage",
       "camera": "close",
-      "clipId": "stage-close-01",
-      "clipInSec": 1.935484,
-      "reason": "cue_rotation"
+      "clipId": "ls-jabo-chorus2-close",
+      "clipInSec": 5.806452,
+      "reason": "lip_sync"
     },
     {
-      "index": 19,
+      "index": 21,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 32,
@@ -283,7 +311,7 @@
       "reason": "cue_rotation"
     },
     {
-      "index": 20,
+      "index": 22,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 33,
@@ -292,12 +320,12 @@
       "endSec": 65.806452,
       "sceneId": "dance_stage",
       "camera": "medium",
-      "clipId": "stage-medium-01",
-      "clipInSec": 1.935484,
-      "reason": "cue_rotation"
+      "clipId": "ls-jabo-chorus2-medium",
+      "clipInSec": 7.741936,
+      "reason": "lip_sync"
     },
     {
-      "index": 21,
+      "index": 23,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 34,
@@ -305,13 +333,13 @@
       "startSec": 65.806452,
       "endSec": 67.741935,
       "sceneId": "dance_stage",
-      "camera": "close",
-      "clipId": "stage-close-01",
-      "clipInSec": 0,
-      "reason": "cue_rotation"
+      "camera": "wide",
+      "clipId": "stage-wide-01",
+      "clipInSec": 7.741936,
+      "reason": "fallback_no_match"
     },
     {
-      "index": 22,
+      "index": 24,
       "cueId": "chorus-2",
       "section": "chorus",
       "startBar": 35,
@@ -321,7 +349,7 @@
       "sceneId": "dance_stage",
       "camera": "wide",
       "clipId": "stage-wide-01",
-      "clipInSec": 5.806452,
+      "clipInSec": 0,
       "reason": "cue_rotation"
     }
   ],
