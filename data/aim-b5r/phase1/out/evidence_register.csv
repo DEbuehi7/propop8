@@ -1,0 +1,43 @@
+evidence_id,property_uuid,lead_id,field,value,state,source_id,source_uri,publisher,tier,observed_date,retrieved_at,coverage,snapshot_ref,reason,reviewer,recorded_at
+SEED-K1-01,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,K1,apn,,missing,,,,1,,,,,No APN candidate from any source yet.,,2026-10-09
+SEED-K1-02,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,K1,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-K1-03,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,K1,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-K1-04,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,K1,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-K2-01,91214026-8a04-5826-aa1e-6e1787434c1c,K2,apn,13741004008,provisional,S20,https://www.redfin.com,Redfin,3,,2026-10-09,,,Listing value (Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-K2-02,91214026-8a04-5826-aa1e-6e1787434c1c,K2,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-K2-03,91214026-8a04-5826-aa1e-6e1787434c1c,K2,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-K2-04,91214026-8a04-5826-aa1e-6e1787434c1c,K2,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-K3-01,73af88e5-4ffc-59b9-abea-6c62d9b01304,K3,apn,01736010006,provisional,S20,https://www.redfin.com,Redfin,3,,2026-10-09,,,Listing value (Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-K3-02,73af88e5-4ffc-59b9-abea-6c62d9b01304,K3,apn,01736010,provisional,S21,https://www.zillow.com,Zillow,3,,2026-10-09,,,"Listing value (Zillow shorter 01736010); shorter format of the same digits, settle on the assessor.",,2026-10-09
+SEED-K3-03,73af88e5-4ffc-59b9-abea-6c62d9b01304,K3,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-K3-04,73af88e5-4ffc-59b9-abea-6c62d9b01304,K3,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-K3-05,73af88e5-4ffc-59b9-abea-6c62d9b01304,K3,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-K4-01,23fd0de4-5139-5f9f-a9a8-bc7b5fcf3eb7,K4,apn,014-290-20-00-4,provisional,S22,https://www.loopnet.com,Loopnet,3,,2026-10-09,,,Listing value (LoopNet); not official. Confirm on the county assessor.,,2026-10-09
+SEED-K4-02,23fd0de4-5139-5f9f-a9a8-bc7b5fcf3eb7,K4,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-K4-03,23fd0de4-5139-5f9f-a9a8-bc7b5fcf3eb7,K4,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-K4-04,23fd0de4-5139-5f9f-a9a8-bc7b5fcf3eb7,K4,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-K5-01,4c4392c1-7edd-5f9e-98c1-3975efe4421e,K5,apn,,missing,S20,https://www.redfin.com,Redfin,3,,2026-10-09,,,Listing value rejected and discarded per handoff (Redfin displays suspicious 00555555; not accepted).,,2026-10-09
+SEED-K5-02,4c4392c1-7edd-5f9e-98c1-3975efe4421e,K5,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-K5-03,4c4392c1-7edd-5f9e-98c1-3975efe4421e,K5,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-K5-04,4c4392c1-7edd-5f9e-98c1-3975efe4421e,K5,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-F1-01,245d94e1-0d9d-5f4f-9b4c-d0340dc6e895,F1,apn,433-450-06,provisional,S20;S22,https://www.redfin.com;https://www.loopnet.com,Redfin; Loopnet,3,,2026-10-09,,,Listing value (LoopNet/Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-F1-02,245d94e1-0d9d-5f4f-9b4c-d0340dc6e895,F1,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-F1-03,245d94e1-0d9d-5f4f-9b4c-d0340dc6e895,F1,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-F1-04,245d94e1-0d9d-5f4f-9b4c-d0340dc6e895,F1,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-F2-01,d35f40ee-ea10-5ba4-9822-56f964238010,F2,apn,407-391-10,provisional,S20;S23,https://www.redfin.com;https://www.compass.com,Redfin; Compass,3,,2026-10-09,,,Listing value (Compass/Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-F2-02,d35f40ee-ea10-5ba4-9822-56f964238010,F2,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-F2-03,d35f40ee-ea10-5ba4-9822-56f964238010,F2,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-F2-04,d35f40ee-ea10-5ba4-9822-56f964238010,F2,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-F3-01,5cfa48ec-613f-557f-b6b7-7e7d66080385,F3,apn,459-081-30,provisional,S20;S22,https://www.redfin.com;https://www.loopnet.com,Redfin; Loopnet,3,,2026-10-09,,,Listing value (LoopNet/Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-F3-02,5cfa48ec-613f-557f-b6b7-7e7d66080385,F3,zoning,R4 vs RS-5,conflicting,S20;S22,,listings,3,,2026-10-09,,,Listing sources disagree on zoning; Phase 2 must read the official zoning map.,,2026-10-09
+SEED-F3-03,5cfa48ec-613f-557f-b6b7-7e7d66080385,F3,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-F3-04,5cfa48ec-613f-557f-b6b7-7e7d66080385,F3,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-F3-05,5cfa48ec-613f-557f-b6b7-7e7d66080385,F3,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-F4-01,3f461d95-d441-5c6d-b7c5-862b8c887f90,F4,apn,,missing,,,,1,,,,,No APN candidate from any source yet.,,2026-10-09
+SEED-F4-02,3f461d95-d441-5c6d-b7c5-862b8c887f90,F4,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-F4-03,3f461d95-d441-5c6d-b7c5-862b8c887f90,F4,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-F4-04,3f461d95-d441-5c6d-b7c5-862b8c887f90,F4,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
+SEED-F5-01,08ffb22a-b85b-5092-b011-842a7d933e03,F5,apn,449-291-09,provisional,S20;S22,https://www.redfin.com;https://www.loopnet.com,Redfin; Loopnet,3,,2026-10-09,,,Listing value (LoopNet/Redfin); not official. Confirm on the county assessor.,,2026-10-09
+SEED-F5-02,08ffb22a-b85b-5092-b011-842a7d933e03,F5,situs_address,,missing,,,,1,,,,,Needs the official situs address from the assessor record.,,2026-10-09
+SEED-F5-03,08ffb22a-b85b-5092-b011-842a7d933e03,F5,jurisdiction,,missing,,,,1,,,,,Postal city is not jurisdiction evidence; needs an official city-limits / county boundary check.,,2026-10-09
+SEED-F5-04,08ffb22a-b85b-5092-b011-842a7d933e03,F5,geometry_match,,missing,,,,1,,,,,Needs the official parcel map for the confirmed APN (screening level; GIS is not a survey).,,2026-10-09
