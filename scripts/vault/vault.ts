@@ -2,18 +2,21 @@
  * AIM Vault command-line tool. Signs in AS YOU (password + authenticator
  * code), so every vault rule applies; it refuses secret/service-role keys.
  *
- * Setup (your machine): export VAULT_SUPABASE_URL and VAULT_SUPABASE_ANON_KEY
- * (the vault project's URL and its anon/publishable key; never the secret key).
+ * Once per computer (asks for the vault project's URL and publishable key and
+ * saves them in ~/.aim-vault; VAULT_SUPABASE_URL / VAULT_SUPABASE_ANON_KEY
+ * environment variables still override the saved values):
  *
+ *   npx --yes tsx scripts/vault/vault.ts setup
  *   npx --yes tsx scripts/vault/vault.ts enroll      (once: link your authenticator app)
  *   npx --yes tsx scripts/vault/vault.ts login
+ *   npx --yes tsx scripts/vault/vault.ts backup-key  (once: make the backup key pair)
  *   npx --yes tsx scripts/vault/vault.ts add FILE --entity aim-llc --category filing --title "Articles of Organization" --tier 2 [--doc-date 2024-03-01] [--expires 2026-03-31] [--tags formation,state] [--projects propops8]
  *   npx --yes tsx scripts/vault/vault.ts list [--entity sbi-inc] [--category filing] [--tag formation] [--q "operating agreement"] [--sort doc_date|title|created_at]
  *   npx --yes tsx scripts/vault/vault.ts get ITEM_ID [--out DIR] [--copy preview]
  *   npx --yes tsx scripts/vault/vault.ts deadline add --entity aim-llc --title "Statement of Information" --due 2027-03-31 [--repeat biennial]
  *   npx --yes tsx scripts/vault/vault.ts deadlines [--days 120]
  *   npx --yes tsx scripts/vault/vault.ts export-pure --out vault_catalog.md [--entity aim-llc]
- *   npx --yes tsx scripts/vault/vault.ts backup --out DIR --recipient AGE_PUBLIC_KEY   (weekly; encrypted .tar.age)
+ *   npx --yes tsx scripts/vault/vault.ts backup --out DIR [--recipient age1...]   (weekly; encrypted .tar.age)
  *   npx --yes tsx scripts/vault/vault.ts logout
  *
  * Tier 3 (restricted): encrypt first, then add the .age file:
@@ -26,12 +29,15 @@ import { basename, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 import {
-  bucketFor, checkAdd, mimeFor, objectPath, planDerivatives, pureExport, sha256, isPrivilegedKey,
+  bucketFor, checkAdd, checkVaultConfig, mimeFor, normalizeProjectUrl, objectPath, planDerivatives,
+  pureExport, resolveVaultConfig, sha256,
   type CatalogRow, type Category, type DeadlineRow, type EntityId, type Tier,
 } from "../../lib/vault/core";
 
 const SESSION_DIR = join(homedir(), ".aim-vault");
 const SESSION_FILE = join(SESSION_DIR, "session.json");
+const CONFIG_FILE = join(SESSION_DIR, "config.json");
+const RECIPIENT_FILE = join(SESSION_DIR, "backup-recipient.txt");
 
 const argv = process.argv.slice(2);
 const opt = (name: string) => {
@@ -43,12 +49,16 @@ const die = (msg: string): never => {
   process.exit(1);
 };
 
+function privateDir() {
+  mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
+  chmodSync(SESSION_DIR, 0o700);
+}
+
 function client(): SupabaseClient {
-  const url = process.env.VAULT_SUPABASE_URL;
-  const key = process.env.VAULT_SUPABASE_ANON_KEY;
-  if (!url || !key) die("Set VAULT_SUPABASE_URL and VAULT_SUPABASE_ANON_KEY (the vault project's anon / publishable key).");
-  if (isPrivilegedKey(key!)) die("That is a secret / service-role key. The vault tool only accepts the anon / publishable key.");
-  return createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { VAULT_SUPABASE_URL, VAULT_SUPABASE_ANON_KEY } = process.env;
+  const cfg = resolveVaultConfig({ VAULT_SUPABASE_URL, VAULT_SUPABASE_ANON_KEY }, existsSync(CONFIG_FILE) ? readFileSync(CONFIG_FILE, "utf8") : null);
+  if ("error" in cfg) return die(cfg.error);
+  return createClient(cfg.url, cfg.key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 function ask(question: string, hidden = false): Promise<string> {
@@ -97,36 +107,95 @@ async function login() {
   const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: totp!.id, code });
   if (ve) die(`Code rejected: ${ve.message}`);
   const { data } = await sb.auth.getSession();
-  mkdirSync(SESSION_DIR, { recursive: true, mode: 0o700 });
+  privateDir();
   writeFileSync(SESSION_FILE, JSON.stringify({ access_token: data.session!.access_token, refresh_token: data.session!.refresh_token }), { mode: 0o600 });
   chmodSync(SESSION_FILE, 0o600);
   await log(sb, "sign_in", null);
   console.log("Signed in with two-factor.");
 }
 
+async function setup() {
+  console.log("Supabase dashboard -> the aim-vault project -> Project Settings -> API Keys (and Data API for the URL).");
+  const url = normalizeProjectUrl(await ask("Vault project URL: "));
+  const key = await ask("Publishable (anon) key - nothing shows while you paste: ", true);
+  const problem = checkVaultConfig(url, key);
+  if (problem) die(problem);
+  // A real round trip, so a wrong URL or key shows up now rather than at the first upload.
+  let res: Response;
+  try {
+    res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+  } catch (e) {
+    return die(`Could not reach ${url} (${(e as Error).message}). Check the URL.`);
+  }
+  if (res.status === 401 || res.status === 403) die("The project refused that key. Copy the publishable key again.");
+  if (!res.ok) die(`The project answered HTTP ${res.status}. Check the URL.`);
+  const settings = (await res.json().catch(() => ({}))) as { disable_signup?: boolean };
+  if (settings.disable_signup === false) {
+    console.log("Warning: new sign-ups are still allowed. Turn off 'Allow new users to sign up' (Authentication -> Sign In / Providers).");
+  }
+  privateDir();
+  writeFileSync(CONFIG_FILE, JSON.stringify({ url, key }), { mode: 0o600 });
+  chmodSync(CONFIG_FILE, 0o600);
+  console.log("Saved on this computer. Next: vault enroll (first time) or vault login.");
+}
+
 async function enroll() {
   const sb = client();
   const email = await ask("Email: ");
-  const password = await ask("Password: ", true);
+  const password = await ask("Password (nothing shows while you type): ", true);
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) die(`Sign-in failed: ${error.message}`);
   const { data: factors } = await sb.auth.mfa.listFactors();
   if (factors?.totp?.some((f) => f.status === "verified")) die("An authenticator app is already linked. Use: vault login");
+  // A cancelled earlier attempt leaves an unfinished factor behind; clear it so enroll can simply be run again.
+  for (const f of factors?.all ?? []) {
+    if (f.factor_type === "totp" && f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
+  }
   const { data, error: ee } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "AIM Vault" });
   if (ee || !data) die(`Could not start enrolment: ${ee?.message}`);
-  console.log("Add this to your authenticator app (scan the URI as a QR code, or type the secret):");
-  console.log(`  secret: ${data!.totp.secret}`);
-  console.log(`  uri:    ${data!.totp.uri}`);
-  const code = await ask("Code shown in the app: ");
+  const qr = spawnSync("qrencode", ["-t", "ANSIUTF8"], { input: data!.totp.uri, stdio: ["pipe", "inherit", "ignore"] });
+  if (qr.status === 0) console.log("Scan this with your authenticator app (or use the setup key below):");
+  else console.log("In your authenticator app choose 'Enter a setup key' (time-based) and type this key:");
+  console.log(`  setup key: ${data!.totp.secret}`);
+  console.log("Using two authenticator apps? Add this same key to both now, before typing the code.");
+  const code = await ask("6-digit code shown in the app: ");
   const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: data!.id, code });
   if (ve) die(`Code rejected: ${ve.message}. Run enroll again.`);
   console.log("Authenticator linked. Now run: vault login");
 }
 
+/**
+ * Makes the backup key pair. The private half goes to a file you move off
+ * this computer (USB drive + password manager); only the public half stays
+ * here, so backups can be written but not opened with what is on this Mac.
+ */
+async function backupKey() {
+  const out = opt("out") ?? join(homedir(), "Desktop", "aim-vault-backup-key.txt");
+  if (existsSync(RECIPIENT_FILE) && !argv.includes("--replace")) {
+    die(`A backup key already exists (public half in ${RECIPIENT_FILE}). Backups made with it need its private file to open. Add --replace only if that private file is lost.`);
+  }
+  if (existsSync(out)) die(`${out} already exists; move it first.`);
+  if (spawnSync("age-keygen", ["--version"]).status !== 0) die("age is not installed (brew install age)");
+  const gen = spawnSync("age-keygen", ["-o", out], { stdio: ["ignore", "ignore", "pipe"] });
+  if (gen.status !== 0) die(`age-keygen failed: ${String(gen.stderr)}`);
+  chmodSync(out, 0o600);
+  const pub = spawnSync("age-keygen", ["-y", out], { encoding: "utf8" });
+  const recipient = String(pub.stdout).trim();
+  if (pub.status !== 0 || !/^age1[0-9a-z]+$/.test(recipient)) die("Could not read the public key back from the new key file.");
+  privateDir();
+  writeFileSync(RECIPIENT_FILE, recipient + "\n", { mode: 0o600 });
+  console.log(`Private backup key: ${out}`);
+  console.log("  1. Attach that file to your password manager.");
+  console.log("  2. Copy it to a USB drive.");
+  console.log("  3. Then delete it from this computer. Without it no backup can be opened.");
+  console.log(`Public half saved in ${RECIPIENT_FILE}; vault backup uses it automatically.`);
+}
+
 async function backup() {
   const outDir = opt("out");
-  const recipient = opt("recipient");
-  if (!outDir || !recipient || !/^age1[0-9a-z]+$/.test(recipient)) die("usage: vault backup --out DIR --recipient age1... (your own age public key)");
+  const recipient = opt("recipient") ?? (existsSync(RECIPIENT_FILE) ? readFileSync(RECIPIENT_FILE, "utf8").trim() : undefined);
+  if (!outDir) die("usage: vault backup --out DIR [--recipient age1...]");
+  if (!recipient || !/^age1[0-9a-z]+$/.test(recipient)) die("No backup key yet. Run: vault backup-key (once), or pass --recipient age1...");
   if (spawnSync("age", ["--version"]).status !== 0) die("age is not installed (brew install age)");
   const sb = client();
   await session(sb);
@@ -324,7 +393,7 @@ async function exportPure() {
 }
 
 const commands: Record<string, () => Promise<void>> = {
-  enroll, login, add, list, get, backup, deadlines, deadline: deadlines, "export-pure": exportPure,
+  setup, enroll, login, add, list, get, "backup-key": backupKey, backup, deadlines, deadline: deadlines, "export-pure": exportPure,
   logout: async () => {
     rmSync(SESSION_FILE, { force: true });
     console.log("Signed out on this machine.");

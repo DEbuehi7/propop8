@@ -51,6 +51,49 @@ export function isPrivilegedKey(key: string): boolean {
   }
 }
 
+export interface VaultConfig {
+  url: string;
+  key: string;
+}
+
+/** Accepts the project URL as the dashboard shows it (with or without /rest/v1/). */
+export function normalizeProjectUrl(raw: string): string {
+  return raw.trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
+}
+
+/** Problem with a project URL / key pair, or null when it is usable. */
+export function checkVaultConfig(url: string, key: string): string | null {
+  if (!/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url)) return "The project URL should start with https:// and end in .supabase.co.";
+  if (isPrivilegedKey(key)) return "That is a secret / service-role key. The vault tool only accepts the publishable (anon) key.";
+  if (!key.startsWith("sb_publishable_") && key.split(".").length !== 3) return "That does not look like a publishable (anon) key.";
+  return null;
+}
+
+/**
+ * Where the tool finds the vault project: environment variables first, then
+ * the file `vault setup` saved. Returns the config or a message to show.
+ */
+export function resolveVaultConfig(
+  env: { VAULT_SUPABASE_URL?: string; VAULT_SUPABASE_ANON_KEY?: string },
+  saved: string | null,
+): VaultConfig | { error: string } {
+  let url = env.VAULT_SUPABASE_URL?.trim();
+  let key = env.VAULT_SUPABASE_ANON_KEY?.trim();
+  if ((!url || !key) && saved) {
+    try {
+      const j = JSON.parse(saved) as Partial<VaultConfig>;
+      url ||= j.url;
+      key ||= j.key;
+    } catch {
+      return { error: "The saved setup is unreadable. Run: vault setup" };
+    }
+  }
+  if (!url || !key) return { error: "Not set up on this computer yet. Run: vault setup" };
+  url = normalizeProjectUrl(url);
+  const problem = checkVaultConfig(url, key);
+  return problem ? { error: problem } : { url, key };
+}
+
 const IMAGE = /\.(png|jpe?g|tiff?|bmp|heic|webp)$/i;
 const LOSSLESS_AUDIO = /\.(wav|aiff?|flac)$/i;
 

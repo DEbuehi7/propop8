@@ -26,9 +26,14 @@ filings, protection/IP, plans, images, audio, datasets, schedules.
 2. **SQL Editor → New query**: paste all of `vault/supabase/001_vault.sql` and Run.
 3. **Authentication → Sign In / Providers**: turn **off** "Allow new users to sign up".
    Check that Multi-Factor (TOTP / authenticator app) is enabled.
-4. **Authentication → Users → Add user**: your email and a strong password
-   (from your password manager), auto-confirm on.
-5. **SQL Editor**, run this exactly (it only works while you are the single user):
+4. **Authentication → Users → Add user**: your email and a new strong password
+   (from your password manager), auto-confirm on. This is the vault's own
+   login, separate from your Supabase.com sign-in. (Two-factor on your
+   Supabase.com account protects the dashboard; the vault login gets its
+   own authenticator in step 7.)
+5. **SQL Editor**, run this exactly. It makes the one login from step 4 the
+   vault's owner, and refuses if there is not exactly one login, so it can
+   never pick the wrong account:
 
    ```sql
    insert into public.vault_owner (owner_id)
@@ -37,25 +42,48 @@ filings, protection/IP, plans, images, audio, datasets, schedules.
    select count(*) as owners from public.vault_owner;
    ```
 
-   `owners` must be `1`.
-6. **On your Mac** (Terminal, in the `propop8` folder):
+   `owners` must be `1`. If it shows `0`, run `select count(*) from auth.users;`:
+   `0` means step 4 isn't done yet; `2` or more means there are extra logins.
+   Delete the ones that aren't you under Authentication → Users, then run step 5 again.
+6. **On your Mac**, install the tools (once):
 
    ```bash
-   brew install age ffmpeg
-   read -r -p "Vault project URL: " VAULT_SUPABASE_URL; export VAULT_SUPABASE_URL
-   read -s -r -p "Vault publishable (anon) key: " VAULT_SUPABASE_ANON_KEY; export VAULT_SUPABASE_ANON_KEY; echo
+   brew install age ffmpeg qrencode
+   ```
+
+   `age` encrypts, `ffmpeg` makes the light audio copies, `qrencode` shows the
+   authenticator QR code in Terminal.
+7. **Connect this Mac and link your authenticator** (Terminal, in the
+   `propop8` folder):
+
+   ```bash
+   npx --yes tsx scripts/vault/vault.ts setup
    npx --yes tsx scripts/vault/vault.ts enroll
    npx --yes tsx scripts/vault/vault.ts login
    ```
 
-   The URL and the publishable key are under Project Settings → API. Never
-   the secret / service-role key; the tool refuses it.
-7. **Make your backup key** (once) and keep the file somewhere other than the Mac's
-   main disk (USB drive + password manager attachment):
+   - `setup` asks for the vault project's URL (the **Connect** button at the
+     top of the project, or Project Settings → Data API) and its
+     **publishable** key (Project Settings → API Keys; the older "anon" key
+     also works). Nothing shows while you paste the key; that is normal. It
+     checks both against the project and saves them on this Mac only. It
+     refuses the secret / service-role key.
+   - `enroll` asks for the step 4 email and password, then shows a QR code.
+     Scan it with your authenticator app. Using two apps? Scan it with both
+     before typing the 6-digit code. If anything goes wrong, just run
+     `enroll` again.
+   - `login` asks for the email, password and a current 6-digit code. You
+     stay signed in on this Mac until you run `vault logout`.
+8. **Make your backup key** (once):
 
    ```bash
-   age-keygen -o ~/aim-vault-backup-key.txt
+   npx --yes tsx scripts/vault/vault.ts backup-key
    ```
+
+   It puts `aim-vault-backup-key.txt` on your Desktop. Attach that file to your
+   password manager, copy it to a USB drive, then delete it from the Desktop.
+   Only its public half stays on the Mac, which can lock backups but not
+   open them.
 
 ## Everyday use
 
@@ -79,7 +107,7 @@ npx --yes tsx scripts/vault/vault.ts deadlines --days 120
 npx --yes tsx scripts/vault/vault.ts export-pure --out ~/Desktop/vault_catalog.md
 
 # weekly encrypted backup; then copy the new .tar.age file to your USB drive or a second cloud
-npx --yes tsx scripts/vault/vault.ts backup --out ~/aim-vault-backups --recipient "$(grep -o 'age1[0-9a-z]*' ~/aim-vault-backup-key.txt | head -1)"
+npx --yes tsx scripts/vault/vault.ts backup --out ~/aim-vault-backups
 ```
 
 To download a file, copy its ID from `list` and run `vault get` with that ID
@@ -91,4 +119,5 @@ upload, download, export and backup is written to the append-only `access_log`.
 - PropOps8 does not read the vault. When it needs to, it gets a read-only view
   of tier 0-1 catalog rows, not the files and not the vault's keys.
 - No live AI connection. Pure gets the `export-pure` file you upload yourself.
-- Restore from a backup is manual (`age -d -i KEYFILE backup.tar.age | tar -xf -`).
+- Restore from a backup is manual: decrypt the `.tar.age` with `age -d -i` and the
+  private key file from your USB drive, then unpack it with `tar -xf`.
