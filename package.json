@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "npx --yes tsx --test tests/*.test.ts tests/dance8/*.test.ts",
+    "b5r:phase1": "npx --yes tsx scripts/b5r/phase1.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "verify": "npm run typecheck && npm run lint && npm test",
     "e2e:audit": "node scripts/e2e-audit.mjs"

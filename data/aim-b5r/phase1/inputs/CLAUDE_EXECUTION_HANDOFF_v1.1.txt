@@ -1,0 +1,84 @@
+AIM-B5R — CLAUDE EXECUTION HANDOFF
+
+Version: 1.1 / Phase 1; prepared 2026-10-09 (Pacific)
+Scope: Kern + Fresno, 10-property real-estate pilot
+
+Objective
+
+Convert the existing ten candidate property addresses into traceable, independently evidenced Identity & Authority dossiers. Do not present secondary-source APNs, broker cap rates, or conceptual strategies as official verification. All ten are currently HOLD. Advance only when gate criteria are met.
+
+Authoritative hierarchy
+
+1. Recorded documents, competent jurisdiction confirmations, official assessor/parcel and planning records (each for its own proper purpose).
+2. Official county/state/federal geospatial and contextual datasets, subject to version and scale limitations.
+3. Listings and aggregators: lead-generation hypotheses, not official identity or legal-unit evidence.
+4. AIM concept/design materials: architecture and governance only, not county facts.
+
+Inputs — attach these CSVs alongside this handoff
+
+• AIM_B5R_Kern_Fresno_10_Property_Pilot.csv — 10 candidate addresses, broker-reported prices and cap rates; unverified.
+• AIM_B5R_Phase1_Identity_Authority_2026-10-09.csv — secondary APN candidates, unresolved status and evidence gaps.
+Never replace unknowns with inferred values.
+
+Properties and APN leads (all UNVERIFIED)
+
+K1 2207 River Blvd, Bakersfield — APN unknown
+K2 2208 Lake St, Bakersfield — 13741004008 (secondary)
+K3 1316 E California Ave, Bakersfield — 01736010006 (secondary; format conflict)
+K4 1010 Beale Ave, Bakersfield — 014-290-20-00-4 (secondary)
+K5 2126 O St, Bakersfield — previous 00555555 is suspicious; DISCARD
+F1 3449 N Marks Ave, Fresno — 433-450-06 (secondary)
+F2 6075 N Poplar Ave, Fresno — 407-391-10 (secondary)
+F3 435 N Valeria St, Fresno — 459-081-30 (secondary; R4 vs RS-5 zoning conflict)
+F4 3940 E Burns Ave, Fresno — APN unknown
+F5 1262 N Marks Ave, Fresno — 449-291-09 (secondary)
+
+Official discovery starting points (validate endpoints and layer metadata before use)
+
+Kern assessor: https://www.kerncounty.com/government/departments/assessor-recorder/property/assessor-property-search
+Kern GIS: https://www.kerncounty.com/government/departments/assessor-recorder/property/mapping-gis/gis-data
+Kern planning: https://kernplanning.com/general-plan-update/interactive-maps/
+Fresno assessor mapping: https://www.fresnocountyca.gov/Departments/Assessor/Mapping
+Fresno city planning GIS: https://www.fresno.gov/planning/gis-mapping/
+Fresno county public works/planning: https://www.fresnocountyca.gov/Departments/Public-Works-and-Planning/
+Do not assume city authority merely from postal city. Official GIS boundaries are not surveys. Assessor data are not title opinions. Source pages are not proof of a successful parcel-specific lookup.
+
+Phase 1 field contract per property
+
+Immutable UUID; original lead address; county; official situs address; APN(s) and formatted variants; active parcel status; APN history (NOT_AVAILABLE unless evidenced); incorporated status and municipality; planning and zoning authorities; geometry match, GIS layer identifier/version and limitations; assessor source URL and retrieval timestamp; zoning/jurisdiction source URL and timestamp; conflicts; title/recorder retrieval status; human reviewer; evidence snapshot ID; next action; gate.
+For every material fact preserve source URI, source publisher, observed/effective date (if supplied), retrieval timestamp, geographic coverage, value, state (verified/provisional/conflicting/missing/stale), and reason for uncertainty. Do not label a public map a surveyed boundary.
+
+Gates
+
+PASS: official APN/address match, competent jurisdiction confirmed, screening-level parcel geometry reconciled; source and date preserved.
+CONDITIONAL: core identity verified; explicitly noncritical gaps remain.
+HOLD: APN, jurisdiction or geometry materially unresolved; investigate or request human access.
+FAIL: documented material identity contradiction or confirmed ineligibility; include evidence and reviewer.
+Missing evidence is not equivalent to a negative fact. No auto-BUY. Human approval for binding acquisition decisions.
+
+Implementation constraints
+
+Inspect repository and committed contracts first. Preserve existing PropOps8 > AIM Operations > AIM-B5R structure and Evidence/State/Confidence convention. Add minimal adapters and evidence records; do not create new agents, elaborate twins, EDO pricing models, or Stuttr functionality. Preserve legal/physical/advertised units as separate facts. Never treat occupied units as proof of legal status. Later financial stage must include P10 downside NOI with adverse cost assumptions, cash exposure, DSCR, and no-refinance survival. Rank diligence by decision impact and cost; do not invent numeric probabilities.
+
+Proposed work schedule (Pacific; weekdays; subject to official access)
+
+Mon Oct 12: repo audit, import both CSVs, official source endpoint/metadata check, freeze minimal contracts.
+Tue Oct 13–Wed Oct 14: Kern K1–K5 official address/APN/jurisdiction lookup and provenance.
+Thu Oct 15–Fri Oct 16: Fresno F1–F5 official lookup and provenance.
+Mon Oct 19–Tue Oct 20: geometry, APN history, conflicts, ten dossier exports, Phase 1 gate tests/review.
+Wed Oct 21–Fri Oct 23: Phase 2 preliminary zoning, legal-unit questions, hazards, environment, utility territories; distinguish screening from confirmation.
+Mon Oct 26–Wed Oct 28: Phase 3 EDD/ACS context, rent/sale comparables, documented financial assumptions.
+Thu Oct 29–Fri Oct 30: initial financial stress testing and no-refinance fallback; decision audit and prioritized diligence list.
+Execution confirmations for shortlisted properties (title, permits, insurance, utilities, lender) are external dependencies and can take 1–4+ weeks.
+
+Daily reporting format
+
+Date; sources accessed; properties touched; official APNs verified (count and IDs); jurisdictions verified; geometry reconciled; conflicts; blocked sources and exact reason; PASS/CONDITIONAL/HOLD/FAIL counts; next 24-hour actions; changed repository files and tests. If blocked, record official alternative and continue. No background activity is implied by this handoff.
+
+Final deliverables
+
+source_registry.csv; phase1_identity_authority.csv; evidence_register.csv or normalized DB export; ten per-property dossiers; gate_decisions.csv; source_access_blockers.md; test report; Phase 2 shortlist and prioritized diligence queue. Include immutable evidence snapshot references and model version.
+
+Completion standard
+
+Phase 1 is COMPLETE only when each property has a documented gate outcome and an audit trail; ten PASS outcomes are not required. Explicitly distinguish source-discovery completion, parcel-record verification, and acquisition feasibility. Do not call the county model empirically validated until observed outcomes have been compared with predictions.
