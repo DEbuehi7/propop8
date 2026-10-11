@@ -70,10 +70,16 @@ filings, protection/IP, plans, images, audio, datasets, schedules.
      refuses the secret / service-role key.
    - `enroll` asks for the step 4 email and password, then shows a QR code.
      Scan it with your authenticator app. Using two apps? Scan it with both
-     before typing the 6-digit code. If anything goes wrong, just run
-     `enroll` again.
+     before typing the 6-digit code. In Microsoft Authenticator choose
+     **Add account → Other account (Google, Facebook, etc.)**; the "Work or
+     school" option will not read it. If anything goes wrong, just run
+     `enroll` again. The QR screen and setup key are secrets: never paste
+     them anywhere, and press Cmd+K to clear the screen afterwards.
    - `login` asks for the email, password and a current 6-digit code. You
      stay signed in on this Mac until you run `vault logout`.
+   - Lost the phone, want to add another app later, or the key was seen by
+     anyone: `npx --yes tsx scripts/vault/vault.ts reset-authenticator`. It
+     asks for a code from the current app, removes it, and shows a new QR code.
 8. **Make your backup key** (once):
 
    ```bash
