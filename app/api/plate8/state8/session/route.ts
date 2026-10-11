@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { denyUnlessAdmin } from '@/lib/adminGuard';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { recordRead } from '@/lib/sessionMonitoring';
 
@@ -215,6 +216,8 @@ async function listSessionsFromSupabase(
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     const { action, session } = body;
@@ -324,6 +327,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   // Phase 2C: Try Supabase first, fallback to Map with monitoring
   let sessionList = await listSessionsFromSupabase(10);
 

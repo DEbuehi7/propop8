@@ -18,6 +18,7 @@ export default function State8Page() {
   const [activeTab, setActiveTab] = useState('waveform');
   const [sessionDuration, setSessionDuration] = useState(0);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
 
   const { isRecording, spectrum, frequency, volume, error, startRecording, stopRecording } = useAudioAnalyzer();
 
@@ -35,8 +36,11 @@ export default function State8Page() {
   // Load previous sessions
   useEffect(() => {
     fetch('/api/plate8/state8/session')
-      .then((res) => res.json())
-      .then((data) => setSessions(data.sessions))
+      .then((res) => {
+        if (res.status === 401) setNeedsSignIn(true);
+        return res.json();
+      })
+      .then((data) => setSessions(Array.isArray(data.sessions) ? data.sessions : []))
       .catch(console.error);
   }, []);
 
@@ -62,8 +66,9 @@ export default function State8Page() {
           setSessionDuration(0);
           // Refresh sessions list
           const res = await fetch('/api/plate8/state8/session');
+          if (res.status === 401) setNeedsSignIn(true);
           const data = await res.json();
-          setSessions(data.sessions);
+          setSessions(Array.isArray(data.sessions) ? data.sessions : []);
         } catch (err) {
           console.error('Failed to save session:', err);
         }
@@ -208,7 +213,11 @@ export default function State8Page() {
         {activeTab === 'timeline' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
             <h2 className="text-lg font-semibold mb-6">Session History</h2>
-            {sessions.length === 0 ? (
+            {needsSignIn ? (
+              <div className="bg-[#0F1220] rounded p-8 text-center text-[#A0A7B8]">
+                <p>Session history is private. <Link href="/admin/login?from=/plate8/state8" className="underline">Sign in</Link> to see and save sessions.</p>
+              </div>
+            ) : sessions.length === 0 ? (
               <div className="bg-[#0F1220] rounded p-8 text-center text-[#A0A7B8]">
                 <p>No sessions recorded yet. Start recording to create your first session.</p>
               </div>

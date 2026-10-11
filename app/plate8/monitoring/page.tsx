@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface Metrics {
   timestamp: string;
@@ -26,10 +27,16 @@ export default function MonitoringPage() {
   const [errors, setErrors] = useState<{ errorMessage?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
 
   const fetchMetrics = async () => {
     try {
       const response = await fetch('/api/plate8/state8/monitoring?action=snapshot');
+      if (response.status === 401) {
+        setNeedsSignIn(true);
+        setMetrics(null);
+        return;
+      }
       const data = await response.json();
       setMetrics(data);
     } catch (error) {
@@ -40,6 +47,7 @@ export default function MonitoringPage() {
   const fetchErrors = async () => {
     try {
       const response = await fetch('/api/plate8/state8/monitoring?action=errors&limit=5');
+      if (response.status === 401) return;
       const data = await response.json();
       setErrors(data.recentErrors || []);
     } catch (error) {
@@ -77,6 +85,17 @@ export default function MonitoringPage() {
     return (
       <div className="p-6">
         <div className="text-gray-500">Loading monitoring data...</div>
+      </div>
+    );
+  }
+
+  if (needsSignIn) {
+    return (
+      <div className="p-6">
+        <div className="text-[#E8EAEF]">Monitoring is private.</div>
+        <p className="text-sm text-gray-400 mt-2">
+          <Link href="/admin/login?from=/plate8/monitoring" className="underline">Sign in</Link> to see it.
+        </p>
       </div>
     );
   }

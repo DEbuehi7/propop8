@@ -264,7 +264,7 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }> | { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const doc = DOCS.find((d) => d.slug === slug);
@@ -295,7 +295,7 @@ export async function generateMetadata({
 export default async function LegalPage({
   params,
 }: {
-  params: Promise<{ slug: string }> | { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
   const doc = DOCS.find((d) => d.slug === slug);
