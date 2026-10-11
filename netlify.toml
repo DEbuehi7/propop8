@@ -3,7 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
 
 # Required for App Router SSR and API routes. Without this, Netlify serves the
 # static output and every /api/* route 404s — including the Tally webhook, which

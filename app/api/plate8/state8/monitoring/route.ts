@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { denyUnlessAdmin } from '@/lib/adminGuard';
 import {
   getMetricsSnapshot,
   getRecentErrors,
@@ -16,6 +17,8 @@ import {
  */
 
 export async function GET(request: NextRequest) {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action') || 'snapshot';
 

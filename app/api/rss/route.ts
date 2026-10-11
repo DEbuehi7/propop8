@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import dns from 'node:dns/promises';
+import { assertPublicUrl, safeGet } from '@/lib/safeFetch';
 
 export const runtime = 'nodejs';       // the SSRF guard needs a real DNS lookup
 export const dynamic = 'force-dynamic';
@@ -8,24 +8,18 @@ export const dynamic = 'force-dynamic';
  * Server-side RSS fetch for Plate's news page.
  *
  * CORS is a browser rule, not a server one, so a feed the browser refuses
- * to read is fetched here instead. Public http(s) hosts only — without the
- * address check this route would happily read anything on the local network.
+ * to read is fetched here instead. Public http(s) hosts only. The pre-check
+ * gives a clear 400; lib/safeFetch then re-checks every connection,
+ * including each redirect hop, at connect time (which also defeats DNS
+ * rebinding). Without that, a public URL that redirects to an internal
+ * address would get past a first-hop-only check.
  */
-const PRIVATE =
-  /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fc|fd)/i;
-
-async function assertPublic(u: URL) {
-  if (!/^https?:$/.test(u.protocol)) throw new Error('only http and https are allowed');
-  const { address } = await dns.lookup(u.hostname);
-  if (PRIVATE.test(address)) throw new Error('refusing to fetch a private address');
-}
-
 export async function GET(req: Request) {
   const raw = new URL(req.url).searchParams.get('url') ?? '';
   let target: URL;
   try {
     target = new URL(raw);
-    await assertPublic(target);
+    await assertPublicUrl(target);
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: { code: 'BAD_URL', message: (e as Error).message } },
@@ -33,22 +27,19 @@ export async function GET(req: Request) {
     );
   }
 
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 12_000);
   try {
-    const r = await fetch(target, {
-      signal: ac.signal,
-      redirect: 'follow',
+    const r = await safeGet(target.href, {
+      timeoutMs: 12_000,
+      maxBytes: 4_000_000,
+      maxRedirects: 5,
       headers: {
         'user-agent': 'PlateReader/1.0 (+personal feed reader)',
         accept:
           'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
       },
     });
-    if (!r.ok) throw new Error('upstream returned HTTP ' + r.status);
-    const body = await r.text();
-    if (body.length > 4_000_000) throw new Error('feed is too large');
-    return new NextResponse(body, {
+    if (r.status < 200 || r.status >= 300) throw new Error('upstream returned HTTP ' + r.status);
+    return new NextResponse(r.body, {
       headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'no-store' },
     });
   } catch (e) {
@@ -59,7 +50,5 @@ export async function GET(req: Request) {
       },
       { status: 502 },
     );
-  } finally {
-    clearTimeout(timer);
   }
 }

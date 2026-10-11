@@ -17,8 +17,12 @@ check "B5R admin API refuses without login"      401 "$BASE/api/admin/b5r/deals"
 check "admin page redirects to login"           307 "$BASE/admin"
 check "webhook refuses unsigned posts"          401 "$BASE/api/tally-webhook" POST
 check "upload page with a fake token is safe"   404 "$BASE/api/upload/not-a-real-token"
-echo "-- informational (audit findings M1/M2; should become 401 once fixed)"
-echo "      plate8 session list without login:  $(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$BASE/api/plate8/state8/session")"
+# Audit fixes M1/M2 (these FAIL until fix/audit-h1-m3 is deployed)
+check "plate8 sessions need login"              401 "$BASE/api/plate8/state8/session"
+check "plate8 monitoring needs login"           401 "$BASE/api/plate8/state8/monitoring"
+check "rss refuses the cloud metadata address"  400 "$BASE/api/rss?url=http%3A%2F%2F169.254.169.254%2Flatest%2Fmeta-data%2F"
+# The login limit (M3) is not probed here: six wrong passwords would lock
+# your own address out for 15 minutes.
 echo "-- security headers on the home page"
 hdrs=$(curl -sI --max-time 20 "$BASE/")
 for h in strict-transport-security content-security-policy x-content-type-options x-frame-options referrer-policy; do
