@@ -62,19 +62,55 @@ function client(): SupabaseClient {
 }
 
 function ask(question: string, hidden = false): Promise<string> {
+  if (hidden && process.stdin.isTTY) return askHidden(question);
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    if (hidden) {
-      const out = rl as unknown as { _writeToOutput: (s: string) => void };
-      out._writeToOutput = (s: string) => {
-        if (s.includes(question)) process.stdout.write(s);
-      };
-    }
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: !hidden });
     rl.question(question, (a) => {
       rl.close();
-      if (hidden) process.stdout.write("\n");
       resolve(a.trim());
     });
+  });
+}
+
+/**
+ * Reads a password or key with nothing echoed, however long it is or however
+ * it arrives (typed or pasted). Raw mode means no line editor redraws the
+ * line, which is what used to reveal long pasted values when they wrapped.
+ */
+function askHidden(question: string): Promise<string> {
+  const stdin = process.stdin;
+  process.stdout.write(question);
+  return new Promise((resolve) => {
+    let value = "";
+    let escape = false; // skip arrow keys and other escape sequences
+    const finish = () => {
+      stdin.removeListener("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      process.stdout.write("\n");
+      resolve(value.trim());
+    };
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (escape) {
+          if (/[A-Za-z~]/.test(ch)) escape = false;
+          continue;
+        }
+        if (ch === "\r" || ch === "\n") return finish();
+        if (ch === "\u0003") {
+          stdin.setRawMode(false);
+          process.stdout.write("\n");
+          process.exit(130);
+        }
+        if (ch === "\u001b") escape = true;
+        else if (ch === "\u007f" || ch === "\b") value = value.slice(0, -1);
+        else if (ch >= " ") value += ch;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.setEncoding("utf8");
+    stdin.on("data", onData);
+    stdin.resume();
   });
 }
 
