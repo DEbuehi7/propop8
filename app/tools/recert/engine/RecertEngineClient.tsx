@@ -16,7 +16,9 @@ import { useEffect, useRef, useState } from "react";
 export default function RecertEngineClient() {
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
-  dirtyRef.current = dirty;
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {

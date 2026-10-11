@@ -99,6 +99,7 @@ export default function SimulatePanel() {
       .then((d) => { setForm(toForm(d.deal.inputs)); setPipeMsg(`Loaded ${id} from the pipeline.`); })
       .catch((e: Error) => setPipeMsg(e.message));
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reads browser storage once on mount; it does not exist during server render
   useEffect(() => { try { const r = window.localStorage.getItem(SAVE_KEY); if (r) setSaved(JSON.parse(r)); } catch { /* storage unavailable */ } }, []);
 
   function go() {

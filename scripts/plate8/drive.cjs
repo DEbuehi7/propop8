@@ -135,7 +135,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   // eval in global scope is the only way to reach it from outside.
   const ev = code => win.eval(code);
   let ARC, FAULTS;
-  try { ARC = ev('ARC'); FAULTS = ev('FAULTS'); } catch (e) { /* fall through */ }
+  try { ARC = ev('ARC'); FAULTS = ev('FAULTS'); } catch { /* fall through */ }
   if (!ARC) { console.log('FATAL: ARC never initialised'); console.log(consoleErrors.join('\n')); process.exit(1); }
 
   const report = { pages: [], faults: [], consoleErrors, canvases: [] };

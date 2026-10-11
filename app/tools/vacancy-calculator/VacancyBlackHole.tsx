@@ -175,6 +175,7 @@ export default function VacancyBlackHole({
     const out = q.get('moveOut');
     const ready = q.get('ready');
     const lease = q.get('lease');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the page URL once on mount; it does not exist during server render
     if (rent && Number.isFinite(Number(rent))) setRentInput(rent);
     if (out && dayNumber(out) !== null) setMoveOutDate(out);
     if (ready && dayNumber(ready) !== null) setReadyDate(ready);

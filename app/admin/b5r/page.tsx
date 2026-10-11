@@ -19,6 +19,8 @@ interface JobRun { id: string; started_at: string; ok: boolean; summary: string;
 const STALE_DAYS = 9; // job is weekly; a run older than this means it stopped
 
 export default function B5rPipeline() {
+  // Fixed once per page load, so render stays pure.
+  const [now] = useState(() => Date.now());
   const [job, setJob] = useState<JobRun[] | "unavailable" | null>(null);
   const [deals, setDeals] = useState<DealRow[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -38,12 +40,14 @@ export default function B5rPipeline() {
     setDetail(d); setForm((f) => ({ ...f, runId: d.runs[0]?.id ?? "" }));
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the awaited request, not synchronously
   useEffect(() => { loadList(); }, [loadList]);
   useEffect(() => {
     fetch("/api/admin/b5r/job", { cache: "no-store" })
       .then(async (r) => (r.ok ? setJob((await r.json()).runs) : setJob("unavailable")))
       .catch(() => setJob("unavailable"));
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the detail pane when another deal opens, then fetches it
   useEffect(() => { if (open) { setDetail(null); loadDetail(open); } }, [open, loadDetail]);
 
   async function setStatus(dealId: string, status: string) {
@@ -72,7 +76,7 @@ export default function B5rPipeline() {
       </p>
       {job !== null && (() => {
         const last = job === "unavailable" ? null : job[0];
-        const ageDays = last ? (Date.now() - new Date(last.started_at).getTime()) / 864e5 : Infinity;
+        const ageDays = last ? (now - new Date(last.started_at).getTime()) / 864e5 : Infinity;
         const bad = job === "unavailable" || !last || !last.ok || ageDays > STALE_DAYS;
         const text = job === "unavailable" ? "Weekly data job: status unavailable (has migration 008 been run?)."
           : !last ? "Weekly data job: no runs recorded yet. Check the GitHub Actions workflow “AIM-B5R weekly data job”."

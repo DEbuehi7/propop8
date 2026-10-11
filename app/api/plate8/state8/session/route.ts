@@ -244,8 +244,19 @@ export async function POST(request: NextRequest) {
       // Save to in-memory cache first (always succeeds)
       sessions.set(sessionId, sessionData);
 
-      // Save to Supabase in background (fire-and-forget for now)
-      saveSessionToSupabase(sessionId, sessionData, systemUserId);
+      // Wait for the database so a failed save is reported, not hidden. The
+      // session stays in the in-memory cache either way.
+      const persisted = await saveSessionToSupabase(sessionId, sessionData, systemUserId);
+      if (!persisted) {
+        return NextResponse.json(
+          {
+            success: false,
+            sessionId,
+            error: 'Session kept in memory but could not be saved to the database.',
+          },
+          { status: 502 }
+        );
+      }
 
       return NextResponse.json({ success: true, sessionId });
     }

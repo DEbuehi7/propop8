@@ -39,6 +39,7 @@
  */
 import { Document, Page, View, Text, Image, Font, StyleSheet, Svg, Path } from "@react-pdf/renderer";
 import type { AuditReport } from "./reportTypes";
+import { ENGINE_VERSION } from "./engineVersion";
 import type { Finding, ClaimType } from "./auditEngine";
 
 Font.register({
@@ -389,7 +390,7 @@ export function AuditPdf({ report }: { report: AuditReport }) {
         </Text>
 
         <Text style={s.footerText} fixed>
-          PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL
+          PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL // ENGINE v{ENGINE_VERSION}
         </Text>
       </Page>
 
@@ -439,7 +440,7 @@ export function AuditPdf({ report }: { report: AuditReport }) {
         <Text
           style={s.footerText}
           fixed
-          render={({ pageNumber }) => `PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL     Page ${pageNumber}`}
+          render={({ pageNumber }) => `PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL // ENGINE v${ENGINE_VERSION}     Page ${pageNumber}`}
         />
       </Page>
 
@@ -488,7 +489,7 @@ export function AuditPdf({ report }: { report: AuditReport }) {
         <Text
           style={s.footerText}
           fixed
-          render={({ pageNumber }) => `PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL     Page ${pageNumber}`}
+          render={({ pageNumber }) => `PROPOPS8 // LEDGER REVIEW // CONFIDENTIAL // ENGINE v${ENGINE_VERSION}     Page ${pageNumber}`}
         />
       </Page>
     </Document>

@@ -35,7 +35,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { fulfillIntake } from '@/lib/fulfill';
-import { sendUploadInstructions, notifyOwner } from '@/lib/email';
+import { notifyOwner } from '@/lib/email';
 import { sanitizeHandoff } from '@/lib/calculatorHandoff';
 
 export const runtime = 'nodejs';

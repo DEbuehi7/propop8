@@ -1,0 +1,51 @@
+date,vendor,category,amount,unit,description,work_order_id,status,opened_date,closed_date
+2026-01-05,Delta Plumbing,Plumbing,400,101,Leak repair,WO-1001,closed,2026-01-04,2026-01-06
+2026-01-12,Delta Plumbing,Plumbing,300,111,Fixture,WO-1002,closed,2026-01-04,2026-01-13
+2026-01-08,Acme HVAC,HVAC,900,201,Service,WO-1003,closed,2026-01-05,2026-01-09
+2026-01-20,Cool Air Co,HVAC,150,211,Filter,WO-1004,closed,2026-01-10,2026-01-21
+2026-01-10,GreenCut,Landscaping,500,301,Mowing,WO-1005,closed,2026-01-05,2026-01-10
+2026-01-18,Brite Electric,Electrical,250,401,Outlet,WO-1006,closed,2026-01-06,2026-01-19
+2026-02-05,Delta Plumbing,Plumbing,410,102,Leak repair,WO-1007,closed,2026-01-29,2026-02-06
+2026-02-12,Delta Plumbing,Plumbing,300,112,Fixture,WO-1008,closed,2026-02-10,2026-02-13
+2026-02-08,Acme HVAC,HVAC,900,202,Service,WO-1009,closed,2026-01-30,2026-02-09
+2026-02-20,Cool Air Co,HVAC,150,212,Filter,WO-1010,closed,2026-02-16,2026-02-21
+2026-02-10,GreenCut,Landscaping,500,302,Mowing,WO-1011,closed,2026-01-30,2026-02-10
+2026-02-18,Brite Electric,Electrical,250,402,Outlet,WO-1012,closed,2026-02-12,2026-02-19
+2026-03-05,Delta Plumbing,Plumbing,420,103,Leak repair,WO-1013,closed,2026-03-04,2026-03-06
+2026-03-12,Delta Plumbing,Plumbing,300,113,Fixture,WO-1014,closed,2026-03-04,2026-03-13
+2026-03-08,Acme HVAC,HVAC,900,203,Service,WO-1015,closed,2026-03-05,2026-03-09
+2026-03-20,Cool Air Co,HVAC,150,213,Filter,WO-1016,closed,2026-03-10,2026-03-21
+2026-03-10,GreenCut,Landscaping,500,303,Mowing,WO-1017,closed,2026-03-05,2026-03-10
+2026-03-18,Brite Electric,Electrical,250,403,Outlet,WO-1018,closed,2026-03-06,2026-03-19
+2026-04-05,Delta Plumbing,Plumbing,430,104,Leak repair,WO-1019,closed,2026-03-29,2026-04-06
+2026-04-12,Delta Plumbing,Plumbing,300,114,Fixture,WO-1020,closed,2026-04-10,2026-04-13
+2026-04-08,Acme HVAC,HVAC,900,204,Service,WO-1021,closed,2026-03-30,2026-04-09
+2026-04-20,Cool Air Co,HVAC,150,214,Filter,WO-1022,closed,2026-04-16,2026-04-21
+2026-04-10,GreenCut,Landscaping,500,304,Mowing,WO-1023,closed,2026-03-30,2026-04-10
+2026-04-18,Brite Electric,Electrical,250,404,Outlet,WO-1024,closed,2026-04-12,2026-04-19
+2026-05-05,Delta Plumbing,Plumbing,440,105,Leak repair,WO-1025,closed,2026-05-04,2026-05-06
+2026-05-12,Delta Plumbing,Plumbing,300,115,Fixture,WO-1026,closed,2026-05-04,2026-05-13
+2026-05-08,Acme HVAC,HVAC,900,205,Service,WO-1027,closed,2026-05-05,2026-05-09
+2026-05-20,Cool Air Co,HVAC,150,215,Filter,WO-1028,closed,2026-05-10,2026-05-21
+2026-05-10,GreenCut,Landscaping,500,305,Mowing,WO-1029,closed,2026-05-05,2026-05-10
+2026-05-18,Brite Electric,Electrical,250,405,Outlet,WO-1030,closed,2026-05-06,2026-05-19
+2026-06-05,Delta Plumbing,Plumbing,450,106,Leak repair,WO-1031,closed,2026-05-29,2026-06-06
+2026-06-12,Delta Plumbing,Plumbing,300,116,Fixture,WO-1032,closed,2026-06-10,2026-06-13
+2026-06-08,Acme HVAC,HVAC,900,206,Service,WO-1033,closed,2026-05-30,2026-06-09
+2026-06-20,Cool Air Co,HVAC,150,216,Filter,WO-1034,closed,2026-06-16,2026-06-21
+2026-06-10,GreenCut,Landscaping,500,306,Mowing,WO-1035,closed,2026-05-30,2026-06-10
+2026-06-18,Brite Electric,Electrical,250,406,Outlet,WO-1036,closed,2026-06-12,2026-06-19
+2026-07-03,Delta Plumbing,Plumbing,1800,501,Main line,WO-1037,closed,2026-07-02,2026-07-04
+2026-07-09,Delta Plumbing,Plumbing,1200,502,Water heater,WO-1038,closed,2026-07-01,2026-07-10
+2026-07-14,Delta Plumbing,Plumbing,650,503,Valve,WO-1039,closed,2026-07-11,2026-07-15
+2026-07-14,Delta Plumbing,Plumbing,650,503,Valve,WO-1040,closed,2026-07-04,2026-07-15
+2026-07-16,Acme HVAC,HVAC,900,204,Service,WO-1041,closed,2026-07-11,2026-07-17
+2026-07-19,Acme HVAC,HVAC,900,204,Service,WO-1042,closed,2026-07-07,2026-07-20
+2026-07-11,Cool Air Co,HVAC,150,214,Filter,WO-1043,closed,2026-07-04,2026-07-12
+2026-07-10,GreenCut,Landscaping,500,305,Mowing,WO-1044,closed,2026-07-08,2026-07-10
+2026-07-18,Brite Electric,Electrical,250,405,Outlet,WO-1045,closed,2026-07-09,2026-07-19
+2026-07-21,Brite Electric,Electrical,(180.00),406,Vendor credit,WO-1046,closed,2026-07-17,2026-07-21
+2026-05-02,Delta Plumbing,Plumbing,420,601,Open leak,WO-1047,open,2026-05-02,
+2026-06-10,Acme HVAC,HVAC,760,602,Open AC,WO-1048,open,2026-06-10,
+2026-07-25,GreenCut,Landscaping,300,603,Open trim,WO-1049,open,2026-07-25,
+2026-07-22,GreenCut,Landscaping,12 CR,604,Bad amount,WO-9999,closed,2026-07-14,2026-07-22

@@ -33,10 +33,7 @@ export function useCountUp(target: number, duration = 1200, enabled = true): num
   const frame = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (!enabled) {
-      setValue(target);
-      return;
-    }
+    if (!enabled) return;
     const start = performance.now();
     const tick = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
@@ -49,5 +46,6 @@ export function useCountUp(target: number, duration = 1200, enabled = true): num
     };
   }, [target, duration, enabled]);
 
-  return value;
+  // When disabled there is nothing to animate: show the target directly.
+  return enabled ? value : target;
 }
