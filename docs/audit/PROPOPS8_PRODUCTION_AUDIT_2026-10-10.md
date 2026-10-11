@@ -16,6 +16,7 @@ Plate pages (M1–M3). Nothing here is an active breach; no secrets were found.
 
 | ID | Severity | Finding | Fix | Changes runtime? |
 |---|---|---|---|---|
+| C1 | Critical (found after the first pass) | `main` carries `.env.local`, added 2026-10-05 through the GitHub website, in a **public** repository. It holds a Supabase **secret** key (bypasses every access rule) and a publishable key for the project whose ref starts `qxoomn` (not the PropOps8 audit project). The first pass scanned `feat/b5r-job` only, which is why it was missed. | Revoke that secret key in Supabase now and replace it anywhere it is used; remove the file from `main` (`fix/remove-committed-env`). Removing the file does not erase it from history; revoking the key is what makes the copy worthless. | Only where that key is used |
 | H1 | High | `next@16.3.3` has 7 published advisories fixed in 16.4.0, including SSRF in Image Optimization (4 files use `next/image`) and SSG/ISR cache poisoning. The critical RCE is in `next/og`, which this app does not use. | Upgrade `next` (and `eslint-config-next`) to 16.4.x; `npm run verify`; live e2e; deploy. | Yes — needs go |
 | H2 | High | Netlify builds on Node 20 (`netlify.toml`), which reached end of life on 2026-04-30: no more security patches. | `NODE_VERSION = "22"` (the version every test here runs on). | Yes — needs go |
 | M1 | Medium | `/api/rss` is an open, unauthenticated fetch proxy. The private-address check runs on the first hop only and redirects are followed, so a public URL that redirects to an internal address gets past it (DNS rebinding likewise). | Follow redirects manually and re-check each hop, or require the admin cookie (Plate is a personal rig). | Yes — needs go |
@@ -59,7 +60,7 @@ where schemaname = 'public' and tablename = 'sessions';
 | Uploads | Token-scoped with expiry and revocation; 50 MB, 10 files and the CSV/XLS(X) allowlist are enforced by the private bucket itself, not just the browser | `supabase/schema.sql`, `lib/uploadTokens.ts` |
 | Data access | Every table defined in the repo has RLS on and no policies (service-role only); both buckets are private | `supabase/schema.sql`, migrations 007–010 |
 | Reports | Send needs an approved review and a matching PDF fingerprint; resend refused (409); retry from the stored PDF | `tests/sendGuard.test.ts`; live e2e 10/10 (twice) |
-| Secrets | No keys or tokens in tracked files or git history; `.env.local.example` holds placeholders only | Pattern scan of tracked files and history |
+| Secrets | **Corrected:** `feat/b5r-job` and its history are clean, but `main` is not (see C1). A re-scan of every branch and all history found no other keys. | Pattern scan of all branches and history (names and file paths only; no values printed) |
 | Tests | 186 → 203 tests at audit; 211 with the fixes; 0 lint errors | `npm run verify` |
 
 ## Not verified here (needs Daniel, 10 minutes)
