@@ -69,8 +69,10 @@ filings, protection/IP, plans, images, audio, datasets, schedules.
      checks both against the project and saves them on this Mac only. It
      refuses the secret / service-role key.
    - `enroll` asks for the step 4 email and password, then shows a QR code.
-     Scan it with your authenticator app. Using two apps? Scan it with both
-     before typing the 6-digit code. In Microsoft Authenticator choose
+     Scan it with your authenticator app; the new entry is named "AIM Vault"
+     plus the date and time, so type the code from that entry. Using two apps?
+     Scan it with both before typing the 6-digit code. A wrong password or code
+     can be retried without starting over. In Microsoft Authenticator choose
      **Add account → Other account (Google, Facebook, etc.)**; the "Work or
      school" option will not read it. If anything goes wrong, just run
      `enroll` again. The QR screen and setup key are secrets: never paste

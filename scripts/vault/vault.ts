@@ -136,10 +136,8 @@ async function login() {
   const { data: factors, error: fe } = await sb.auth.mfa.listFactors();
   if (fe) die(fe.message);
   const totp = factors?.totp?.find((f) => f.status === "verified");
-  if (!totp) die("No verified authenticator app on this account. Enrol one first (see vault/README.md).");
-  const code = await ask("Authenticator code: ");
-  const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: totp!.id, code });
-  if (ve) die(`Code rejected: ${ve.message}`);
+  if (!totp) die("No working authenticator on this account yet. Run: vault reset-authenticator");
+  await verifyCode(sb, totp!.id, "6-digit code from your authenticator app: ");
   const { data } = await sb.auth.getSession();
   privateDir();
   writeFileSync(SESSION_FILE, JSON.stringify({ access_token: data.session!.access_token, refresh_token: data.session!.refresh_token }), { mode: 0o600 });
@@ -173,32 +171,54 @@ async function setup() {
   console.log("Saved on this computer. Next: vault enroll (first time) or vault login.");
 }
 
+const TRIES = 3;
+
 async function signIn(sb: SupabaseClient) {
   const email = await ask("Email: ");
-  const password = await ask("Password (nothing shows while you type): ", true);
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) die(`Sign-in failed: ${error.message}. Copy the password again from your password manager.`);
+  for (let i = 1; ; i++) {
+    const password = await ask("Password (nothing shows while you type): ", true);
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (!error) return;
+    if (i >= TRIES) die(`Sign-in failed: ${error.message}`);
+    console.log(`Sign-in failed (${error.message}). Copy the password again from your password manager:`);
+    console.log("if you copied anything else since (a code or a key), the clipboard no longer holds it.");
+  }
+}
+
+/** Asks for a 6-digit code until it verifies (or the tries run out). */
+async function verifyCode(sb: SupabaseClient, factorId: string, question: string, hint = "") {
+  for (let i = 1; ; i++) {
+    const code = (await ask(question)).replace(/\s+/g, "");
+    const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code });
+    if (!error) return;
+    if (i >= TRIES) die(`Code rejected: ${error.message}. Run the same command again.`);
+    console.log(`That code did not match (${error.message}).${hint} Type it while it is still showing, then try again.`);
+  }
 }
 
 /** Shows a new authenticator key (QR code when qrencode is installed) and verifies the first code. */
 async function linkNewAuthenticator(sb: SupabaseClient) {
   const { data: factors } = await sb.auth.mfa.listFactors();
-  // A cancelled earlier attempt leaves an unfinished factor behind; clear it so this can simply be run again.
+  // An unfinished earlier attempt leaves a factor behind; clear it so this can simply be run again.
   for (const f of factors?.all ?? []) {
     if (f.factor_type === "totp" && f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
   }
-  const { data, error: ee } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "AIM Vault" });
+  // A dated label, so the right entry is easy to pick out in the authenticator app.
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const label = `AIM Vault ${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const { data, error: ee } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: label, issuer: label });
   if (ee || !data) die(`Could not start enrolment: ${ee?.message}`);
   console.log("This screen is a secret: never copy or paste it anywhere. Press Cmd+K afterwards to clear it.");
   const qr = spawnSync("qrencode", ["-t", "ANSIUTF8"], { input: data!.totp.uri, stdio: ["pipe", "inherit", "ignore"] });
-  if (qr.status === 0) console.log("Scan this with your authenticator app (or use the setup key below).");
-  else console.log("In your authenticator app choose 'Enter a setup key' (time-based) and type this key:");
-  console.log(`  setup key: ${data!.totp.secret}`);
-  console.log("Two apps? Add it to BOTH now, before typing a code. Microsoft Authenticator: Add account ->");
-  console.log("'Other account (Google, Facebook, etc.)' -> scan. (The 'Work or school' option will not work.)");
-  const code = await ask("6-digit code shown in the app: ");
-  const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: data!.id, code });
-  if (ve) die(`Code rejected: ${ve.message}. Run the same command again.`);
+  if (qr.status === 0) {
+    console.log(`Scan it with your authenticator app. The new entry is named "${label}".`);
+  } else {
+    console.log("In your authenticator app choose 'Enter a setup key' (time-based) and type this key:");
+    console.log(`  setup key: ${data!.totp.secret}`);
+  }
+  console.log("Microsoft Authenticator: Add account -> 'Other account (Google, Facebook, etc.)'.");
+  await verifyCode(sb, data!.id, `6-digit code shown under "${label}": `, ` Read the entry named "${label}", not an older one.`);
 }
 
 async function enroll() {
@@ -224,9 +244,7 @@ async function resetAuthenticator() {
   if (fe) die(fe.message);
   const current = factors?.totp?.find((f) => f.status === "verified");
   if (current) {
-    const code = await ask("6-digit code from the app you linked before: ");
-    const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: current.id, code });
-    if (ve) die(`Code rejected: ${ve.message}`);
+    await verifyCode(sb, current.id, "6-digit code from the app you linked before: ");
     const { error: ue } = await sb.auth.mfa.unenroll({ factorId: current.id });
     if (ue) die(`Could not remove the old authenticator: ${ue.message}`);
     console.log("Old authenticator removed. Delete its 'AIM Vault' entry from your apps after this.");
