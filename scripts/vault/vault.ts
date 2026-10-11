@@ -8,6 +8,7 @@
  *
  *   npx --yes tsx scripts/vault/vault.ts setup
  *   npx --yes tsx scripts/vault/vault.ts enroll      (once: link your authenticator app)
+ *   npx --yes tsx scripts/vault/vault.ts reset-authenticator   (replace it: lost phone or exposed key)
  *   npx --yes tsx scripts/vault/vault.ts login
  *   npx --yes tsx scripts/vault/vault.ts backup-key  (once: make the backup key pair)
  *   npx --yes tsx scripts/vault/vault.ts add FILE --entity aim-llc --category filing --title "Articles of Organization" --tier 2 [--doc-date 2024-03-01] [--expires 2026-03-31] [--tags formation,state] [--projects propops8]
@@ -62,19 +63,55 @@ function client(): SupabaseClient {
 }
 
 function ask(question: string, hidden = false): Promise<string> {
+  if (hidden && process.stdin.isTTY) return askHidden(question);
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    if (hidden) {
-      const out = rl as unknown as { _writeToOutput: (s: string) => void };
-      out._writeToOutput = (s: string) => {
-        if (s.includes(question)) process.stdout.write(s);
-      };
-    }
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: !hidden });
     rl.question(question, (a) => {
       rl.close();
-      if (hidden) process.stdout.write("\n");
       resolve(a.trim());
     });
+  });
+}
+
+/**
+ * Reads a password or key with nothing echoed, however long it is or however
+ * it arrives (typed or pasted). Raw mode means no line editor redraws the
+ * line, which is what used to reveal long pasted values when they wrapped.
+ */
+function askHidden(question: string): Promise<string> {
+  const stdin = process.stdin;
+  process.stdout.write(question);
+  return new Promise((resolve) => {
+    let value = "";
+    let escape = false; // skip arrow keys and other escape sequences
+    const finish = () => {
+      stdin.removeListener("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      process.stdout.write("\n");
+      resolve(value.trim());
+    };
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (escape) {
+          if (/[A-Za-z~]/.test(ch)) escape = false;
+          continue;
+        }
+        if (ch === "\r" || ch === "\n") return finish();
+        if (ch === "\u0003") {
+          stdin.setRawMode(false);
+          process.stdout.write("\n");
+          process.exit(130);
+        }
+        if (ch === "\u001b") escape = true;
+        else if (ch === "\u007f" || ch === "\b") value = value.slice(0, -1);
+        else if (ch >= " ") value += ch;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.setEncoding("utf8");
+    stdin.on("data", onData);
+    stdin.resume();
   });
 }
 
@@ -95,10 +132,7 @@ async function log(sb: SupabaseClient, action: string, item_id: string | null, d
 
 async function login() {
   const sb = client();
-  const email = await ask("Email: ");
-  const password = await ask("Password: ", true);
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) die(`Sign-in failed: ${error.message}`);
+  await signIn(sb);
   const { data: factors, error: fe } = await sb.auth.mfa.listFactors();
   if (fe) die(fe.message);
   const totp = factors?.totp?.find((f) => f.status === "verified");
@@ -139,29 +173,67 @@ async function setup() {
   console.log("Saved on this computer. Next: vault enroll (first time) or vault login.");
 }
 
-async function enroll() {
-  const sb = client();
+async function signIn(sb: SupabaseClient) {
   const email = await ask("Email: ");
   const password = await ask("Password (nothing shows while you type): ", true);
   const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) die(`Sign-in failed: ${error.message}`);
+  if (error) die(`Sign-in failed: ${error.message}. Copy the password again from your password manager.`);
+}
+
+/** Shows a new authenticator key (QR code when qrencode is installed) and verifies the first code. */
+async function linkNewAuthenticator(sb: SupabaseClient) {
   const { data: factors } = await sb.auth.mfa.listFactors();
-  if (factors?.totp?.some((f) => f.status === "verified")) die("An authenticator app is already linked. Use: vault login");
-  // A cancelled earlier attempt leaves an unfinished factor behind; clear it so enroll can simply be run again.
+  // A cancelled earlier attempt leaves an unfinished factor behind; clear it so this can simply be run again.
   for (const f of factors?.all ?? []) {
     if (f.factor_type === "totp" && f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
   }
   const { data, error: ee } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "AIM Vault" });
   if (ee || !data) die(`Could not start enrolment: ${ee?.message}`);
+  console.log("This screen is a secret: never copy or paste it anywhere. Press Cmd+K afterwards to clear it.");
   const qr = spawnSync("qrencode", ["-t", "ANSIUTF8"], { input: data!.totp.uri, stdio: ["pipe", "inherit", "ignore"] });
-  if (qr.status === 0) console.log("Scan this with your authenticator app (or use the setup key below):");
+  if (qr.status === 0) console.log("Scan this with your authenticator app (or use the setup key below).");
   else console.log("In your authenticator app choose 'Enter a setup key' (time-based) and type this key:");
   console.log(`  setup key: ${data!.totp.secret}`);
-  console.log("Using two authenticator apps? Add this same key to both now, before typing the code.");
+  console.log("Two apps? Add it to BOTH now, before typing a code. Microsoft Authenticator: Add account ->");
+  console.log("'Other account (Google, Facebook, etc.)' -> scan. (The 'Work or school' option will not work.)");
   const code = await ask("6-digit code shown in the app: ");
   const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: data!.id, code });
-  if (ve) die(`Code rejected: ${ve.message}. Run enroll again.`);
+  if (ve) die(`Code rejected: ${ve.message}. Run the same command again.`);
+}
+
+async function enroll() {
+  const sb = client();
+  await signIn(sb);
+  const { data: factors } = await sb.auth.mfa.listFactors();
+  if (factors?.totp?.some((f) => f.status === "verified")) {
+    die("An authenticator app is already linked. Use: vault login (or vault reset-authenticator to replace it).");
+  }
+  await linkNewAuthenticator(sb);
   console.log("Authenticator linked. Now run: vault login");
+}
+
+/**
+ * Replaces the authenticator (lost phone, or its key was exposed). Proves the
+ * current one with a code first, removes it, then links a new key. Every
+ * saved session on this computer is cleared, so the next step is vault login.
+ */
+async function resetAuthenticator() {
+  const sb = client();
+  await signIn(sb);
+  const { data: factors, error: fe } = await sb.auth.mfa.listFactors();
+  if (fe) die(fe.message);
+  const current = factors?.totp?.find((f) => f.status === "verified");
+  if (current) {
+    const code = await ask("6-digit code from the app you linked before: ");
+    const { error: ve } = await sb.auth.mfa.challengeAndVerify({ factorId: current.id, code });
+    if (ve) die(`Code rejected: ${ve.message}`);
+    const { error: ue } = await sb.auth.mfa.unenroll({ factorId: current.id });
+    if (ue) die(`Could not remove the old authenticator: ${ue.message}`);
+    console.log("Old authenticator removed. Delete its 'AIM Vault' entry from your apps after this.");
+  }
+  await linkNewAuthenticator(sb);
+  rmSync(SESSION_FILE, { force: true });
+  console.log("New authenticator linked. Now run: vault login");
 }
 
 /**
@@ -393,7 +465,7 @@ async function exportPure() {
 }
 
 const commands: Record<string, () => Promise<void>> = {
-  setup, enroll, login, add, list, get, "backup-key": backupKey, backup, deadlines, deadline: deadlines, "export-pure": exportPure,
+  setup, enroll, "reset-authenticator": resetAuthenticator, login, add, list, get, "backup-key": backupKey, backup, deadlines, deadline: deadlines, "export-pure": exportPure,
   logout: async () => {
     rmSync(SESSION_FILE, { force: true });
     console.log("Signed out on this machine.");
