@@ -26,9 +26,22 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
+72 images are indexed: AIMV-001 to 046 (received 7 to 9 Oct) and AIMV-047 to
+072 (received 11 Oct: Triadic Planet boards, EDO robots, Dance8, Stuttr,
+Seamless Threads, and the Chronolayer and Adaptive Reuse posters). Re-uploads of
+AIMV-004 to 006 and one poster are listed as duplicates. The concept sheets PDF
+still covers AIMV-001 to 046 only.
+
+Fix these 11 Oct flags before any external use:
+
+- AIMV-071 labels a generated image "PHOTO 2026.04.12" and "MEASURED GEOMETRY /
+  POINT CLOUD", but no photo or survey exists.
+- AIMV-070 and AIMV-071 each print a different "canonical" colour set, and
+  neither matches Intelligence OS v3.2, where magenta means loss or exposure.
+
 ## Rules carried from the Visual Concept Atlas v0.1
 
 - Every accessible image is indexed once; duplicates and derivatives link to the original.
-- Missing files are recorded as missing, never invented (EVID-01, OPS-01 to OPS-05, DES-01 and DES-02 have no images yet).
+- Missing files are recorded as missing, never invented. EVID-01, OPS-02 and OPS-04 have no images yet. OPS-01, OPS-03, OPS-05 and DES-02 appear only as cross-tags.
 - Illustrative numbers in renders (e.g. the L.E.T. dashboards) are never presented as results.
 - An approved image is not an approved building, parcel, engineering system or investment.
