@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { checkAdd, isAgeEncrypted, isPrivilegedKey, objectPath, planDerivatives, pureExport, sha256 } from "../lib/vault/core";
+import { checkAdd, isAgeEncrypted, isPrivilegedKey, objectPath, planDerivatives, pureExport, resolveVaultConfig, sha256 } from "../lib/vault/core";
 
 const jwt = (role: string) =>
   ["e30", Buffer.from(JSON.stringify({ role, iss: "supabase" })).toString("base64url"), "sig"].join(".");
@@ -76,4 +76,20 @@ test("Pure export carries tier 0-1 titles and open deadlines only", () => {
   assert.match(md, /PropOps8 roadmap/);
   assert.doesNotMatch(md, /EIN letter|Vendor agreement|Old filing/);
   assert.match(md, /Statement of Information/);
+});
+
+test("setup: saved config is used, env overrides it, and master keys are refused", () => {
+  const url = "https://abcdefghijklmnop.supabase.co";
+  const saved = JSON.stringify({ url, key: "sb_publishable_saved" });
+  assert.deepEqual(resolveVaultConfig({}, saved), { url, key: "sb_publishable_saved" });
+  assert.deepEqual(resolveVaultConfig({ VAULT_SUPABASE_ANON_KEY: jwt("anon") }, saved), { url, key: jwt("anon") });
+  // The dashboard's API URL form is accepted as-is.
+  assert.deepEqual(resolveVaultConfig({ VAULT_SUPABASE_URL: url + "/rest/v1/", VAULT_SUPABASE_ANON_KEY: "sb_publishable_x" }, null), { url, key: "sb_publishable_x" });
+  const err = (r: ReturnType<typeof resolveVaultConfig>) => ("error" in r ? r.error : "");
+  assert.match(err(resolveVaultConfig({}, null)), /vault setup/);
+  assert.match(err(resolveVaultConfig({}, "{not json")), /unreadable/);
+  assert.match(err(resolveVaultConfig({ VAULT_SUPABASE_ANON_KEY: "sb_secret_x" }, saved)), /secret/);
+  assert.match(err(resolveVaultConfig({ VAULT_SUPABASE_ANON_KEY: jwt("service_role") }, saved)), /secret/);
+  assert.match(err(resolveVaultConfig({ VAULT_SUPABASE_URL: "http://abcdefghijklmnop.supabase.co" }, saved)), /https/);
+  assert.match(err(resolveVaultConfig({ VAULT_SUPABASE_ANON_KEY: "hello" }, saved)), /publishable/);
 });
