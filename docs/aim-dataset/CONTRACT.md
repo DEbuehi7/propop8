@@ -1,4 +1,4 @@
-# AIM dataset contract — 0.1-draft (11 Oct 2026)
+# AIM dataset contract — 0.2-draft (11 Oct 2026)
 
 **Status: DRAFT research contract.** No Supabase tables, migrations or app code
 depend on it yet. It writes down the shape that the AIM-B5R vault starters v0.1,
@@ -44,6 +44,27 @@ Proposed extensions that the vault starters carry are not part of this
 contract until approved: `property_screenings`, `portfolio_snapshots`,
 `financial_inputs`, `interventions`, `actuals`, `simulation_runs`,
 `source_refresh`, and the v0.2/v0.3 market, lead, hazard and SRO registers.
+
+## Research segment (owner request, 11 Oct 2026)
+
+Research & Development is a standing segment of AIM-B5R. It runs beside the
+deal cycle and feeds it at fixed hand-off points. Lanes, stages, rules and the
+seeded register are in `docs/aim-b5r/RESEARCH.md`. It adds one proposed table
+(not built):
+
+| Table | Columns, in order |
+|---|---|
+| `research_projects` | project_id, lane, title, question, stage, status, owner, cap, kill_criteria, next_step, next_review, edo_call, claim_ids, run_ids, opened_at, closed_at, notes |
+
+Allowed values:
+
+- `lane`: MKT, FIN, BLD, INS, DES.
+- `stage`: R0 (idea), R1 (sourced), R2 (tested), R3 (piloted), R4 (adopted).
+- `status`: active, parked, deferred, killed, adopted.
+- `edo_call`: EXECUTE, DEFER, ESCALATE, KILL.
+
+`research_projects` is append-only like `decisions`: a stage change is a new
+row. Research rows never write `property_evidence` directly.
 
 ## Allowed values
 
@@ -176,3 +197,5 @@ Rules that hold at every gate: **(D)**
 
 - 0.1-draft, 2026-10-11: first version. Taken from the vault v0.1–v0.3
   templates, the Research-to-Dataset Plan v0.1 and the Phase 0 audit.
+- 0.2-draft, 2026-10-11: added the Research segment (owner request) and the
+  proposed `research_projects` table.
