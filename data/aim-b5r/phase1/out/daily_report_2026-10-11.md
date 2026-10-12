@@ -1,7 +1,7 @@
-# Daily report — 2026-10-09
+# Daily report — 2026-10-11
 
-- Sources accessed: S01, S02, S04, S05, S07, S08, S09, S11
-- Properties touched: K1, K2, K3, K4, K5, F1, F2, F3, F4, F5
+- Sources accessed: S10
+- Properties touched: K1
 - Official APNs verified: 0
 - Jurisdictions verified: 0
 - Geometry reconciled: 0
