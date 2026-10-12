@@ -4,8 +4,6 @@ For each property: take the screenshots listed, make sure the APN, the address a
 
 ## Kern
 
-- [ ] **K1** 2207 River Blvd, Bakersfield, CA 93305 (listing APN to compare: 12632012005)
-  Kern Assessor Property Search > Address Search: "2207 River" (no street type). Screenshot the record showing APN and situs address. On the same record tap 'View Parcel Map'; screenshot the parcel. Official City of Bakersfield city-limits map (or Kern planning map): screenshot showing the parcel inside or outside city limits.
 - [ ] **K2** 2208 Lake St, Bakersfield, CA 93306 (listing APN to compare: 13741004008)
   Kern Assessor Property Search > Address Search: "2208 Lake" (no street type). Screenshot the record showing APN and situs address. On the same record tap 'View Parcel Map'; screenshot the parcel. Official City of Bakersfield city-limits map (or Kern planning map): screenshot showing the parcel inside or outside city limits.
 - [ ] **K3** 1316 E California Ave, Bakersfield, CA 93307 (listing APN to compare: 01736010006 / 01736010)
