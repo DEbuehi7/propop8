@@ -15,7 +15,7 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import {
-  audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, MANIFEST_NAME, parseWav,
+  audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
   slugify, timingCheck, VOICE_CHANGER_MAX_SEC, voiceKey,
   type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type VoiceTake,
 } from "./library";
@@ -139,6 +139,7 @@ export function addSong(c: Ctx, o: AddOptions): LibraryTrack {
     log(`${action.padEnd(13)} ${role === "stem" ? `stem:${stemName}` : role}  ${n}`);
   }
   t.files.sort((a, b) => a.path.localeCompare(b.path));
+  warnings.push(...lengthWarnings(t.files));
   for (const w of warnings) log(`warning: ${w}`);
   if (!o.dry) saveManifest(c, m);
   log(o.dry ? `dry run: nothing written. Track id would be "${trackId}".` : `saved "${trackId}" in ${join(c.library, MANIFEST_NAME)}`);
