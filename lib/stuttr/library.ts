@@ -109,7 +109,8 @@ const STEM_WORDS = ["drums", "drum", "percussion", "perc", "bass", "guitar", "ke
 /** Role from a file name, before the folder-level full-mix decision. */
 export function roleFromName(fileName: string): { role: FileRole; stemName?: string } {
   const ext = extOf(fileName);
-  if (ext === "txt" || ext === "lrc") return { role: "lyrics" };
+  // Suno's style prompt is saved next to the lyrics; it is kept but never read as lyrics.
+  if (ext === "txt" || ext === "lrc") return /style|prompt/i.test(fileName) ? { role: "unclassified" } : { role: "lyrics" };
   if (!audioFormatOf(fileName)) return { role: "unclassified" };
   const base = fileName.slice(0, fileName.length - ext.length - 1).toLowerCase();
   const words = base.split(/[^a-z0-9]+/).filter(Boolean);
@@ -156,6 +157,7 @@ export function classifyFolder(names: string[]): { roles: Map<string, { role: Fi
     const f = audioFormatOf(n);
     if (f && isLossy(f)) warnings.push(`${n} is ${f.toUpperCase()} (lossy); export WAV for analysis and voice work`);
     if (r.role === "unclassified" && audioFormatOf(n)) warnings.push(`${n}: role unknown; it is copied but not used`);
+    if (extOf(n) === "rtf" && !/style|prompt/i.test(n)) warnings.push(`${n} is rich text; save the lyrics as plain text (TextEdit: Format > Make Plain Text) named lyrics.txt`);
   }
   return { roles, warnings };
 }

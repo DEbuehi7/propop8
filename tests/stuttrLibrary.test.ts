@@ -66,6 +66,11 @@ test("slugify and roles from file names", () => {
   assert.deepEqual(roleFromName("Song.wav"), { role: "full_mix" });
   assert.deepEqual(roleFromName("lyrics.txt"), { role: "lyrics" });
   assert.deepEqual(roleFromName("cover.png"), { role: "unclassified" });
+  assert.deepEqual(roleFromName("1. Song Style.txt"), { role: "unclassified" });
+  assert.deepEqual(roleFromName("prompt.txt"), { role: "unclassified" });
+  const { warnings } = classifyFolder(["Song.wav", "Song Lyrics.rtf", "Song Style.rtf"]);
+  assert.ok(warnings.some((w) => w.includes("Song Lyrics.rtf is rich text")));
+  assert.ok(!warnings.some((w) => w.includes("Song Style.rtf")));
 });
 
 test("a song title with a stem word is not mistaken for a stem", () => {
