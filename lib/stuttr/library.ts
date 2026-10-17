@@ -104,7 +104,7 @@ export function audioFormatOf(name: string): AudioInfo["format"] | null {
 
 export const isLossy = (f: AudioInfo["format"]) => LOSSY.has(f);
 
-const STEM_WORDS = ["drums", "drum", "percussion", "perc", "bass", "guitar", "keys", "keyboard", "piano", "synth", "pad", "strings", "brass", "horns", "winds", "fx", "sfx", "other"];
+const STEM_WORDS = ["drums", "drum", "percussion", "perc", "bass", "guitar", "keys", "keyboard", "piano", "synth", "pad", "strings", "brass", "horns", "winds", "fx", "sfx", "other", "click", "metronome"];
 
 /** Role from a file name, before the folder-level full-mix decision. */
 export function roleFromName(fileName: string): { role: FileRole; stemName?: string } {
@@ -132,11 +132,17 @@ export function classifyFolder(names: string[]): { roles: Map<string, { role: Fi
   const roles = new Map<string, { role: FileRole; stemName?: string }>();
   const warnings: string[] = [];
   const sorted = [...names].sort((a, b) => a.localeCompare(b));
-  // Suno names every export "<Song title> (<part>).wav". Strip the shared
+  // Suno Studio names exports "<Song title> (<part>).wav"; strip the shared
   // title first, so a song called "Bass Drop" is not mistaken for a bass stem.
+  // Suno's stem download names them "<part>_<Song title>.mp3" instead.
   const audio = sorted.filter((n) => audioFormatOf(n));
-  const prefix = audio.length >= 2 ? sharedPrefix(audio.map(stripExt)) : "";
-  for (const n of sorted) roles.set(n, roleFromName(audioFormatOf(n) ? n.slice(prefix.length) || n : n));
+  const parts = stemDownloadParts(audio);
+  const prefix = !parts && audio.length >= 2 ? sharedPrefix(audio.map(stripExt)) : "";
+  for (const n of sorted) {
+    const part = parts?.get(n);
+    if (part !== undefined) roles.set(n, part === "" ? { role: "full_mix" } : roleFromName(`${part}.${extOf(n)}`));
+    else roles.set(n, roleFromName(audioFormatOf(n) ? n.slice(prefix.length) || n : n));
+  }
   const mixes = sorted.filter((n) => roles.get(n)!.role === "full_mix");
   if (mixes.length > 1) {
     const named = mixes.filter((n) => /full|master|(^|[^a-z])mix/.test(n.toLowerCase()));
@@ -155,6 +161,55 @@ export function classifyFolder(names: string[]): { roles: Map<string, { role: Fi
 }
 
 const stripExt = (n: string) => (extOf(n) ? n.slice(0, n.length - extOf(n).length - 1) : n);
+
+/**
+ * Suno's stem download: "<part>_<Song title>.mp3" for each part (vocals, drums,
+ * bass, other, click), plus the full song named just "<Song title>". Returns
+ * each audio name's part ("" for the bare title), or null when the folder is
+ * not entirely in that form (then the shared-prefix rule applies).
+ */
+export function stemDownloadParts(audioNames: string[]): Map<string, string> | null {
+  const parts = new Map<string, string>();
+  let title: string | null = null;
+  for (const n of audioNames) {
+    const b = stripExt(n);
+    const i = b.indexOf("_");
+    if (i <= 0) continue;
+    const part = b.slice(0, i);
+    if (roleFromName(`${part}.wav`).role === "full_mix") continue;
+    const t = b.slice(i + 1);
+    if (!t || (title !== null && t !== title)) return null;
+    title = t;
+    parts.set(n, part);
+  }
+  if (title === null || parts.size < 2) return null;
+  for (const n of audioNames) {
+    if (parts.has(n)) continue;
+    if (stripExt(n) === title) parts.set(n, "");
+    else return null;
+  }
+  return parts;
+}
+
+/** Most stems are as long as the song; these differ from the full mix by more than this. */
+export const STEM_LENGTH_TOLERANCE_SEC = 1;
+
+/**
+ * Parts whose length doesn't match the full mix: a preview clip (Suno's stem
+ * previews are 15 s) or a stem from a different take. Unknown lengths are skipped.
+ */
+export function lengthWarnings(files: LibraryFile[]): string[] {
+  const full = files.find((f) => f.role === "full_mix")?.audio?.durationSec;
+  if (full == null) return [];
+  const out: string[] = [];
+  for (const f of files) {
+    if (f.role === "full_mix" || f.role === "lyrics" || f.role === "unclassified") continue;
+    const d = f.audio?.durationSec;
+    if (d == null || Math.abs(d - full) <= STEM_LENGTH_TOLERANCE_SEC) continue;
+    out.push(`${f.originalName} is ${d.toFixed(1)} s but the full mix is ${full.toFixed(1)} s; it looks like a preview or another take. Re-export Multitrack from Suno Studio.`);
+  }
+  return out;
+}
 
 /** Longest shared start of all names, cut back to a word boundary. */
 export function sharedPrefix(names: string[]): string {

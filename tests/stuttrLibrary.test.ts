@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { classifyFolder, parseWav, roleFromName, sharedPrefix, slugify, timingCheck } from "../lib/stuttr/library";
+import { classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
 import { addSong, addVoice, loadManifest, mixVoice, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
 
 /** A PCM WAV of a sine tone. */
@@ -80,6 +80,54 @@ test("two unnamed mixes stay unclassified with a warning", () => {
   const { roles, warnings } = classifyFolder(["take one.wav", "take two.wav"]);
   assert.equal(roles.get("take one.wav")!.role, "unclassified");
   assert.ok(warnings.some((w) => w.includes("more than one possible full mix")));
+});
+
+test("Suno stem download names: <part>_<title>, a click track, and the bare title as the full mix", () => {
+  const names = [
+    "1. Bass Drop, One Accent.wav",
+    "bass_1. Bass Drop, One Accent.mp3",
+    "click_1. Bass Drop, One Accent.mp3",
+    "drums_1. Bass Drop, One Accent.mp3",
+    "other_1. Bass Drop, One Accent.mp3",
+    "vocals_1. Bass Drop, One Accent.mp3",
+    "lyrics.txt",
+  ];
+  const { roles, warnings } = classifyFolder(names);
+  assert.equal(roles.get("1. Bass Drop, One Accent.wav")!.role, "full_mix");
+  assert.equal(roles.get("vocals_1. Bass Drop, One Accent.mp3")!.role, "vocals");
+  assert.deepEqual(roles.get("bass_1. Bass Drop, One Accent.mp3"), { role: "stem", stemName: "bass" });
+  assert.deepEqual(roles.get("click_1. Bass Drop, One Accent.mp3"), { role: "stem", stemName: "click" });
+  assert.deepEqual(roles.get("other_1. Bass Drop, One Accent.mp3"), { role: "stem", stemName: "other" });
+  assert.equal(roles.get("lyrics.txt")!.role, "lyrics");
+  assert.ok(!warnings.some((w) => w.includes("full mix")), warnings.join("; "));
+  assert.ok(!warnings.some((w) => w.includes("role unknown")), warnings.join("; "));
+});
+
+test("names that only look like <part>_<title> keep the old rules", () => {
+  assert.equal(stemDownloadParts(["lead_vox.wav", "bass_vox.wav"]), null);
+  assert.equal(stemDownloadParts(["vocals_Song A.wav", "drums_Song B.wav"]), null);
+  assert.equal(stemDownloadParts(["vocals_Song.wav", "drums_Song.wav", "Song (Full).wav"]), null);
+  const { roles } = classifyFolder(["lead_vox.wav", "bass_vox.wav"]);
+  assert.equal(roles.get("lead_vox.wav")!.role, "vocals");
+  assert.equal(roles.get("bass_vox.wav")!.role, "vocals");
+});
+
+test("a stem much shorter than the full mix is flagged as a preview", () => {
+  const s = sandbox();
+  try {
+    const inbox = join(s.root, "inbox", "Preview Song");
+    mkdirSync(inbox, { recursive: true });
+    writeFileSync(join(inbox, "Preview Song.wav"), wav({ sec: 3 }));
+    writeFileSync(join(inbox, "vocals_Preview Song.wav"), wav({ sec: 1, freq: 330 }));
+    writeFileSync(join(inbox, "drums_Preview Song.wav"), wav({ sec: 3, freq: 110 }));
+    addSong(s.ctx, { folder: inbox, dry: true });
+    const flagged = s.lines.filter((l) => l.includes("looks like a preview"));
+    assert.equal(flagged.length, 1);
+    assert.ok(flagged[0].includes("vocals_Preview Song.wav is 1.0 s but the full mix is 3.0 s"));
+    assert.equal(lengthWarnings([{ role: "full_mix", path: "x", originalName: "x", sha256: "", bytes: 0 }]).length, 0);
+  } finally {
+    s.done();
+  }
 });
 
 test("WAV headers: rate, channels, bits and length, with an extra chunk before data", () => {
