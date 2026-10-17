@@ -246,6 +246,31 @@ test("add-voice registers a take and checks its timing against the vocal stem", 
   }
 });
 
+test("re-adding an MP3 take once ffmpeg is available records its timing", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+  const s = sandbox();
+  const path = process.env.PATH;
+  try {
+    addSong(s.ctx, { folder: s.inbox });
+    const src = join(s.root, "take.wav");
+    const mp3 = join(s.root, "stuttr-take.mp3");
+    writeFileSync(src, wav({ sec: 2, rate: 44100, ch: 1 }));
+    assert.equal(spawnSync("ffmpeg", ["-v", "error", "-i", src, "-c:a", "libmp3lame", "-b:a", "192k", mp3]).status, 0);
+    process.env.PATH = ""; // no ffprobe: the MP3's length can't be measured
+    const first = addVoice(s.ctx, { trackId: "bass-drop-anthem", voice: "Stuttr", file: mp3 });
+    assert.equal(first.timingOk, false);
+    assert.equal(first.durationSec, null);
+    process.env.PATH = path;
+    addVoice(s.ctx, { trackId: "bass-drop-anthem", voice: "Stuttr", file: mp3 });
+    const saved = loadManifest(s.ctx).tracks[0].voices.find((v) => v.voice === "Stuttr")!;
+    assert.ok(saved.durationSec !== null);
+    assert.equal(saved.timingOk, true, `delta ${saved.timingDeltaMs} ms`);
+    assert.equal(setVoiceStatus(s.ctx, "bass-drop-anthem", "Stuttr", "en", "approved").status, "approved");
+  } finally {
+    process.env.PATH = path;
+    s.done();
+  }
+});
+
 test("prep-voice and mix make ElevenLabs-ready vocals and a draft mix", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
   const s = sandbox();
   try {
