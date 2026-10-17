@@ -12,7 +12,7 @@ Open items carried forward from the Phase 0/1 session (2026-10-06/07).
 - The aging-vs-history golden is `tests/fixtures/audit_aging_golden.json` (fixture `audit_ledger_aging.csv`); the main golden still covers the main fixture.
 
 ## Lint
-- 15 of 16 React-compiler warnings are cleared (some fixed in code, some kept as effects with a stated reason on an `eslint-disable-next-line` comment). One remains: `react-hooks/exhaustive-deps` in `app/plate8/state8/page.tsx`; fixing it changes when its effect runs, so it needs a decision. See `LINT-TODO.md`. `react-hooks/static-components` must stay at zero.
+- All 16 React-compiler warnings are cleared (some fixed in code, some kept as effects with a stated reason on an `eslint-disable-next-line` comment). The last, `react-hooks/exhaustive-deps` in `app/plate8/state8/page.tsx`, was fixed with `useEffectEvent` without changing when the save runs. See `LINT-TODO.md`. `react-hooks/static-components` must stay at zero.
 
 ## Calculators
 - Rules: subset limits (aged <= open, reopened <= closed, top vendor <= total), no negatives, and "baseline too small to compare" under $100.

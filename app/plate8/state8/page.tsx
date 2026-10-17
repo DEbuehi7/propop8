@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useEffectEvent } from 'react';
 import Link from 'next/link';
 import { useAudioAnalyzer } from '@/hooks/useAudioAnalyzer';
 
@@ -44,8 +44,10 @@ export default function State8Page() {
       .catch(console.error);
   }, []);
 
-  // Save session when recording stops
-  useEffect(() => {
+  // Save session when recording stops. The effect runs only when isRecording
+  // changes; the effect event reads the latest duration and readings without
+  // re-running the effect when they change (which would save more than once).
+  const onRecordingChanged = useEffectEvent(() => {
     if (!isRecording && sessionDuration > 0) {
       const saveSession = async () => {
         try {
@@ -75,6 +77,9 @@ export default function State8Page() {
       };
       saveSession();
     }
+  });
+  useEffect(() => {
+    onRecordingChanged();
   }, [isRecording]);
 
   const formatTime = (seconds: number) => {
