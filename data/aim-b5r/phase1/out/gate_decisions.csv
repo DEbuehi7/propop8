@@ -1,5 +1,5 @@
 lead_id,property_uuid,proposed_gate,reasons,open_core,conflicts,evidence_snapshot_id,reviewer,signed_at,final_gate,stale_signoff,rules_version
-K1,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,PASS,"APN, address, jurisdiction and screening geometry verified from official sources",,,ES-96614fe39bcb6c74,,,,,phase1-gate-1.0.0
+K1,a86e9b66-0bf6-5310-b0af-56c25e9a1ce0,PASS,"APN, address, jurisdiction and screening geometry verified from official sources",,,ES-96614fe39bcb6c74,Daniel Ebuehi,2026-10-11T23:00-07:00,PASS,,phase1-gate-1.0.0
 K2,91214026-8a04-5826-aa1e-6e1787434c1c,HOLD,apn: provisional | situs_address: missing | jurisdiction: missing | geometry_match: missing,apn;situs_address;jurisdiction;geometry_match,,ES-9907af3475b809a1,,,,,phase1-gate-1.0.0
 K3,73af88e5-4ffc-59b9-abea-6c62d9b01304,HOLD,apn: provisional | situs_address: missing | jurisdiction: missing | geometry_match: missing,apn;situs_address;jurisdiction;geometry_match,,ES-f292e4dd7f32908b,,,,,phase1-gate-1.0.0
 K4,23fd0de4-5139-5f9f-a9a8-bc7b5fcf3eb7,HOLD,apn: provisional | situs_address: missing | jurisdiction: missing | geometry_match: missing,apn;situs_address;jurisdiction;geometry_match,,ES-0bbc9901f381fd1e,,,,,phase1-gate-1.0.0
