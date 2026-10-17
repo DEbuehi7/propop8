@@ -12,7 +12,7 @@ const AUDIO=process.env.AUDIO||'/tmp/claude-0/aud/Test Groove.mp3';
   const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']});
   const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2,isMobile:w<700,hasTouch:w<700});
   const errs=[];p.on('pageerror',e=>errs.push(e.message));
-  await p.goto('file://'+path.join(__dirname,'..','public','index.html')).catch(()=>{});
+  await p.goto('file://'+path.join(__dirname,'..','..','public','plate','index.html')).catch(()=>{});
   await p.waitForTimeout(1200);
   // State: load and play the track
   await p.evaluate(()=>{go('state');setPane('graph')}); await p.waitForTimeout(300);

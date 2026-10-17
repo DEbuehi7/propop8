@@ -7,7 +7,7 @@ const [w,h]=vp.split('x').map(Number);
 (async()=>{const b=await chromium.launch();
 const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:2,isMobile:w<700,hasTouch:w<700});
 const errs=[];p.on('pageerror',e=>errs.push(e.message));
-await p.goto('file://'+path.join(__dirname,'..','public','index.html')).catch(()=>{});
+await p.goto('file://'+path.join(__dirname,'..','..','public','plate','index.html')).catch(()=>{});
 await p.waitForTimeout(1300);
 if(warmArg){ // visit skate first so the circuit has riders mid-lap
   await p.evaluate(()=>{go('skate');setPane('play')}); await p.waitForTimeout(+warmArg); }

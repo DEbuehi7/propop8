@@ -18,9 +18,9 @@ const J = s => JSON.parse(ev(s));
     ids.map(i => i + ' ' + T[i].h + '/' + hsl(T[i].c).H.toFixed(0)).join(' '));
   const brown = h => { const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), bl = parseInt(h.slice(5, 7), 16); return r > g && g > bl && hsl(h).L < .35 };
   ok('no pressed-state background reads brown', ids.every(i => !brown(T[i].bg)), ids.map(i => T[i].bg).join(' '));
-  ok('the palette is the canonical one: pink, green, blue, vermilion, violet, cyan',
+  ok('the palette is the canonical one: pink, green, blue, magenta, violet, cyan',
     T.state.c === '#F462A6' && T.mate.c === '#00BE5F' && T.skate.c === '#6496FF' &&
-    T.plate.c === '#FE6651' && T.slate.c === '#B97BFD' && T.late.c === '#00BAE1', ids.map(i => T[i].c).join(' '));
+    T.plate.c === '#F96DF2' && T.slate.c === '#B97BFD' && T.late.c === '#00BAE1', ids.map(i => T[i].c).join(' '));
   const hs = ids.map(i => hsl(T[i].c).H).sort((a, c) => a - c), gaps = hs.map((h, k) => (hs[(k + 1) % hs.length] - h + 360) % 360);
   ok('no two instruments are near-twins in hue', Math.min(...gaps) >= 25, 'smallest gap ' + Math.min(...gaps).toFixed(0) + '°');
 
@@ -33,7 +33,7 @@ const J = s => JSON.parse(ev(s));
   ok('a card tab deep-links to its pane', ev('ARC.cur') === 'plate' && ev('ARC.pane') === 'viz', ev('ARC.cur') + ':' + ev('ARC.pane'));
   ev('go("home")'); await wait(300);
   ok('the rail carries the same icons', ev('[...document.querySelectorAll("#rail .nd")].every(n=>n.querySelector(".ni svg"))'));
-  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'public', 'plate', 'index.html'), 'utf8');
   ok('the control room exists at desktop widths', /@media\(min-width:1360px\)\{[^]*?\.hroom\{display:grid/.test(src));
   // the rail says where you are in the instrument's own colour, and nowhere else
   ok('the current rail key is lit in its instrument colour', /\.nd\[aria-pressed="true"\]\{color:var\(--c2\)[^]*?box-shadow:[^}]*var\(--c\)/.test(src) &&
