@@ -133,16 +133,30 @@ export function classifyFolder(names: string[]): { roles: Map<string, { role: Fi
   const roles = new Map<string, { role: FileRole; stemName?: string }>();
   const warnings: string[] = [];
   const sorted = [...names].sort((a, b) => a.localeCompare(b));
-  // Suno Studio names exports "<Song title> (<part>).wav"; strip the shared
-  // title first, so a song called "Bass Drop" is not mistaken for a bass stem.
-  // Suno's stem download names them "<part>_<Song title>.mp3" instead.
+  // Suno Studio's Multitrack export names parts "<n> <Part>.wav" ("0 Lead Vocal",
+  // "15 Organ"); none of them is the full mix. Suno's stem download names them
+  // "<part>_<Song title>.mp3". Otherwise strip a shared title prefix first, so a
+  // song called "Bass Drop" is not mistaken for a bass stem.
   const audio = sorted.filter((n) => audioFormatOf(n));
-  const parts = stemDownloadParts(audio);
-  const prefix = !parts && audio.length >= 2 ? sharedPrefix(audio.map(stripExt)) : "";
+  const numbered = studioParts(audio);
+  const parts = stemDownloadParts(audio.filter((n) => !numbered.has(n)));
+  const rest = audio.filter((n) => !numbered.has(n));
+  const prefix = !parts && rest.length >= 2 ? sharedPrefix(rest.map(stripExt)) : "";
   for (const n of sorted) {
+    const studio = numbered.get(n);
     const part = parts?.get(n);
-    if (part !== undefined) roles.set(n, part === "" ? { role: "full_mix" } : roleFromName(`${part}.${extOf(n)}`));
+    if (studio !== undefined) {
+      const r = roleFromName(`${studio}.${extOf(n)}`);
+      roles.set(n, r.role === "full_mix" ? { role: "stem", stemName: slugify(studio) } : r);
+    } else if (numbered.size > 0 && rest.length === 1 && n === rest[0]) {
+      // Next to a Studio Multitrack export, the one other audio file is the Full Song.
+      roles.set(n, { role: "full_mix" });
+    } else if (part !== undefined) roles.set(n, part === "" ? { role: "full_mix" } : roleFromName(`${part}.${extOf(n)}`));
     else roles.set(n, roleFromName(audioFormatOf(n) ? n.slice(prefix.length) || n : n));
+  }
+  for (const role of ["vocals", "backing_vocals"] as const) {
+    const many = sorted.filter((n) => roles.get(n)!.role === role);
+    if (many.length > 1) warnings.push(`more than one ${role === "vocals" ? "lead vocal" : "backing vocal"} file (${many.join(", ")}); keep one take per song folder`);
   }
   const mixes = sorted.filter((n) => roles.get(n)!.role === "full_mix");
   if (mixes.length > 1) {
@@ -191,6 +205,26 @@ export function stemDownloadParts(audioNames: string[]): Map<string, string> | n
     else return null;
   }
   return parts;
+}
+
+/**
+ * Suno Studio's Multitrack export: "<n> <Part>.wav", numbered from 0 with no
+ * gaps ("0 Lead Vocal", "1 Drum Kit", ... "21 Keyboards"). Returns each such
+ * name's part. Numbers outside the run from 0 (a song called "99 Problems")
+ * are left alone, and fewer than two parts means the folder isn't in that form.
+ */
+export function studioParts(audioNames: string[]): Map<string, string> {
+  const found = new Map<string, { n: number; part: string }>();
+  for (const name of audioNames) {
+    const m = /^(\d+)\s+(.*\S)$/.exec(stripExt(name));
+    if (m) found.set(name, { n: Number(m[1]), part: m[2] });
+  }
+  const have = new Set([...found.values()].map((v) => v.n));
+  let top = -1;
+  while (have.has(top + 1)) top++;
+  const out = new Map<string, string>();
+  for (const [name, v] of found) if (v.n <= top) out.set(name, v.part);
+  return out.size >= 2 ? out : new Map();
 }
 
 /** Most stems are as long as the song; these differ from the full mix by more than this. */
