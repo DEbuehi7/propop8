@@ -215,6 +215,12 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
     status: "draft", addedAt: nowOf(c),
   };
   if (!prior) t.voices.push(take);
+  else if (info?.durationSec != null) {
+    // Same take added again, now measurable (e.g. an MP3 once ffmpeg is installed): record the check.
+    prior.durationSec = info.durationSec;
+    prior.timingDeltaMs = check.deltaMs;
+    prior.timingOk = check.ok;
+  }
   t.voices.sort((a, b) => a.path.localeCompare(b.path));
   saveManifest(c, m);
   log(`${action} ${o.voice} (${lang}) for "${o.trackId}"`);
