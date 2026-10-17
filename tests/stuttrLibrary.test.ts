@@ -108,6 +108,35 @@ test("Suno stem download names: <part>_<title>, a click track, and the bare titl
   assert.ok(!warnings.some((w) => w.includes("role unknown")), warnings.join("; "));
 });
 
+test("Suno Studio Multitrack names: '<n> <Part>.wav' are all parts, never the full mix", () => {
+  const names = [
+    "0 Lead Vocal.wav", "1 Drum Kit.wav", "2 Bass.wav", "3 Backing Vocals.wav", "7 String Section.wav",
+    "10 Sound Effects.wav", "15 Organ.wav", "21 Keyboards.wav", "4 Piano.wav", "5 Electric Guitar.wav",
+    "6 Percussion.wav", "8 Synth.wav", "9 Acoustic Guitar.wav", "11 Synth Pad.wav", "12 Synth Bass.wav",
+    "13 Guitar.wav", "14 Brass Section.wav", "16 Lead Electric Guitar.wav", "17 Synth Keys.wav",
+    "18 Rhythm Electric Guitar.wav", "19 Electric Piano.wav", "20 Upright Bass.wav",
+    "Bass Drop Anthem.wav", "lyrics.txt", "style.txt",
+  ];
+  const { roles, warnings } = classifyFolder(names);
+  assert.equal(roles.get("0 Lead Vocal.wav")!.role, "vocals");
+  assert.equal(roles.get("3 Backing Vocals.wav")!.role, "backing_vocals");
+  assert.deepEqual(roles.get("1 Drum Kit.wav"), { role: "stem", stemName: "drums" });
+  assert.deepEqual(roles.get("15 Organ.wav"), { role: "stem", stemName: "organ" });
+  assert.deepEqual(roles.get("10 Sound Effects.wav"), { role: "stem", stemName: "sound-effects" });
+  assert.deepEqual(roles.get("21 Keyboards.wav"), { role: "stem", stemName: "keyboards" });
+  assert.deepEqual(roles.get("7 String Section.wav"), { role: "stem", stemName: "string-section" });
+  assert.equal(roles.get("16 Lead Electric Guitar.wav")!.stemName, "guitar");
+  assert.equal(roles.get("Bass Drop Anthem.wav")!.role, "full_mix");
+  assert.equal(roles.get("lyrics.txt")!.role, "lyrics");
+  assert.equal(roles.get("style.txt")!.role, "unclassified");
+  assert.deepEqual(warnings, []);
+  // A title that starts with a number outside the run from 0 stays the full mix.
+  assert.equal(classifyFolder(["0 Lead Vocal.wav", "1 Drum Kit.wav", "99 Problems.wav"]).roles.get("99 Problems.wav")!.role, "full_mix");
+  // Old 15-second previews left next to the Studio export: two lead vocals is flagged.
+  const mixed = classifyFolder([...names, "vocals_Bass Drop Anthem.mp3", "drums_Bass Drop Anthem.mp3"]);
+  assert.ok(mixed.warnings.some((w) => w.startsWith("more than one lead vocal file")), mixed.warnings.join("; "));
+});
+
 test("names that only look like <part>_<title> keep the old rules", () => {
   assert.equal(stemDownloadParts(["lead_vox.wav", "bass_vox.wav"]), null);
   assert.equal(stemDownloadParts(["vocals_Song A.wav", "drums_Song B.wav"]), null);
