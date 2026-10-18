@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
+import { activeSpan, classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
 import { addSong, addVoice, loadManifest, mixVoice, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
 
 /** A PCM WAV of a sine tone. */
@@ -241,6 +241,96 @@ test("add-voice registers a take and checks its timing against the vocal stem", 
     assert.throws(() => setVoiceStatus(s.ctx, "bass-drop-anthem", "Mo", "es", "approved"), /cannot be approved/);
     assert.equal(setVoiceStatus(s.ctx, "bass-drop-anthem", "Stuttr", "en", "approved").status, "approved");
     assert.deepEqual(loadManifest(s.ctx).tracks[0].voices.map((v) => [v.voice, v.lang, v.status]), [["Mo", "es", "draft"], ["Stuttr", "en", "approved"]]);
+  } finally {
+    s.done();
+  }
+});
+
+/** A mono 16-bit 44.1 kHz WAV of tone and silence segments, e.g. [[1, 0], [1, 440], [1, 0]]. */
+function wavSegments(parts: [sec: number, freq: number][]): Buffer {
+  const rate = 44100;
+  const chunks = parts.map(([sec, freq]) => {
+    const n = Math.round(sec * rate);
+    const b = Buffer.alloc(n * 2);
+    for (let i = 0; i < n; i++) b.writeInt16LE(freq ? Math.round(Math.sin((2 * Math.PI * freq * i) / rate) * 0.3 * 32767) : 0, i * 2);
+    return b;
+  });
+  const data = Buffer.concat(chunks);
+  const h = Buffer.alloc(44);
+  h.write("RIFF", 0, "ascii"); h.writeUInt32LE(36 + data.length, 4); h.write("WAVE", 8, "ascii");
+  h.write("fmt ", 12, "ascii"); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
+  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
+  h.write("data", 36, "ascii"); h.writeUInt32LE(data.length, 40);
+  return Buffer.concat([h, data]);
+}
+
+test("active span from silencedetect: leading and trailing silence, padded and clamped", () => {
+  const log = [
+    "[silencedetect @ 0x1] silence_start: 0",
+    "[silencedetect @ 0x1] silence_end: 65.1 | silence_duration: 65.1",
+    "[silencedetect @ 0x1] silence_start: 80.2",
+    "[silencedetect @ 0x1] silence_end: 129.5 | silence_duration: 49.3",
+    "[silencedetect @ 0x1] silence_start: 147.0",
+    "[silencedetect @ 0x1] silence_end: 177.2 | silence_duration: 30.2",
+  ].join("\n");
+  assert.deepEqual(activeSpan(log, 177.2), { startSec: 64.6, endSec: 147.5 });
+  assert.deepEqual(activeSpan("", 10), { startSec: 0, endSec: 10 }, "no silence: the whole file");
+  assert.deepEqual(activeSpan("silence_start: 0.2\nsilence_end: 3", 10), { startSec: 0, endSec: 10 }, "a gap in the middle is kept");
+  assert.equal(activeSpan("silence_start: 0", 10), null, "silent all the way");
+});
+
+test("four voices on the backing stem: trimmed prep, takes placed at the span, layered in the mix", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+  const s = sandbox();
+  try {
+    // Backing vocal: 1 s silence, 1 s shout, 1 s silence, inside a 3 s song.
+    const inbox = join(s.root, "inbox", "Shout Song");
+    mkdirSync(inbox, { recursive: true });
+    writeFileSync(join(inbox, "Shout Song (Full Song).wav"), wav({ sec: 3 }));
+    writeFileSync(join(inbox, "Shout Song (Vocals).wav"), wav({ sec: 3, freq: 330 }));
+    writeFileSync(join(inbox, "Shout Song (Backing Vocals).wav"), wavSegments([[1, 0], [1, 550], [1, 0]]));
+    writeFileSync(join(inbox, "Shout Song (Drums).wav"), wav({ sec: 3, freq: 110 }));
+    addSong(s.ctx, { folder: inbox });
+
+    const rel = prepVoice(s.ctx, "shout-song", "backing_vocals");
+    const prepped = readFileSync(join(s.ctx.library, rel));
+    const pi = parseWav(prepped, prepped.length)!;
+    assert.ok(Math.abs(pi.durationSec! - 2) < 0.05, `prepped ${pi.durationSec} s, expected about 2 s (0.5-2.5)`);
+    const prep = loadManifest(s.ctx).tracks[0].preps!.find((p) => p.role === "backing_vocals")!;
+    assert.ok(Math.abs(prep.startSec - 0.5) < 0.05, `starts at ${prep.startSec}`);
+    assert.ok(s.lines.some((l) => l.includes("of the song") && l.includes("credits per voice")));
+
+    // The lead take, then one backing take per shouting voice, each as long as the prepped span.
+    const lead = join(s.root, "lead.wav");
+    writeFileSync(lead, wav({ sec: 3, rate: 44100, ch: 1 }));
+    addVoice(s.ctx, { trackId: "shout-song", voice: "Stuttr", file: lead });
+    for (const [voice, freq] of [["Stuttr", 500], ["M", 400], ["Ja", 600], ["Bo", 700]] as const) {
+      const f = join(s.root, `${voice}-shout.wav`);
+      writeFileSync(f, wavSegments([[prep.durationSec, freq]]));
+      const take = addVoice(s.ctx, { trackId: "shout-song", voice, file: f, from: "backing_vocals" });
+      assert.equal(take.timingOk, true, `${voice} timing`);
+      assert.ok(Math.abs((take.startSec ?? 0) - prep.startSec) < 1e-9);
+      assert.equal(take.path, `shout-song/voices/${voice.toLowerCase()}.en.backing.wav`);
+    }
+    // Approve/reject address the backing take, not the lead.
+    setVoiceStatus(s.ctx, "shout-song", "Bo", "en", "rejected", "backing_vocals");
+    const voices = loadManifest(s.ctx).tracks[0].voices;
+    assert.equal(voices.find((v) => v.voice === "Stuttr" && v.sourceRole === "vocals")!.status, "draft");
+
+    const mixRel = mixVoice(s.ctx, "shout-song", "Stuttr");
+    assert.ok(s.lines.some((l) => l === "backing: Ja, M, Stuttr layered at 0.577x each"), s.lines.join("\n"));
+    const mixed = readFileSync(join(s.ctx.library, mixRel));
+    const mi = parseWav(mixed, mixed.length)!;
+    assert.ok(Math.abs(mi.durationSec! - 3) < 0.02, `mix ${mi.durationSec} s`);
+
+    // A converted full stem still lines up: it is compared with the whole stem and placed at 0.
+    const full = join(s.root, "Ja-full.wav");
+    writeFileSync(full, wavSegments([[3, 600]]));
+    const t2 = addVoice(s.ctx, { trackId: "shout-song", voice: "Ja", file: full, from: "backing_vocals", lang: "es" });
+    assert.equal(t2.timingOk, true);
+    assert.equal(t2.startSec, undefined);
+
+    mixVoice(s.ctx, "shout-song", "Stuttr", "en", true, { sunoBacking: true });
+    assert.ok(s.lines.includes("backing: Suno's backing vocals"));
   } finally {
     s.done();
   }
