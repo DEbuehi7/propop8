@@ -95,5 +95,13 @@ Seeded 11 Oct 2026. Edit this table, or the CSV once `data/aim-dataset/` exists.
 | RD-006 | MKT | Live recheck of all v0.1–v0.3 sources | R1 | Phase 1 audit | Active |
 | RD-007 | MKT | Twentynine Palms and Crestline discovery | R1 | — | Parked: no qualifying 10–20 unit lead |
 | RD-008 | MKT | Skid Row SRO preservation | R1 | Written employer clearance | Parked |
-| RD-009 | INS | EDO-M0 camera-first rover | R1 (spec + 37 gate tests) | Bench work after a property passes G0 | Deferred |
+| RD-009 | INS | EDO-M0 camera-first rover | R1 (spec + 37 gate tests) | Owner H14 approval for bench work (G0 condition met: K1 PASS, PR #19) | Deferred |
 | RD-010 | DES | ChronoLayer Color-Governed poster system v0.2 | R4 (design only) | Media legend on the Dance8/STUTTR sheets | Adopted |
+| RD-011 | DES | EDO 3s M1 geometry benchmark: three lattice families vs matched baselines (canon TRI-05) | R0 | Freeze X1/X2/X3 meanings and the genotype schema | Parked: needs cap and kill criteria |
+| RD-012 | DES | Guild Mesh multi-output proof: one genome as UI field, wall panel, robot tag and twin layer (EDO-12) | R0 | One seeded SVG render from the canon genome record | Parked: needs cap and kill criteria |
+| RD-013 | BLD | Adaptive desert canopy / pavilion state model at Eon (TRI-08, TRI-12) | R0 | One parametric model that reconciles plan, section and motion | Parked: needs cap and kill criteria |
+| RD-014 | INS | BloomWing AIM-T3, ground rover and scout first (MOB-01 to MOB-08) | R0 | Geometry contract and source-of-truth CAD | Parked: needs cap and kill criteria |
+| RD-015 | INS | Robot-Ready Building section for the Audit Engine (P8O-05) | R0 | Owner decision; needs the audit golden diff | Parked: needs owner decision |
+
+Rows RD-011 to RD-015 were added from the 18 Oct 2026 canon lock
+(`docs/canon/README.md`); the canon IDs in brackets point to their entries.
