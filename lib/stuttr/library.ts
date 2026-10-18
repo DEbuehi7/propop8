@@ -55,6 +55,18 @@ export interface VoiceTake {
   timingOk: boolean;
   status: "draft" | "approved" | "rejected";
   addedAt: string;
+  /** Where the take starts in the song, in seconds. Backing takes are cut to the stem's active span. Absent = 0. */
+  startSec?: number;
+}
+
+/** A file prepared for the ElevenLabs voice changer, and the part of the song it covers. */
+export interface VoicePrep {
+  role: "vocals" | "backing_vocals";
+  path: string;
+  sourceSha256: string;
+  startSec: number;
+  durationSec: number;
+  preparedAt: string;
 }
 
 export interface LibraryTrack {
@@ -65,6 +77,7 @@ export interface LibraryTrack {
   addedAt: string;
   files: LibraryFile[];
   voices: VoiceTake[];
+  preps?: VoicePrep[];
 }
 
 export interface LibraryManifest {
@@ -303,6 +316,37 @@ export function timingCheck(sourceSec: number | null, takeSec: number | null): {
   return { deltaMs, ok: Math.abs(deltaMs) <= VOICE_TIMING_TOLERANCE_MS };
 }
 
+/** Backing stems are cut to where someone is singing, plus this much on each side. */
+export const BACKING_PAD_SEC = 0.5;
+/** Quieter than this for at least SILENCE_MIN_SEC counts as silence (ffmpeg silencedetect). */
+export const SILENCE_DB = -45;
+export const SILENCE_MIN_SEC = 0.5;
+/** ElevenLabs voice changer price used for estimates. */
+export const VOICE_CHANGER_CREDITS_PER_MIN = 1000;
+
+/**
+ * The span of a stem that holds sound, from ffmpeg silencedetect output:
+ * after a leading silence, up to a trailing silence, padded on both sides and
+ * kept inside the file. Null when the whole file is silent.
+ */
+export function activeSpan(silencedetectLog: string, totalSec: number, padSec = BACKING_PAD_SEC): { startSec: number; endSec: number } | null {
+  const starts = [...silencedetectLog.matchAll(/silence_start:\s*(-?[\d.]+)/g)].map((m) => Number(m[1]));
+  const ends = [...silencedetectLog.matchAll(/silence_end:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+  let start = 0;
+  let end = totalSec;
+  if (starts.length && starts[0] <= 0.01) {
+    if (!ends.length) return null; // silent from the start and never ends
+    start = ends[0];
+  }
+  const lastStart = starts.length ? starts[starts.length - 1] : null;
+  const lastEnd = ends.length ? ends[ends.length - 1] : null;
+  // A trailing silence has a start after the last end (or no end at all).
+  if (lastStart !== null && (lastEnd === null || lastStart > lastEnd || lastEnd >= totalSec - 0.01)) end = lastStart;
+  if (end <= start) return null;
+  const r = (x: number) => Math.round(x * 1000) / 1000;
+  return { startSec: r(Math.max(0, start - padSec)), endSec: r(Math.min(totalSec, end + padSec)) };
+}
+
 export function findTrack(m: LibraryManifest, trackId: string): LibraryTrack | undefined {
   return m.tracks.find((t) => t.trackId === trackId);
 }
@@ -312,7 +356,7 @@ export function describeTrack(t: LibraryTrack): string {
   const mix = t.files.find((f) => f.role === "full_mix");
   const dur = mix?.audio?.durationSec;
   const parts = t.files.map((f) => (f.role === "stem" ? f.stemName : f.role));
-  const voices = t.voices.map((v) => `${v.voice}/${v.lang}${v.timingOk ? "" : " (timing!)"}`);
+  const voices = t.voices.map((v) => `${v.voice}/${v.lang}${v.sourceRole === "backing_vocals" ? " backing" : ""}${v.timingOk ? "" : " (timing!)"}`);
   const secs = dur ? Math.round(dur) : null;
   return [
     `${t.trackId}  "${t.title}"`,

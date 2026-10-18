@@ -15,8 +15,8 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import {
-  audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
-  slugify, timingCheck, VOICE_CHANGER_MAX_SEC, voiceKey,
+  activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
+  SILENCE_DB, SILENCE_MIN_SEC, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
   type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type VoiceTake,
 } from "./library";
 
@@ -160,22 +160,59 @@ function runFfmpeg(args: string[]): void {
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr.trim().split("\n").slice(-3).join(" ")}`);
 }
 
-/** prep-voice: one mono 16-bit 44.1 kHz WAV of a vocal stem, ready to upload to the ElevenLabs voice changer. */
-export function prepVoice(c: Ctx, trackId: string, part: "vocals" | "backing_vocals" = "vocals"): string {
+/** ffmpeg silencedetect log for a file (the detector writes to stderr). */
+function silenceLog(path: string): string {
+  const r = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-i", path, "-af", `silencedetect=n=${SILENCE_DB}dB:d=${SILENCE_MIN_SEC}`, "-f", "null", "-"], { encoding: "utf8" });
+  if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr.trim().split("\n").slice(-3).join(" ")}`);
+  return r.stderr;
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
+
+/**
+ * prep-voice: one mono 16-bit 44.1 kHz WAV of a vocal stem, ready to upload to
+ * the ElevenLabs voice changer. The lead vocal is kept full length. A backing
+ * vocal is cut to the span where someone sings (unless full is set), which
+ * saves credits; the start is recorded so the converted take is placed back
+ * at the same point in the song.
+ */
+export function prepVoice(c: Ctx, trackId: string, part: "vocals" | "backing_vocals" = "vocals", opts: { full?: boolean } = {}): string {
   if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
   const src = t.files.find((f) => f.role === part);
   if (!src) throw new Error(`"${trackId}" has no ${part} stem; export Multitrack from Suno Studio and run add again`);
-  const sec = src.audio?.durationSec ?? null;
-  if (sec !== null && sec > VOICE_CHANGER_MAX_SEC) {
-    throw new Error(`the ${part} stem is ${Math.round(sec)} s; the voice changer takes 300 s per file. Split it in Suno Studio (Selected Time Range) and add the parts.`);
+  const srcPath = join(c.library, src.path);
+  const total = src.audio?.durationSec ?? null;
+  let startSec = 0;
+  let durationSec = total;
+  if (part === "backing_vocals" && !opts.full && total !== null) {
+    const span = activeSpan(silenceLog(srcPath), total);
+    if (!span) throw new Error(`the ${part} stem is silent; there is nothing to convert`);
+    startSec = span.startSec;
+    durationSec = Math.round((span.endSec - span.startSec) * 1000) / 1000;
+  }
+  if (durationSec !== null && durationSec > VOICE_CHANGER_MAX_SEC) {
+    throw new Error(`the ${part} part to convert is ${Math.round(durationSec)} s; the voice changer takes 300 s per file. Split it in Suno Studio (Selected Time Range) and add the parts.`);
   }
   const rel = `${trackId}/for-elevenlabs/${trackId}.${part}.wav`;
   mkdirSync(join(c.library, trackId, "for-elevenlabs"), { recursive: true });
-  runFfmpeg(["-i", join(c.library, src.path), "-ac", "1", "-ar", "44100", "-sample_fmt", "s16", join(c.library, rel)]);
-  const mb = statSync(join(c.library, rel)).size / 1e6;
-  logOf(c)(`ready for ElevenLabs: ${join(c.library, rel)} (${mb.toFixed(1)} MB, mono, 44.1 kHz)`);
+  const cut = startSec > 0 || (durationSec !== null && total !== null && durationSec < total)
+    ? ["-ss", String(startSec), "-t", String(durationSec)] : [];
+  runFfmpeg(["-i", srcPath, ...cut, "-ac", "1", "-ar", "44100", "-sample_fmt", "s16", join(c.library, rel)]);
+  const out = join(c.library, rel);
+  const outBuf = readFileSync(out);
+  const measured = parseWav(outBuf, outBuf.length)?.durationSec ?? durationSec;
+  if (measured !== null) {
+    const prep = { role: part, path: rel, sourceSha256: src.sha256, startSec, durationSec: measured, preparedAt: nowOf(c) };
+    t.preps = [...(t.preps ?? []).filter((p) => p.role !== part), prep];
+    saveManifest(c, m);
+  }
+  const mb = outBuf.length / 1e6;
+  const credits = measured !== null ? Math.ceil((measured / 60) * VOICE_CHANGER_CREDITS_PER_MIN) : null;
+  const span = startSec > 0 || (measured !== null && total !== null && measured < total - 0.01)
+    ? `; ${clock(startSec)}–${clock(startSec + (measured ?? 0))} of the song` : "";
+  logOf(c)(`ready for ElevenLabs: ${out} (${mb.toFixed(1)} MB, mono, 44.1 kHz${span}${credits !== null ? `; about ${credits.toLocaleString("en-US")} credits per voice` : ""})`);
   return rel;
 }
 
@@ -207,12 +244,23 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
   }
   const action = placeFile(c, o.file, rel, sha256);
   const info = audioInfo(o.file, buf);
-  const check = timingCheck(src.audio?.durationSec ?? null, info?.durationSec ?? null);
+  // Compare against what was sent to ElevenLabs: the prepared span when prep-voice cut one,
+  // or the whole stem (also when the full stem was converted after all).
+  const srcSec = src.audio?.durationSec ?? null;
+  const prep = (t.preps ?? []).find((p) => p.role === from && p.sourceSha256 === src.sha256);
+  let expectSec = prep ? prep.durationSec : srcSec;
+  let startSec = prep?.startSec ?? 0;
+  const takeSec = info?.durationSec ?? null;
+  if (prep && takeSec !== null && !timingCheck(prep.durationSec, takeSec).ok && timingCheck(srcSec, takeSec).ok) {
+    expectSec = srcSec;
+    startSec = 0;
+  }
+  const check = timingCheck(expectSec, takeSec);
   const take: VoiceTake = prior ?? {
     voice: o.voice, lang, path: rel, originalName: basename(o.file), sha256, bytes,
     sourceRole: from, sourceSha256: src.sha256, method: o.method ?? "elevenlabs_voice_changer",
     durationSec: info?.durationSec ?? null, timingDeltaMs: check.deltaMs, timingOk: check.ok,
-    status: "draft", addedAt: nowOf(c),
+    status: "draft", addedAt: nowOf(c), ...(startSec > 0 ? { startSec } : {}),
   };
   if (!prior) t.voices.push(take);
   else if (info?.durationSec != null) {
@@ -228,41 +276,66 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
   if (check.deltaMs === null) log("warning: could not measure its length; timing is unchecked");
   else if (!check.ok) log(`warning: timing is off by ${check.deltaMs} ms (limit ±50 ms); lip sync will drift. Re-run the conversion on the exact stem from prep-voice.`);
   else log(`timing ok (${check.deltaMs} ms)`);
+  if ((take.startSec ?? 0) > 0) log(`placed at ${clock(take.startSec!)} in the song`);
   return take;
 }
 
-/** mix: instrumental stems + one voice take -> a draft listening mix (48 kHz, 24-bit). Never replaces the Suno master. */
-export function mixVoice(c: Ctx, trackId: string, voice: string, lang = "en", keepBacking = true): string {
+/**
+ * mix: instrumental stems + one lead voice take -> a draft listening mix
+ * (48 kHz, 24-bit). Never replaces the Suno master. Backing: every converted
+ * backing take for this language that isn't rejected (Stuttr, M, Ja, Bo...),
+ * each placed at its start in the song and layered at 1/sqrt(n) gain; with no
+ * converted backing takes (or sunoBacking), Suno's own backing vocal stem.
+ */
+export function mixVoice(c: Ctx, trackId: string, voice: string, lang = "en", keepBacking = true, opts: { sunoBacking?: boolean } = {}): string {
   if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const log = logOf(c);
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
-  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === "vocals");
+  const lc = lang.toLowerCase();
+  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lc && v.sourceRole === "vocals");
   if (!take) throw new Error(`no ${voice} (${lang}) take for "${trackId}"; run add-voice first`);
   const inst = t.files.find((f) => f.role === "instrumental");
   const beds = inst ? [inst] : t.files.filter((f) => f.role === "stem");
   if (beds.length === 0) throw new Error(`"${trackId}" has no instrumental or instrument stems to mix under the voice`);
-  const backing = keepBacking ? t.files.filter((f) => f.role === "backing_vocals") : [];
-  const inputs = [...beds, ...backing].map((f) => join(c.library, f.path));
-  inputs.push(join(c.library, take.path));
-  const rel = `${trackId}/mixes/${trackId}.${voiceKey(voice)}.${lang.toLowerCase()}.draft.wav`;
+  const backingTakes = keepBacking && !opts.sunoBacking
+    ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status !== "rejected") : [];
+  const backingStems = keepBacking && backingTakes.length === 0 ? t.files.filter((f) => f.role === "backing_vocals") : [];
+  const layerGain = backingTakes.length > 1 ? Math.round((1 / Math.sqrt(backingTakes.length)) * 1000) / 1000 : 1;
+  const inputs: { path: string; delayMs: number; gain: number }[] = [
+    ...[...beds, ...backingStems].map((f) => ({ path: join(c.library, f.path), delayMs: 0, gain: 1 })),
+    ...backingTakes.map((v) => ({ path: join(c.library, v.path), delayMs: Math.round((v.startSec ?? 0) * 1000), gain: layerGain })),
+    { path: join(c.library, take.path), delayMs: 0, gain: 1 },
+  ];
+  const rel = `${trackId}/mixes/${trackId}.${voiceKey(voice)}.${lc}.draft.wav`;
   mkdirSync(join(c.library, trackId, "mixes"), { recursive: true });
   const n = inputs.length;
-  const chains = inputs.map((_, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=stereo[a${i}]`).join(";");
+  const chains = inputs.map((x, i) => {
+    const delay = x.delayMs > 0 ? `,adelay=${x.delayMs}:all=1` : "";
+    const gain = x.gain !== 1 ? `,volume=${x.gain}` : "";
+    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo${delay}${gain}[a${i}]`;
+  }).join(";");
   const filter = `${chains};${inputs.map((_, i) => `[a${i}]`).join("")}amix=inputs=${n}:normalize=0:duration=longest,alimiter=limit=0.89[out]`;
-  runFfmpeg([...inputs.flatMap((p) => ["-i", p]), "-filter_complex", filter, "-map", "[out]", "-c:a", "pcm_s24le", join(c.library, rel)]);
-  logOf(c)(`draft mix: ${join(c.library, rel)} (listening copy; the Suno master is unchanged)`);
+  runFfmpeg([...inputs.flatMap((x) => ["-i", x.path]), "-filter_complex", filter, "-map", "[out]", "-c:a", "pcm_s24le", join(c.library, rel)]);
+  if (backingTakes.length) {
+    log(`backing: ${backingTakes.map((v) => v.voice).join(", ")} layered${layerGain !== 1 ? ` at ${layerGain}x each` : ""}`);
+    for (const v of backingTakes) if (!v.timingOk) log(`warning: ${v.voice}'s backing take has unchecked or off timing; it may not line up`);
+  } else if (backingStems.length) log("backing: Suno's backing vocals");
+  log(`draft mix: ${join(c.library, rel)} (listening copy; the Suno master is unchanged)`);
   return rel;
 }
 
 /** Marks a take approved or rejected after listening. */
-export function setVoiceStatus(c: Ctx, trackId: string, voice: string, lang: string, status: VoiceTake["status"]): VoiceTake {
+export function setVoiceStatus(
+  c: Ctx, trackId: string, voice: string, lang: string, status: VoiceTake["status"], from: VoiceTake["sourceRole"] = "vocals",
+): VoiceTake {
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
-  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase());
-  if (!take) throw new Error(`no ${voice} (${lang}) take for "${trackId}"`);
+  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from);
+  if (!take) throw new Error(`no ${voice} (${lang}) ${from === "vocals" ? "lead" : "backing"} take for "${trackId}"`);
   if (status === "approved" && !take.timingOk) throw new Error("this take's timing is unchecked or off by more than 50 ms; it cannot be approved for lip sync");
   take.status = status;
   saveManifest(c, m);
-  logOf(c)(`${voice} (${lang}) for "${trackId}" is now ${status}`);
+  logOf(c)(`${voice} (${lang})${from === "backing_vocals" ? " backing" : ""} for "${trackId}" is now ${status}`);
   return take;
 }
