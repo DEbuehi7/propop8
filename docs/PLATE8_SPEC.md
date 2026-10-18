@@ -15,7 +15,7 @@ Six computational instruments in one engine, living inside PropOps8 at `/plate`.
 | **State** | pink `#F462A6` | Audio analysis, voice recording, sealed chat |
 | **Mate** | green `#00BE5F` | Chess vs. its own engine, with a movement-geometry layer |
 | **Skate** | blue `#6496FF` | Autonomous racing — four controllers on a solved line |
-| **Plate** | magenta `#F96DF2` | California plate word game |
+| **Plate** | platinum white `#E8ECF5` | California plate word game |
 | **Slate** | violet `#B97BFD` | Video discovery, seeded to Daniel's interests |
 | **Late** | cyan `#00BAE1` | News, podcasts, original dispatches, the shared river |
 | *home* | neutral `#DCD8F2` | The suite: six live cards and the activity stream |
@@ -187,7 +187,7 @@ RICH=1 node scripts/plate8/live.cjs 393x852 shots/m home:hub --full          # t
 
 **What changed.** Every instrument now draws its own computation as its identity, at the hub and inside the module, through one shared primitive library and one depth stack.
 
-- **Plate** — the plate is the hero object over a magenta floor reflection (vermilion as of this pass's original write-up, moved to magenta 2026-10-02 — see section 8a); banked letters fly from the plate cells into the tree; word lengths are translucent depth planes; found words are lit spheres, one-away words hollow rings, the rest dots; the derivation chain is drawn thick.
+- **Plate** — the plate is the hero object over a platinum floor reflection (vermilion in this pass's original write-up, magenta from 2026-10-02, platinum white from 2026-10-18 — see sections 8a and 8b); banked letters fly from the plate cells into the tree; word lengths are translucent depth planes; found words are lit spheres, one-away words hollow rings, the rest dots; the derivation chain is drawn thick.
 - **Skate** — LiDAR occupancy behind the circuit, kerbs where curvature peaks, braking glow under the line, per-deck predicted paths and aim crosshairs, steering vectors, and a band carrying the friction circle and the SCAN → MAP → LINE → TRACK → ACT stack. The two keys take columns or strips, whichever leaves the circuit larger.
 - **State** — waveform (peak outer, true RMS core) over the co-activation network and the spectral landscape, with the centroid marked; the card is a canvas redrawn every frame while a track plays, and `bg()` keeps the analysis running from any page.
 - **Mate** — the geometry layer on the board (defenders, attackers, knight rings, slider rays), an evaluation bar beside it, and a card carrying the advantage curve — which only exists after the first move.
@@ -219,6 +219,14 @@ RICH=1 node scripts/plate8/live.cjs 393x852 shots/m home:hub --full          # t
 - **Harness bug found and fixed in the same pass.** Every script in `scripts/plate8/` that reads the rig's HTML directly (`boot.cjs`, `drive.cjs`, `look.cjs`, `live.cjs`, plus inline reads in `regress2.cjs` and `regress3.cjs`) pointed at `scripts/public/index.html`, which has never existed — stale from before Plate8 moved under `public/plate/`, and one `..` short of the repo root besides. `npm i -D jsdom` (per section 7) plus this path fix were both needed before any of the suite would run at all; fixed in all six places, and the full suite (`audit` 68, `regress` 14, `regress2` 22, `regress3` 45, `plate-test` 15 — 164 total) passes clean both before and after the colour change.
 
 ---
+
+## 8b. Plate leaves magenta (18 October 2026)
+
+**Decision (owner, 2026-10-18):** Plate's accent moves from magenta `#F96DF2` to platinum white `#E8ECF5`. Magenta is PropOps8's canonical critical-risk colour, and the canon rule is that an instrument's identity colour never reads as a warning (canon PL8-06, PL8-08; `lib/canon/`). Platinum is the plate's own colour and carries no state meaning.
+
+- Tokens in `public/plate/index.html`: `--t-plate #E8ECF5`, `-2 #FFFFFF`, `-ink #141821`, `-deep #8A93A6`, `-bg #22252E`, `-h 222`. Every rule, SVG and canvas already reads these, so nothing else changed.
+- `scripts/plate8/regress3.cjs`: the canonical palette is now pink, green, blue, platinum, violet, cyan. A near-neutral accent (chroma under 0.12) is told apart by lightness rather than hue, so it is left out of the 25-degree hue-gap test and checked instead for being light and nearly colourless.
+- Known, not changed: Late's cyan and Mate's green sit on the semantic cyan and green, and State's pink is close to magenta. Plate was the one the owner chose to move.
 
 ## 9. Earlier passes
 

@@ -2,7 +2,7 @@
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
-183 entries from 20 studies: CONFLICT 0 · OPEN 10 · LOCKED 116 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
+183 entries from 20 studies: CONFLICT 0 · OPEN 9 · LOCKED 117 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
 
 ## Coverage by study
 
@@ -38,7 +38,6 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | B5R-31 | AIM_B5R | Owner decisions: the PropOps8 revenue threshold that funds B5R compute and storage; authorized data sources for the pilot; binding underwriting fields, scenario tests and go/no-go thresholds; production thresholds that trigger Phase 5 expansion. | n/a |  | system-architecture p10; propops8-reliability p9 |
 | D8-09 | DANCE8 | Kirtled: is the export 'four-track MIDI' or five music tracks plus a separate light-cue track; and is DASH an alias of JUMP or the name of FREEZE? | n/a |  | kirtled p3; kirtled p4 |
 | STU-04 | STUTTR | Where Stuttr assets are stored, and the track-by-track rights and provenance chain. | n/a |  | propops8-reliability p9 |
-| PL8-08 | PLATE8 | Which colour replaces magenta as Plate's accent. It must avoid magenta and red, amber, cyan, green and slate (semantic states), yellow and brown (Plate8 rule), and the pink, green, blue, violet and cyan already used by the other instruments. | n/a |  | propops8-reliability p6 |
 | PL8-07 | PLATE8 | Whether Plate8 stays admin-only or gets a public route. | n/a |  | propops8-reliability p9 |
 | VIS-03 | VISUAL | Amber (maintenance) and green (verified/complete) have no canonical hex value yet. | n/a |  | propops8-reliability p6; system-architecture p9 |
 | VIS-09 | VISUAL | Authoritative vector logos and palettes for AIM, Eon, Lumen, Transect, PropOps8 and AIM-B5R; rendered logos are approximations until then. | n/a |  | let-homes-threads p12 |
@@ -155,7 +154,8 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | STU-02 | STUTTR | Rights gate before public or commercial use: music licences, performer likeness rights and platform terms. Suno features vary by tier and must be checked in the account. | n/a |  | suno-stems p3; suno-stems p5 |
 | STU-05 | STUTTR | Stuttr is content, culture and marketing, never building control or life-safety AI. Media on a facade is an overlay that respects historic geometry and keeps windows, sightlines, balconies and egress clear. | n/a |  | sears-la p10; mural-transit p5; suno-stems p5 |
 | PL8-04 | PLATE8 | Motion is semantic: waveforms move because audio changed, highlights because the position changed, trajectories because the vehicle moved. No decorative motion. | n/a |  | plate8-suite p6 |
-| PL8-06 | PLATE8 | Plate gets a new accent that cannot be mistaken for a semantic state colour; magenta (#F96DF2) is retired for Plate. The new colour also avoids yellow and brown (Plate8 rule) and the other five instruments' accents. *Decided by the owner 2026-10-18. Late's cyan and Mate's green also sit on semantic colours, and State's pink is close to magenta; not changed by this decision.* | not_built | docs/PLATE8_SPEC.md (section 8a) | propops8-reliability p6 |
+| PL8-06 | PLATE8 | Plate's accent never uses a semantic state colour; magenta (#F96DF2) is retired for Plate. Any future Plate colour also avoids yellow and brown (Plate8 rule) and the other five instruments' accents. *Decided by the owner 2026-10-18. Late's cyan and Mate's green also sit on semantic colours, and State's pink is close to magenta; not changed by this decision.* | built | public/plate/index.html; docs/PLATE8_SPEC.md (section 8b); scripts/plate8/regress3.cjs | propops8-reliability p6 |
+| PL8-08 | PLATE8 | Plate's accent is platinum white #E8ECF5 (tint #FFFFFF, ink #141821, deep #8A93A6, pressed #22252E): the plate's own colour, with no state meaning. *Chosen by the owner 2026-10-18 from three options (platinum, vermilion, lime).* | built | public/plate/index.html; docs/PLATE8_SPEC.md (section 8b) | propops8-reliability p6 |
 | VIS-01 | VISUAL | Operational palette: navy #1B243D ground, slate #5C6478 neutral, cool gray #E9EBEF labels, cyan #3DDCE8 on-plan, magenta #E92AD6 exposure/loss, magenta light #C21FB0 risk on light grounds. Gold appears only as a material or named reference, never as a status. | built | lib/canon/vocab.ts#CANON_COLORS; docs/aim-b5r/visual-archive/README.md; components/admin/LetNode.module.css | chronolayer p7 |
 | VIS-02 | VISUAL | Semantic state colours stay distinct from identity colours. Colour never stands alone: every status needs a readable label, a stable icon, accessible contrast, a reduced-motion option and a persistent event record. | partial | lib/canon/vocab.ts#SEMANTIC_STATES | propops8-reliability p6; system-architecture p9 |
 | VIS-04 | VISUAL | Six publication blockers stay HOLD until the artwork itself is fixed: fabricated L.E.T. dashboard metrics; 'AIM-BSR' and 'intulligence'; the duplicated Step 4 on the Mobile Field Node; medical claims on the pets/inclusive-fit board; the Airbnb logo; untested pavilion claims. Editing a caption does not close an image defect. | unchecked | docs/aim-b5r/visual-archive/ | kern-fresno-phase1 p3 |

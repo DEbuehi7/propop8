@@ -67,7 +67,7 @@ All seven v1.0.0 conflicts are settled:
 - **LET-03**: the Eon site is about 0.28 acre, so BloomWing testing needs a different, larger site.
 - **ROB-03**: EDO-I joins the agreed robot IDs; EDO-M is an alias of EDO-MI; EDO-H, EDO-C, EDO-W and EDO-S stay research names.
 - **D8-13**: Dance8 deploys on its own Cloudflare account; its code stays here until then.
-- **PL8-06**: Plate gets a new accent instead of magenta. Which colour is open decision PL8-08.
+- **PL8-06 / PL8-08**: Plate leaves magenta; its accent is platinum white `#E8ECF5`.
 
 ## Still open
 
@@ -75,7 +75,7 @@ P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
 revenue threshold, data sources and binding thresholds, D8-09 Kirtled export
 and the DASH label, STU-04 Stuttr storage and rights, PL8-07 Plate8 public or
 admin-only, PUR-02 Pure permissions, VIS-03 amber and green hex values, VIS-09
-vector logos, PL8-08 Plate's new accent.
+vector logos.
 
 Also worth knowing: the contract and engine use `edo` / `edo_call` for the
 EXECUTE/DEFER/ESCALATE/KILL decision, while the reliability study asks that
@@ -87,4 +87,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 ## Change log
 
 - 1.0.0, 2026-10-18: first lock. 20 studies; entries, vocabularies, rules and tests added; infrastructure register committed; Kirtled canonical example pinned against the solver.
-- 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; PL8-08 opened; GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
+- 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; Plate's accent set to platinum white (PL8-08); GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
