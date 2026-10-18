@@ -143,6 +143,9 @@ export function validateCueMap(
   if (!(typeof map.maxDriftScore === "number" && map.maxDriftScore >= 0 && map.maxDriftScore <= 1)) {
     add("invalid_number", "maxDriftScore", "must be between 0 and 1");
   }
+  if (map.firstDownbeatSec !== undefined && !(typeof map.firstDownbeatSec === "number" && Number.isFinite(map.firstDownbeatSec) && map.firstDownbeatSec >= 0)) {
+    add("invalid_number", "firstDownbeatSec", "must be a number of seconds >= 0");
+  }
 
   // Tempo: starts at bar 0, strictly ascending, positive bpm and beats per bar.
   let tempoOk = Array.isArray(map.tempo) && map.tempo.length > 0;

@@ -365,3 +365,18 @@ test("lyric wrap keeps every word and respects the row width", () => {
   assert.equal(rows.join(" "), text);
   for (const r of rows) assert.ok(r.length <= 20 || !r.includes(" "));
 });
+
+test("first downbeat: shifting the song and every lip-sync lock by the same amount gives the same cuts", () => {
+  const base = planCuts(baseMap(), baseLib());
+  const map = baseMap();
+  map.firstDownbeatSec = 0.097;
+  const lib = baseLib();
+  for (const c of lib.clips) if (c.lipSync) c.lipSync.songStartSec = Math.round((c.lipSync.songStartSec + 0.097) * 1e6) / 1e6;
+  assert.ok(lib.clips.some((c) => c.lipSync), "fixture has lip-synced clips");
+  const shifted = planCuts(map, lib);
+  assert.deepEqual(codes(validateCueMap(map, lib)), codes(validateCueMap(baseMap(), baseLib())));
+  assert.deepEqual(shifted.cuts.map((c) => [c.clipId, c.reason, c.startBar, c.endBar, c.startSec, c.clipInSec]),
+    base.cuts.map((c) => [c.clipId, c.reason, c.startBar, c.endBar, c.startSec, c.clipInSec]));
+  map.firstDownbeatSec = -1;
+  assert.ok(codes(validateCueMap(map, lib)).includes("invalid_number"));
+});

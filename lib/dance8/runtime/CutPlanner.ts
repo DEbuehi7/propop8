@@ -68,6 +68,9 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
   const voiceAt = (bar: number) => vocals.find((p) => p.startBar <= bar && bar < p.endBar)?.voice ?? null;
   const anyVocal = (from: number, to: number) => vocals.some((p) => p.startBar < to && from < p.endBar);
   const secs = (bar: number) => barToSec(map.tempo, bar);
+  // Lip-sync locks are in song time; bars count from the first downbeat.
+  const origin = map.firstDownbeatSec ?? 0;
+  const lockSec = (c: VisualClip) => c.lipSync!.songStartSec - origin;
 
   const fallback = library.clips.find((c) => c.id === map.fallbackClipId)!;
   const useCount = new Map<string, number>();
@@ -98,8 +101,8 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
           const ls = c.lipSync!;
           return (
             ls.voice === voice &&
-            ls.songStartSec <= startSec + EPS &&
-            ls.songStartSec + c.durationSec >= secs(bar + 1) - EPS
+            lockSec(c) <= startSec + EPS &&
+            lockSec(c) + c.durationSec >= secs(bar + 1) - EPS
           );
         });
         const sameCam = covering.filter((c) => c.camera === camera);
@@ -108,7 +111,7 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
       }
 
       if (locked) {
-        const end = locked.lipSync!.songStartSec + locked.durationSec;
+        const end = lockSec(locked) + locked.durationSec;
         let bars = wantBars;
         while (bars > 1 && secs(bar + bars) > end + EPS) bars--;
         cuts.push({
@@ -122,7 +125,7 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
           sceneId: cue.sceneId,
           camera: locked.camera,
           clipId: locked.id,
-          clipInSec: round6(startSec - locked.lipSync!.songStartSec),
+          clipInSec: round6(startSec - lockSec(locked)),
           reason: "lip_sync",
         });
         bar += bars;

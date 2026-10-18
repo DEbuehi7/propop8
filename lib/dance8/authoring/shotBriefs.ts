@@ -72,7 +72,8 @@ function keyframes(map: CueMap, startBar: number, endBar: number, max?: number):
 }
 
 export function shotBriefs(map: CueMap, library: VisualClipLibrary, g: GeneratorProfile): ShotBrief[] {
-  const secs = (bar: number) => barToSec(map.tempo, bar);
+  // Song time: bar seconds shifted to the first downbeat (lip-sync locks are song time).
+  const secs = (bar: number) => barToSec(map.tempo, bar) + (map.firstDownbeatSec ?? 0);
   const vocals = map.vocals ?? [];
   const { aspect, cropped } = generateAspect(map.aspect, g);
   const briefs: ShotBrief[] = [];
