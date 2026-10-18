@@ -97,6 +97,8 @@ if (shortId) {
   totalSec = s.totalSec;
   offsetSec = s.offsetSec;
 }
+// The picture starts on bar 0, so the audio starts at the first downbeat.
+const audioOffsetSec = Math.round((offsetSec + (map.firstDownbeatSec ?? 0)) * 1e6) / 1e6;
 
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
 console.log(pad("#", 4) + pad("cue", 10) + pad("bars", 9) + pad("seconds", 16) + pad("camera", 12) + pad("clip @ in", 38) + "reason");
@@ -169,7 +171,7 @@ if (flag("--render")) {
   }
   const args = buildFfmpegArgs(cuts, lib, {
     clipDir: clipDir!, audioPath: audioPath!, outPath: outPath!, width: w, height: h, fps: 30,
-    audioOffsetSec: offsetSec, punch, caption, lyrics,
+    audioOffsetSec, punch, caption, lyrics,
   });
   const r = spawnSync("ffmpeg", args, { stdio: "inherit" });
   if (r.status !== 0) process.exit(r.status ?? 1);
@@ -180,7 +182,7 @@ if (flag("--render")) {
     cueMap: { id: map.id, version: map.version, trackId: map.trackId, approvalStatus: map.approvalStatus },
     seed,
     excerpt: shortId ?? null,
-    audioOffsetSec: offsetSec,
+    audioOffsetSec,
     totalSec,
     caption: caption?.text ?? null,
     cuts: cuts.map((c) => {

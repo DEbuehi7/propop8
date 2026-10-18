@@ -132,6 +132,12 @@ export interface CueMap {
   analysisProfileId: string;
   aspect: AspectRatio;
   tempo: TempoSegment[];
+  /**
+   * Song time of bar 0's downbeat, in seconds. Bars, cuts, lyric lines and
+   * Kirtled cues count from this point; song-time values (lip-sync locks,
+   * mouth tracks) are shifted by it. Absent = 0 (bar 0 starts the file).
+   */
+  firstDownbeatSec?: number;
   cues: Cue[];
   /**
    * Stands in when no approved clip matches a cue's scene + camera, so a draft

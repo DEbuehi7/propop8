@@ -8,6 +8,7 @@
  *   npm run stuttr -- add-voice cloyne Stuttr ~/Downloads/cloyne-stuttr.wav
  *   npm run stuttr -- mix cloyne Stuttr
  *   npm run stuttr -- approve cloyne Stuttr        (or: reject)
+ *   npm run stuttr -- mouth cloyne Stuttr          (Dance8 mouth track, approved takes only)
  *
  * Shouts and harmonies in several voices: prep the backing stem once, convert
  * it in ElevenLabs once per voice, add each take, then mix; every backing take
@@ -17,13 +18,13 @@
  *
  * Options: --library <folder> (default ~/StuttrLibrary, or $STUTTR_LIBRARY),
  * --id, --title, --suno-plan, --dry (add); --from vocals|backing_vocals
- * (prep-voice, add-voice, approve, reject); --full (prep-voice: don't cut the
+ * (prep-voice, add-voice, approve, reject, mouth); --full (prep-voice: don't cut the
  * backing stem to its sung span); --lang (default en); --no-backing,
  * --suno-backing (mix).
  */
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { addSong, addVoice, loadManifest, mixVoice, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
+import { addSong, addVoice, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
 
 const argv = process.argv.slice(2);
@@ -46,7 +47,8 @@ const usage = `Stuttr song library (${ctx.library})
   prep-voice <trackId> [--from backing_vocals] [--full]
   add-voice <trackId> <voice> <file> [--lang en] [--from backing_vocals]
   mix <trackId> <voice> [--lang en] [--no-backing | --suno-backing]
-  approve|reject <trackId> <voice> [--lang en] [--from backing_vocals]`;
+  approve|reject <trackId> <voice> [--lang en] [--from backing_vocals]
+  mouth <trackId> <voice> [--lang en] [--from backing_vocals]`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
 
 try {
@@ -77,6 +79,10 @@ try {
     case "reject":
       if (!a1 || !a2) throw new Error(`${cmd} needs a track id and a voice name`);
       setVoiceStatus(ctx, a1, a2, flag("lang") ?? "en", cmd === "approve" ? "approved" : "rejected", fromFlag());
+      break;
+    case "mouth":
+      if (!a1 || !a2) throw new Error("mouth needs a track id and a voice name");
+      mouthTrack(ctx, a1, a2, flag("lang") ?? "en", fromFlag());
       break;
     default:
       console.log(usage);

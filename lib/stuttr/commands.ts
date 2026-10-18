@@ -6,7 +6,7 @@
 //    different file at the same path is refused, never overwritten.
 //  - library.json is written whole to a temp file, then renamed into place.
 //  - Nothing here uploads, and no secret is read.
-// ffmpeg (prep-voice, mix) is optional; without it those two commands say so.
+// ffmpeg (prep-voice, mix, mouth) is optional; without it those commands say so.
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -19,6 +19,8 @@ import {
   SILENCE_DB, SILENCE_MIN_SEC, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
   type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type VoiceTake,
 } from "./library";
+import { buildMouthTrack } from "../dance8/authoring/mouthTrack";
+import type { MouthTrack } from "../dance8/contracts/mouth";
 
 export interface Ctx {
   library: string;
@@ -338,4 +340,40 @@ export function setVoiceStatus(
   saveManifest(c, m);
   logOf(c)(`${voice} (${lang})${from === "backing_vocals" ? " backing" : ""} for "${trackId}" is now ${status}`);
   return take;
+}
+
+export const MOUTH_DECODE_RATE = 16000;
+
+/**
+ * Dance8 mouth track from an approved take (D8-14): decoded to mono 16 kHz by
+ * ffmpeg, measured per 24 fps frame, written to <id>/dance8/ in the library.
+ */
+export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", from: VoiceTake["sourceRole"] = "vocals"): string {
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const m = loadManifest(c);
+  const t = trackOrThrow(m, trackId);
+  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from);
+  if (!take) throw new Error(`no ${voice} (${lang}) ${from === "vocals" ? "lead" : "backing"} take for "${trackId}"`);
+  if (take.status !== "approved") throw new Error(`${voice}'s take is ${take.status}; Dance8 reads approved takes only, so approve it first`);
+  const src = join(c.library, take.path);
+  if (sha256File(src).sha256 !== take.sha256) throw new Error(`${take.path} changed since it was approved; add and approve it again`);
+
+  const r = spawnSync("ffmpeg", ["-v", "error", "-i", src, "-ac", "1", "-ar", String(MOUTH_DECODE_RATE), "-f", "s16le", "-"], { maxBuffer: 1 << 30 });
+  if (r.status !== 0) throw new Error(`ffmpeg could not decode ${take.path}: ${String(r.stderr).trim().split("\n").pop()}`);
+  const pcm = r.stdout as Buffer;
+  const samples = new Int16Array(Math.floor(pcm.length / 2));
+  for (let i = 0; i < samples.length; i++) samples[i] = pcm.readInt16LE(i * 2);
+
+  const track: MouthTrack = buildMouthTrack(samples, MOUTH_DECODE_RATE, {
+    trackId, voice: take.voice, lang: take.lang, role: from, source: { path: take.path, sha256: take.sha256 }, startSec: take.startSec ?? 0,
+  });
+  const rel = join(trackId, "dance8", `${track.id}.json`);
+  mkdirSync(join(c.library, trackId, "dance8"), { recursive: true });
+  writeFileSync(join(c.library, rel), JSON.stringify(track) + "\n");
+  const openish = track.open.filter((v) => v >= 0.2).length;
+  logOf(c)(
+    `mouth track: ${join(c.library, rel)} (${track.open.length} frames at ${track.fps} fps from ${clock(track.startSec)}; ` +
+      `open on ${Math.round((100 * openish) / Math.max(1, track.open.length))}% of frames)`,
+  );
+  return rel;
 }

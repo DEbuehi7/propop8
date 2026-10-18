@@ -10,7 +10,9 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { activeSpan, classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
-import { addSong, addVoice, loadManifest, mixVoice, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
+import { addSong, addVoice, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
+import { checkMouthTrack } from "../lib/dance8/authoring/mouthTrack";
+import type { MouthTrack } from "../lib/dance8/contracts/mouth";
 
 /** A PCM WAV of a sine tone. */
 function wav(opts: { sec: number; rate?: number; ch?: number; bits?: 16 | 24; freq?: number; extraChunk?: boolean }): Buffer {
@@ -331,6 +333,35 @@ test("four voices on the backing stem: trimmed prep, takes placed at the span, l
 
     mixVoice(s.ctx, "shout-song", "Stuttr", "en", true, { sunoBacking: true });
     assert.ok(s.lines.includes("backing: Suno's backing vocals"));
+  } finally {
+    s.done();
+  }
+});
+
+test("mouth track: approved takes only, one value per 24 fps frame, written under dance8/", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+  const s = sandbox();
+  try {
+    const inbox = join(s.root, "inbox", "Mouth Song");
+    mkdirSync(inbox, { recursive: true });
+    writeFileSync(join(inbox, "Mouth Song (Full Song).wav"), wav({ sec: 3 }));
+    writeFileSync(join(inbox, "Mouth Song (Vocals).wav"), wav({ sec: 3, freq: 330 }));
+    writeFileSync(join(inbox, "Mouth Song (Drums).wav"), wav({ sec: 3, freq: 110 }));
+    addSong(s.ctx, { folder: inbox });
+    const lead = join(s.root, "lead.wav");
+    writeFileSync(lead, wavSegments([[1, 0], [1, 300], [1, 0]]));
+    addVoice(s.ctx, { trackId: "mouth-song", voice: "Stuttr", file: lead });
+    assert.throws(() => mouthTrack(s.ctx, "mouth-song", "Stuttr"), /approved takes only/);
+    setVoiceStatus(s.ctx, "mouth-song", "Stuttr", "en", "approved");
+    const rel = mouthTrack(s.ctx, "mouth-song", "Stuttr");
+    assert.equal(rel, join("mouth-song", "dance8", "mouth-song.stuttr.en.mouth.json"));
+    const t = JSON.parse(readFileSync(join(s.ctx.library, rel), "utf8")) as MouthTrack;
+    assert.deepEqual(checkMouthTrack(t), []);
+    assert.equal(t.open.length, 72);
+    assert.equal(t.startSec, 0);
+    assert.equal(t.open[12], 0);
+    assert.ok(t.open[36] >= 0.99, String(t.open[36]));
+    assert.equal(t.open[60], 0);
+    assert.ok(s.lines.some((l) => l.startsWith("mouth track: ") && l.includes("72 frames at 24 fps")));
   } finally {
     s.done();
   }
