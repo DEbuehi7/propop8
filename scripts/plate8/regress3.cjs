@@ -18,10 +18,15 @@ const J = s => JSON.parse(ev(s));
     ids.map(i => i + ' ' + T[i].h + '/' + hsl(T[i].c).H.toFixed(0)).join(' '));
   const brown = h => { const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), bl = parseInt(h.slice(5, 7), 16); return r > g && g > bl && hsl(h).L < .35 };
   ok('no pressed-state background reads brown', ids.every(i => !brown(T[i].bg)), ids.map(i => T[i].bg).join(' '));
-  ok('the palette is the canonical one: pink, green, blue, magenta, violet, cyan',
+  ok('the palette is the canonical one: pink, green, blue, platinum, violet, cyan',
     T.state.c === '#F462A6' && T.mate.c === '#00BE5F' && T.skate.c === '#6496FF' &&
-    T.plate.c === '#F96DF2' && T.slate.c === '#B97BFD' && T.late.c === '#00BAE1', ids.map(i => T[i].c).join(' '));
-  const hs = ids.map(i => hsl(T[i].c).H).sort((a, c) => a - c), gaps = hs.map((h, k) => (hs[(k + 1) % hs.length] - h + 360) % 360);
+    T.plate.c === '#E8ECF5' && T.slate.c === '#B97BFD' && T.late.c === '#00BAE1', ids.map(i => T[i].c).join(' '));
+  // A near-neutral accent (Plate's platinum, 2026-10-18) has no meaningful hue: it is told apart by
+  // lightness and lack of colour, so the hue-gap test covers the chromatic accents only.
+  const chroma = h => { const v = [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16) / 255); return Math.max(...v) - Math.min(...v) };
+  const chromatic = ids.filter(i => chroma(T[i].c) >= .12), neutral = ids.filter(i => chroma(T[i].c) < .12);
+  ok('neutral accents are light and nearly colourless', neutral.every(i => hsl(T[i].c).L > .85 && chroma(T[i].c) < .08), neutral.map(i => i + ' ' + T[i].c).join(' ') || 'none');
+  const hs = chromatic.map(i => hsl(T[i].c).H).sort((a, c) => a - c), gaps = hs.map((h, k) => (hs[(k + 1) % hs.length] - h + 360) % 360);
   ok('no two instruments are near-twins in hue', Math.min(...gaps) >= 25, 'smallest gap ' + Math.min(...gaps).toFixed(0) + '°');
 
   // ── the shell ─────────────────────────────────────────────────────────

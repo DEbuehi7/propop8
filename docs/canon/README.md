@@ -57,19 +57,21 @@ build (`n/a`), or not checked against the code in this pass (`unchecked`).
 
 Never regenerate the lock just to make a failing test pass.
 
-## Needs the owner (from v1.0.0)
+## Decided by the owner (v1.1.0, 18 Oct 2026)
 
-Conflicts, where two sources disagree:
+All seven v1.0.0 conflicts are settled:
 
-- **B5R-22**: Stage 1 default geography is DTLA/Pershing Square in one study; the active pilot is Kern/Fresno.
-- **B5R-33**: Sears, mural-building and Rosslyn studies propose mixed-use programs; AIM-B5R is residential-only, and the mixed-use angle was killed.
-- **LET-02**: Fresno as a fourth L.E.T. node, or part of Transect?
-- **LET-03**: Eon site size: a 0.28-acre poster site or a 20-acre research site?
-- **ROB-03**: Which of EDO-H, EDO-M, EDO-I, EDO-C, EDO-W and EDO-S join the agreed robot IDs, and is EDO-M an alias of EDO-MI?
-- **D8-13**: Where Dance8 is hosted: the Pulse8 account, its own Cloudflare account, or this repo's deploy?
-- **PL8-06**: Plate's magenta accent against magenta as the critical-risk colour.
+- **B5R-22**: Stage 1 geography is Kern/Fresno.
+- **B5R-33**: AIM-B5R stays residential-only; the mixed-use studies stay concepts.
+- **LET-02**: Fresno is part of Transect; L.E.T. stays three nodes.
+- **LET-03**: the Eon site is about 0.28 acre, so BloomWing testing needs a different, larger site.
+- **ROB-03**: EDO-I joins the agreed robot IDs; EDO-M is an alias of EDO-MI; EDO-H, EDO-C, EDO-W and EDO-S stay research names.
+- **D8-13**: Dance8 deploys on its own Cloudflare account; its code stays here until then.
+- **PL8-06 / PL8-08**: Plate leaves magenta; its accent is platinum white `#E8ECF5`.
 
-Open decisions: P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
+## Still open
+
+P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
 revenue threshold, data sources and binding thresholds, D8-09 Kirtled export
 and the DASH label, STU-04 Stuttr storage and rights, PL8-07 Plate8 public or
 admin-only, PUR-02 Pure permissions, VIS-03 amber and green hex values, VIS-09
@@ -85,3 +87,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 ## Change log
 
 - 1.0.0, 2026-10-18: first lock. 20 studies; entries, vocabularies, rules and tests added; infrastructure register committed; Kirtled canonical example pinned against the solver.
+- 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; Plate's accent set to platinum white (PL8-08); GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
