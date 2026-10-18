@@ -7,7 +7,8 @@ Long-lived doctrine for PropOps8, AIM-B5R, Dance8, Stuttr and Plate8 lives in
 in `docs/canon/REGISTER.md`. `tests/canon.test.ts` locks it with a hash. Read
 the relevant entries before designing or changing anything they cover. Never
 regenerate the lock to make a test pass; a LOCKED entry changes only with the
-owner's approval and a `CANON_VERSION` bump.
+owner's approval and a `CANON_VERSION` bump. Security records (roles, data
+classes, vendors, incident runbook, restore test) live in `docs/security/`.
 
 Stop rules for every session:
 

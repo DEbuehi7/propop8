@@ -1,0 +1,35 @@
+# Vendor and subprocessor register
+
+**Why:** canon GOV-25, Phase 0D. Every outside service that touches PropOps8
+data or configuration, what it holds, and how it is configured (variable
+names only). Update this file whenever a service is added, removed or changes
+what it holds. Data classes are defined in [DATA_CLASSES.md](DATA_CLASSES.md).
+
+| Service | What it does for PropOps8 | Data it holds | Highest class | Configured by | Named in the privacy policy? |
+|---|---|---|---|---|---|
+| Supabase: audit project | Intakes, upload records, reviews, review trail, report and upload buckets (private), webhook claims, login throttle, B5R pipeline tables | Client names, emails, company, uploaded operational files, approved report PDFs | Confidential (may hold PII a client uploads by mistake) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Yes |
+| Supabase: Plate8 project | Plate8 / State8 sessions and monitoring | Personal rig data | Internal | `PLATE8_SUPABASE_URL`, `PLATE8_SUPABASE_SERVICE_ROLE_KEY` (until set, Plate8 writes to the audit project) | No (not client-facing) |
+| Supabase: AIM Vault project | Owner-only two-factor document vault | Owner's documents, tiered | Sensitive / regulated | See `vault/README.md` | No (owner-only) |
+| Netlify | Hosting, CDN, builds, deploy history (rollback), environment variable store | Every server secret; request logs | Secret (configuration) | Netlify site settings | **No** (gap) |
+| Tally | Intake form and payment collection | Contact details, form answers, payment status | Confidential / PII | `NEXT_PUBLIC_TALLY_FORM_ID`, `TALLY_SIGNING_SECRET`, `TALLY_PAYMENT_ENABLED` | Yes |
+| Stripe (through Tally) | Card processing for Tally payments | Card data (Stripe only; never reaches PropOps8) | Regulated (PCI, held by Stripe) | Connected inside Tally; no PropOps8 key | Yes |
+| Resend | Report delivery and intake notifications | Recipient emails, message metadata, report PDF attachments | Confidential | `RESEND_API_KEY`, `RESEND_FROM`, `AUDIT_NOTIFY_EMAIL` | Yes |
+| Gumroad | Sells the kits and two calculators' downloads | Buyer details (held by Gumroad) | Confidential (Gumroad's side) | Gumroad dashboard; no PropOps8 key | Covered in refund terms |
+| GitHub | Source code | Code only. **The repository is public**: nothing confidential may be committed | Public | Repository settings | n/a |
+| Google (YouTube Data API) | Slate8 video search | Search terms only | Internal | `YOUTUBE_API_KEY` | No (personal rig) |
+| Cloudflare | Dance8's own account (canon D8-13); Pulse8 is a separate account | Media derivatives only | Internal | Not configured in this repo yet | No |
+| AI services (Anthropic Claude, claude.ai Pure project; research tools) | Development, documentation, research | Code, docs, synthetic data. Never tenant documents or client files (canon GOV-13) | Internal | Per tool | No |
+| n8n | Named in the privacy policy for workflow automation | **Not used by this repo's code.** Confirm whether any n8n workflow touches intake data | Unknown | n/a | Yes (check) |
+| Domain registrar / DNS (propops8.com) | Domain and DNS | DNS records | Internal | Registrar account | No |
+
+## Gaps to close
+
+1. **Netlify is not named in the privacy policy's "Who else touches this
+   data"** section, but it hosts the site and sees request data. Add it, or
+   confirm with counsel that hosting needs no mention.
+2. **n8n is named but unused here.** Either confirm an n8n workflow touches
+   intake data, or remove it from the policy.
+3. **Supabase plan.** If the audit project is on the Free plan it has no
+   automatic backups and can pause; see [RESTORE_TEST.md](RESTORE_TEST.md).
+4. For each vendor, note its data-processing terms and data region once
+   checked in the dashboard. Not recorded here yet.

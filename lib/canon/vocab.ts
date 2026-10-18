@@ -328,13 +328,15 @@ export const ROBOT_IDS = [
   { id: "EDO-X", mission: "Tracked/terrain inspection and maintenance" },
   { id: "EDO-DI", mission: "Indoor protected microdrone inspection; separate flight safety case" },
   { id: "EDO-DX", mission: "Exterior supervised inspection/mapping drone" },
+  { id: "EDO-I", mission: "Integrated building robot: rails, gantries, docks and service nodes (added 2026-10-18)" },
 ] as const;
 
-/** Research classes named in other studies but not in the agreed list. */
+/** Older names that point at an agreed ID. */
+export const ROBOT_ALIASES = [{ alias: "EDO-M", id: "EDO-MI" }] as const;
+
+/** Research names from other studies, not agreed IDs (owner decision 2026-10-18). */
 export const ROBOT_RESEARCH_CLASSES = [
   { id: "EDO-H", mission: "Home helper" },
-  { id: "EDO-M", mission: "Delivery AMR (older name; mapping to EDO-MI unconfirmed)" },
-  { id: "EDO-I", mission: "Integrated building robot (rails, gantries, docks)" },
   { id: "EDO-C", mission: "Facade / confined-surface crawler" },
   { id: "EDO-W", mission: "Water-surface inspection" },
   { id: "EDO-S", mission: "Submerged structures and piping" },
