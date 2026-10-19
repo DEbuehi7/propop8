@@ -23,6 +23,7 @@ import {
 } from "./library";
 import { buildMouthTrack, frameLoudnessDb } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
+import { analyzeSong as analyzeSongAudio, ANALYSIS_SR, groupOfStem, type PartGroup, type SongAnalysis } from "./analysis";
 import { convertSpeech, KEY_ENV, listVoices, matchVoice, OUTPUT_FORMATS, type Fetch, type OutputFormat } from "./elevenlabs";
 
 export interface Ctx {
@@ -163,6 +164,74 @@ const NO_FFMPEG = "ffmpeg is not installed. On a Mac: brew install ffmpeg";
 function runFfmpeg(args: string[]): void {
   const r = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...args], { encoding: "utf8" });
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr.trim().split("\n").slice(-3).join(" ")}`);
+}
+
+/** Decodes any audio file ffmpeg reads to mono float samples (-1..1) at `rate`. */
+export function decodeFloat(path: string, rate = ANALYSIS_SR): Float32Array {
+  const r = spawnSync("ffmpeg", ["-v", "error", "-i", path, "-ac", "1", "-ar", String(rate), "-f", "f32le", "-"], { maxBuffer: 2 ** 31 });
+  if (r.status !== 0) throw new Error(`ffmpeg could not decode ${basename(path)}: ${String(r.stderr).trim().split("\n").pop()}`);
+  const pcm = r.stdout as Buffer;
+  const out = new Float32Array(Math.floor(pcm.length / 4));
+  for (let i = 0; i < out.length; i++) out[i] = pcm.readFloatLE(i * 4);
+  return out;
+}
+
+/**
+ * Measures a song from files (see lib/stuttr/analysis.ts). Stems of the same
+ * group are summed. Used by `analyze`; takes paths so it can be checked on
+ * any folder of stems.
+ */
+export function analyzeFiles(
+  trackId: string, files: { path: string; group: PartGroup | "grid_fallback" | "harmony_fallback"; sha256: string; libPath?: string }[], durationSec?: number,
+): SongAnalysis {
+  const sums: Partial<Record<PartGroup | "grid_fallback" | "harmony_fallback", Float32Array>> = {};
+  for (const f of files) {
+    const x = decodeFloat(f.path);
+    const cur = sums[f.group];
+    if (!cur) sums[f.group] = x;
+    else {
+      const out = cur.length >= x.length ? cur : (() => { const y = new Float32Array(x.length); y.set(cur); return y; })();
+      for (let i = 0; i < x.length; i++) out[i] += x[i];
+      sums[f.group] = out;
+    }
+  }
+  const longest = Math.max(0, ...Object.values(sums).map((x) => x!.length));
+  const { grid_fallback, harmony_fallback, ...parts } = sums;
+  return analyzeSongAudio({
+    trackId,
+    durationSec: durationSec ?? longest / ANALYSIS_SR,
+    sources: files.map((f) => ({ group: f.group, path: f.libPath ?? basename(f.path), sha256: f.sha256 })),
+    parts,
+    gridFallback: grid_fallback,
+    harmonyFallback: harmony_fallback,
+  });
+}
+
+/**
+ * analyze: tempo, downbeats, part levels, sung eighths and chords from the
+ * song's stems, saved to <id>/analysis/<id>.analysis.json for Dance8.
+ */
+export function analyzeTrack(c: Ctx, trackId: string): string {
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const t = trackOrThrow(loadManifest(c), trackId);
+  const pick: Parameters<typeof analyzeFiles>[1] = [];
+  for (const f of t.files) {
+    const group = f.role === "vocals" ? "lead" : f.role === "backing_vocals" ? "backing" : f.role === "stem" ? groupOfStem(f.stemName) : null;
+    if (group) pick.push({ path: join(c.library, f.path), group, sha256: f.sha256, libPath: f.path });
+  }
+  const fallback = t.files.find((f) => f.role === "instrumental") ?? t.files.find((f) => f.role === "full_mix");
+  if (!pick.some((p) => p.group === "drums") && fallback) pick.push({ path: join(c.library, fallback.path), group: "grid_fallback", sha256: fallback.sha256, libPath: fallback.path });
+  if (!pick.some((p) => p.group === "harmony") && fallback) pick.push({ path: join(c.library, fallback.path), group: "harmony_fallback", sha256: fallback.sha256, libPath: fallback.path });
+  const full = t.files.find((f) => f.role === "full_mix")?.audio?.durationSec ?? undefined;
+  const a = analyzeFiles(trackId, pick, full);
+  const rel = `${trackId}/analysis/${trackId}.analysis.json`;
+  mkdirSync(join(c.library, trackId, "analysis"), { recursive: true });
+  writeFileSync(join(c.library, rel), JSON.stringify(a, null, 1) + "\n");
+  const unsure = a.chords.filter((x) => x.fit < 0.75).length;
+  logOf(c)(`analysis: ${join(c.library, rel)}`);
+  logOf(c)(`${a.bpm} BPM, first downbeat at ${a.firstDownbeatSec} s, ${a.bars} bars; grid within ${a.gridResidP95ms} ms; ${a.chords.length - unsure} of ${a.chords.length} half-bar chords read clearly`);
+  for (const w of a.warnings) logOf(c)(`note: ${w}`);
+  return rel;
 }
 
 /** Decodes any audio file ffmpeg reads to mono 16-bit samples at `rate`. */
