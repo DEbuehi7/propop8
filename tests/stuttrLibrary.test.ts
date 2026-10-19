@@ -249,13 +249,13 @@ test("add-voice registers a take and checks its timing against the vocal stem", 
   }
 });
 
-/** A mono 16-bit 44.1 kHz WAV of tone and silence segments, e.g. [[1, 0], [1, 440], [1, 0]]. */
-function wavSegments(parts: [sec: number, freq: number][]): Buffer {
+/** A mono 16-bit 44.1 kHz WAV of tone and silence segments, e.g. [[1, 0], [1, 440], [1, 0]]; amplitude defaults to 0.3. */
+function wavSegments(parts: [sec: number, freq: number, amp?: number][]): Buffer {
   const rate = 44100;
-  const chunks = parts.map(([sec, freq]) => {
+  const chunks = parts.map(([sec, freq, amp = 0.3]) => {
     const n = Math.round(sec * rate);
     const b = Buffer.alloc(n * 2);
-    for (let i = 0; i < n; i++) b.writeInt16LE(freq ? Math.round(Math.sin((2 * Math.PI * freq * i) / rate) * 0.3 * 32767) : 0, i * 2);
+    for (let i = 0; i < n; i++) b.writeInt16LE(freq ? Math.round(Math.sin((2 * Math.PI * freq * i) / rate) * amp * 32767) : 0, i * 2);
     return b;
   });
   const data = Buffer.concat(chunks);
@@ -267,30 +267,28 @@ function wavSegments(parts: [sec: number, freq: number][]): Buffer {
   return Buffer.concat([h, data]);
 }
 
-test("active span from silencedetect: leading and trailing silence, padded and clamped", () => {
-  const log = [
-    "[silencedetect @ 0x1] silence_start: 0",
-    "[silencedetect @ 0x1] silence_end: 65.1 | silence_duration: 65.1",
-    "[silencedetect @ 0x1] silence_start: 80.2",
-    "[silencedetect @ 0x1] silence_end: 129.5 | silence_duration: 49.3",
-    "[silencedetect @ 0x1] silence_start: 147.0",
-    "[silencedetect @ 0x1] silence_end: 177.2 | silence_duration: 30.2",
-  ].join("\n");
-  assert.deepEqual(activeSpan(log, 177.2), { startSec: 64.6, endSec: 147.5 });
-  assert.deepEqual(activeSpan("", 10), { startSec: 0, endSec: 10 }, "no silence: the whole file");
-  assert.deepEqual(activeSpan("silence_start: 0.2\nsilence_end: 3", 10), { startSec: 0, endSec: 10 }, "a gap in the middle is kept");
-  assert.equal(activeSpan("silence_start: 0", 10), null, "silent all the way");
+test("active span from window loudness: faint bleed and clicks are ignored, gaps kept, padded and clamped", () => {
+  // 100 ms windows over 20 s: -55 dB bleed, a 0.2 s click at 3 s, singing 6-9 s and 12-14 s.
+  const db = Array.from({ length: 200 }, () => -55);
+  db[30] = db[31] = -20;
+  for (let i = 60; i < 90; i++) db[i] = -18;
+  for (let i = 120; i < 140; i++) db[i] = -25;
+  assert.deepEqual(activeSpan(db, 0.1, 20), { startSec: 5.5, endSec: 14.5 });
+  assert.deepEqual(activeSpan(db, 0.1, 20, { minRunSec: 0.2 }), { startSec: 2.5, endSec: 14.5 }, "a shorter minimum lets the click count");
+  assert.deepEqual(activeSpan(db.map(() => -10), 0.1, 20), { startSec: 0, endSec: 20 }, "loud throughout: the whole file");
+  assert.equal(activeSpan(db.map(() => -Infinity), 0.1, 20), null, "silent all the way");
+  assert.equal(activeSpan(db.map(() => -45), 0.1, 20), null, "bleed alone is not singing");
 });
 
 test("four voices on the backing stem: trimmed prep, takes placed at the span, layered in the mix", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
   const s = sandbox();
   try {
-    // Backing vocal: 1 s silence, 1 s shout, 1 s silence, inside a 3 s song.
+    // Backing vocal: 1 s of faint bleed (peaks -42 dB, RMS -45 dB, as Suno stems have), 1 s shout, 1 s bleed.
     const inbox = join(s.root, "inbox", "Shout Song");
     mkdirSync(inbox, { recursive: true });
     writeFileSync(join(inbox, "Shout Song (Full Song).wav"), wav({ sec: 3 }));
     writeFileSync(join(inbox, "Shout Song (Vocals).wav"), wav({ sec: 3, freq: 330 }));
-    writeFileSync(join(inbox, "Shout Song (Backing Vocals).wav"), wavSegments([[1, 0], [1, 550], [1, 0]]));
+    writeFileSync(join(inbox, "Shout Song (Backing Vocals).wav"), wavSegments([[1, 200, 0.008], [1, 550], [1, 200, 0.008]]));
     writeFileSync(join(inbox, "Shout Song (Drums).wav"), wav({ sec: 3, freq: 110 }));
     addSong(s.ctx, { folder: inbox });
 

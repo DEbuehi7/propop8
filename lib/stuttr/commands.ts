@@ -18,10 +18,10 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import {
   activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
-  SILENCE_DB, SILENCE_MIN_SEC, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
+  ACTIVE_WINDOW_SEC, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
   type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type VoiceTake,
 } from "./library";
-import { buildMouthTrack } from "../dance8/authoring/mouthTrack";
+import { buildMouthTrack, frameLoudnessDb } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
 import { convertSpeech, KEY_ENV, listVoices, matchVoice, OUTPUT_FORMATS, type Fetch, type OutputFormat } from "./elevenlabs";
 
@@ -165,11 +165,20 @@ function runFfmpeg(args: string[]): void {
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr.trim().split("\n").slice(-3).join(" ")}`);
 }
 
-/** ffmpeg silencedetect log for a file (the detector writes to stderr). */
-function silenceLog(path: string): string {
-  const r = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-i", path, "-af", `silencedetect=n=${SILENCE_DB}dB:d=${SILENCE_MIN_SEC}`, "-f", "null", "-"], { encoding: "utf8" });
-  if (r.status !== 0) throw new Error(`ffmpeg failed: ${r.stderr.trim().split("\n").slice(-3).join(" ")}`);
-  return r.stderr;
+/** Decodes any audio file ffmpeg reads to mono 16-bit samples at `rate`. */
+function decodeMono(path: string, rate: number): Int16Array {
+  const r = spawnSync("ffmpeg", ["-v", "error", "-i", path, "-ac", "1", "-ar", String(rate), "-f", "s16le", "-"], { maxBuffer: 1 << 30 });
+  if (r.status !== 0) throw new Error(`ffmpeg could not decode ${basename(path)}: ${String(r.stderr).trim().split("\n").pop()}`);
+  const pcm = r.stdout as Buffer;
+  const samples = new Int16Array(Math.floor(pcm.length / 2));
+  for (let i = 0; i < samples.length; i++) samples[i] = pcm.readInt16LE(i * 2);
+  return samples;
+}
+
+/** RMS loudness (dBFS) of each ACTIVE_WINDOW_SEC window of a file. */
+function windowLoudness(path: string): number[] {
+  const rate = 16000;
+  return frameLoudnessDb(decodeMono(path, rate), rate, 1 / ACTIVE_WINDOW_SEC);
 }
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -192,7 +201,7 @@ export function prepVoice(c: Ctx, trackId: string, part: "vocals" | "backing_voc
   let startSec = 0;
   let durationSec = total;
   if (part === "backing_vocals" && !opts.full && total !== null) {
-    const span = activeSpan(silenceLog(srcPath), total);
+    const span = activeSpan(windowLoudness(srcPath), ACTIVE_WINDOW_SEC, total);
     if (!span) throw new Error(`the ${part} stem is silent; there is nothing to convert`);
     startSec = span.startSec;
     durationSec = Math.round((span.endSec - span.startSec) * 1000) / 1000;
@@ -361,11 +370,7 @@ export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", 
   const src = join(c.library, take.path);
   if (sha256File(src).sha256 !== take.sha256) throw new Error(`${take.path} changed since it was approved; add and approve it again`);
 
-  const r = spawnSync("ffmpeg", ["-v", "error", "-i", src, "-ac", "1", "-ar", String(MOUTH_DECODE_RATE), "-f", "s16le", "-"], { maxBuffer: 1 << 30 });
-  if (r.status !== 0) throw new Error(`ffmpeg could not decode ${take.path}: ${String(r.stderr).trim().split("\n").pop()}`);
-  const pcm = r.stdout as Buffer;
-  const samples = new Int16Array(Math.floor(pcm.length / 2));
-  for (let i = 0; i < samples.length; i++) samples[i] = pcm.readInt16LE(i * 2);
+  const samples = decodeMono(src, MOUTH_DECODE_RATE);
 
   const track: MouthTrack = buildMouthTrack(samples, MOUTH_DECODE_RATE, {
     trackId, voice: take.voice, lang: take.lang, role: from, source: { path: take.path, sha256: take.sha256 }, startSec: take.startSec ?? 0,
