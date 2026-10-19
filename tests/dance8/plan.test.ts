@@ -143,6 +143,7 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     planTrack(c, "synthetic-song", { key: "C" });
     assert.equal((JSON.parse(readFileSync(p.cuemap, "utf8")) as CueMap).cues[0].sceneId, "harbour");
     assert.ok(lines.some((l) => l.startsWith("kept your ") && l.includes("cuemap.json")));
+    assert.ok(!lines.some((l) => /scene names are placeholders|lyric lines/.test(l)), "no draft notes about a cue map that was kept");
     const briefs2 = JSON.parse(readFileSync(p.briefs, "utf8")) as ShotBrief[];
     assert.ok(briefs2.some((b) => b.sceneId === "harbour"), "the shot list follows your scene name");
 
