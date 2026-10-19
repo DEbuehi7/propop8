@@ -69,6 +69,10 @@ All seven v1.0.0 conflicts are settled:
 - **D8-13**: Dance8 deploys on its own Cloudflare account; its code stays here until then.
 - **PL8-06 / PL8-08**: Plate leaves magenta; its accent is platinum white `#E8ECF5`.
 
+## Decided by the owner (v1.2.0, 18 Oct 2026)
+
+- **D8-16**: skaters play Kirtled. One trick per chord change: RA floor carve, LA kickflip sweep, KA handplant roll or 180/360, TI big ollie leap, a held chord a board-assisted freeze.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
@@ -88,3 +92,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 
 - 1.0.0, 2026-10-18: first lock. 20 studies; entries, vocabularies, rules and tests added; infrastructure register committed; Kirtled canonical example pinned against the solver.
 - 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; Plate's accent set to platinum white (PL8-08); GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
+- 1.2.0, 2026-10-18: D8-16 added (skaters play Kirtled: the owner approved the trick for each move word); built in `lib/dance8/harmony/skateTricks.ts`.

@@ -370,6 +370,10 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
     note: "Decided by the owner 2026-10-18 (one study had placed Dance8 under the Pulse8 account)." },
   { id: "D8-14", domain: "DANCE8", status: "LOCKED", impl: "n/a", sources: [...s("system-architecture", 3), ...s("chronolayer", 10)],
     statement: "Dance8 owns motion, scene and render jobs and approved media derivatives; it never reads property operations, tenant data or canonical media masters." },
+  { id: "D8-16", domain: "DANCE8", status: "LOCKED", impl: "built", sources: [...s("kirtled", 2, 3), ...s("triadic-dance8", 10, 11)],
+    where: ["lib/canon/vocab.ts#KIRTLED_SKATE_TRICKS", "lib/dance8/harmony/skateTricks.ts"],
+    statement: "Skaters play Kirtled in song-following mode: one trick per chord change, landing on it. RA is a floor carve, LA a kickflip sweep, KA a handplant roll or 180/360 spin, TI (and a leap too far for the tempo) a big ollie leap, and a held chord a board-assisted freeze. Tricks stay slower than the beat (D8-03), so faster changes show as floor light only; tricks never make sound (performance mode is D8-08).",
+    note: "Decided by the owner 2026-10-18." },
   { id: "D8-15", domain: "DANCE8", status: "PROPOSED", impl: "n/a", sources: s("chronolayer", 12, 15),
     statement: "BeatLens music-video UI (audio segments, pattern library, performers, camera and stage controls, budget-aware export) with an editable style recipe: pattern family, layer, location, performer count, intensity, camera grammar, lighting, palette, timing, aspect ratio, quality." },
 

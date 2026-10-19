@@ -29,6 +29,8 @@ import { validateCueMap } from "./authoring/validateCueMap";
 import type { HarmonyTimeline } from "./contracts/harmony";
 import { FRAME_SIZE, type AspectRatio, type CueMap, type VisualClip, type VisualClipLibrary } from "./contracts/scene";
 import { planKirtled } from "./harmony/pathSolver";
+import { skateTricks, trickClipShape } from "./harmony/skateTricks";
+import { KIRTLED_SKATE_TRICKS } from "../canon/vocab";
 
 const logOf = (c: Ctx) => c.log ?? ((l: string) => console.log(l));
 const nowOf = (c: Ctx) => (c.now ? c.now() : new Date().toISOString());
@@ -44,6 +46,7 @@ export interface SongPaths {
   clips: string;
   clipDir: string;
   briefs: string;
+  tricks: string;
   readme: string;
   standIn: string;
 }
@@ -55,7 +58,7 @@ export function songPaths(c: Ctx, trackId: string): SongPaths {
     dir,
     analysis: join(c.library, trackId, "analysis", `${trackId}.analysis.json`),
     cuemap: f("cuemap.json"), harmony: f("harmony.json"), kirtled: f("kirtled.json"),
-    clips: f("clips.json"), clipDir: join(dir, "clips"), briefs: f("briefs.json"), readme: join(dir, "README.txt"),
+    clips: f("clips.json"), clipDir: join(dir, "clips"), briefs: f("briefs.json"), tricks: f("tricks.json"), readme: join(dir, "README.txt"),
     standIn: join(dir, "clips", `${STAND_IN_CLIP_ID}.mp4`),
   };
 }
@@ -76,6 +79,30 @@ export interface PlanOptions {
   final?: boolean;
   /** Rebuild the cue map, harmony and clip library even if they exist. */
   replace?: boolean;
+  /** Skaters play Kirtled in this scene (canon D8-16): write the trick timeline and trick shots. */
+  skate?: string;
+}
+
+/** One shot per trick the song uses that has no clip yet in the skate scene. */
+export function trickBriefs(
+  tricks: { trick: string; atSec: number }[], sceneId: string, lib: VisualClipLibrary, map: Pick<CueMap, "aspect" | "tempo">, g: (typeof GENERATORS)[string],
+): ShotBrief[] {
+  const barSec = Math.max(...map.tempo.map((t) => (t.beatsPerBar * 60) / t.bpm));
+  const shape = trickClipShape(barSec);
+  const aspect = map.aspect;
+  const have = new Set(lib.clips.filter((c) => c.trick && c.sceneId === sceneId && c.approvalStatus !== "retired").map((c) => c.trick!.trick));
+  const uses = new Map<string, number>();
+  for (const t of tricks) uses.set(t.trick, (uses.get(t.trick) ?? 0) + 1);
+  return KIRTLED_SKATE_TRICKS.filter((t) => uses.has(t.trick) && !have.has(t.trick)).map((t) => ({
+    id: `trick-${t.trick}-${sceneId}`, kind: "trick", trick: t.trick, cueId: "", section: "", sceneId, camera: "wide", voice: null, lyric: null,
+    songStartSec: 0, songEndSec: 0, generateSec: Math.min(g.maxSec, Math.max(g.minSec, Math.ceil(shape.minClipSec))), keyframesSec: [shape.landingSec], aspect, cropTo: null,
+    generator: g.id, resolution: g.resolution, referenceSetId: null, mouth: "hidden",
+    notes: [
+      `${t.label}. Used ${uses.get(t.trick)} times in this song (canon D8-16).`,
+      `One skater, full body in frame, on the ${sceneId} set. The board lands at ${shape.landingSec} s (one bar in) and the clip runs at least ${shape.minClipSec} s; trim it so it does, or give the real landing time with approve-clip --landing.`,
+      "Wide shot, no face close-up, no text or logos.",
+    ],
+  }));
 }
 
 export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPaths {
@@ -115,6 +142,15 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   writeJson(p.kirtled, kirtled);
   const g = o.final ? GENERATORS["kling-4.0"] : GENERATORS["kling-4.0-flash"];
   const briefs = shotBriefs(map, lib, g);
+  let trickNote: string | null = null;
+  if (o.skate) {
+    if (!kirtled.plan) throw new Error("the Kirtled plan did not solve, so there are no tricks; see the harmony file");
+    const tr = skateTricks(kirtled.plan);
+    writeJson(p.tricks, { sceneId: o.skate, ...tr });
+    briefs.push(...trickBriefs(tr.tricks, o.skate, lib, map, g));
+    trickNote = `${tr.tricks.length} skate tricks on chord changes in scene ${o.skate} (${tr.skipped} faster changes left to the floor lights)`;
+    if (!map.cues.some((q) => q.sceneId === o.skate)) log(`note: no section uses scene ${o.skate} yet; set sceneId to ${o.skate} where the skaters play`);
+  }
   writeJson(p.briefs, briefs);
 
   // Mouth tracks for every approved take that doesn't have one yet.
@@ -145,8 +181,9 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     `  ${basename(p.harmony)}  chords per change${kept.includes(basename(p.harmony)) ? " (kept: yours)" : " (new draft)"}`,
     `  ${basename(p.kirtled)}  Kirtled floor plan (light cues only, no sound)`,
     `  ${basename(p.clips)}    footage library${kept.includes(basename(p.clips)) ? " (kept: yours)" : " (stand-in only)"}`,
-    `  ${basename(p.briefs)}   ${briefs.length} shots still to generate for ${g.label} (${lyricIdx} lip sync, ${briefs.length - lyricIdx} b-roll)`,
+    `  ${basename(p.briefs)}   ${briefs.length} shots still to generate for ${g.label} (${lyricIdx} lip sync, ${briefs.filter((b) => b.kind === "trick").length} tricks, ${briefs.filter((b) => b.kind === "broll").length} b-roll)`,
     ...mouths.map((m) => `  ${m}   mouth openness, 24 fps`),
+    ...(trickNote ? [`  ${basename(p.tricks)}   ${trickNote}`] : []),
     "",
     "Check by ear",
     ...draft.notes.map((n) => `  - ${n}`),
@@ -161,7 +198,8 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
 
   log(`plan: ${p.dir}`);
   log(`${map.cues.length} sections, ${map.vocals?.length ?? 0} sung phrases, ${harmony.events.length} chord changes, ${kirtled.plan?.moves.length ?? 0} Kirtled moves`);
-  log(`${briefs.length} shots still to generate (${lyricIdx} lip sync, ${briefs.length - lyricIdx} b-roll)`);
+  if (trickNote) log(trickNote);
+  log(`${briefs.length} shots still to generate (${lyricIdx} lip sync, ${briefs.filter((b) => b.kind === "trick").length} tricks, ${briefs.filter((b) => b.kind === "broll").length} b-roll)`);
   if (kept.length) log(`kept your ${kept.join(", ")} (use --replace to rebuild ${kept.length > 1 ? "them" : "it"})`);
   if (issues.length) log(`warning: the cue map has ${issues.length} problem(s); see README.txt`);
   for (const n of draft.notes.slice(0, 3)) log(`note: ${n}`);
@@ -204,6 +242,7 @@ export function clipFromBrief(
     source: { type: "ai_generated", generator: b.generator, ...(b.referenceSetId ? { referenceSetId: b.referenceSetId } : {}), promptId: b.id, createdAt, license: "proprietary" },
     drift: { status: "unknown", driftScore: null }, approvalStatus: "draft",
     ...(b.kind === "lip_sync" ? { mouthVisible: true, lipSync: { voice: b.voice!, songStartSec: b.songStartSec } } : b.mouth === "hidden" ? { mouthVisible: false } : {}),
+    ...(b.kind === "trick" && b.trick ? { trick: { trick: b.trick, landingSec: Math.min(b.keyframesSec[0] ?? 0, Math.round((f.durationSec / 2) * 1000) / 1000) } } : {}),
   } as VisualClip;
 }
 
@@ -255,10 +294,14 @@ export function ingestClips(c: Ctx, trackId: string, folder: string): VisualClip
     const clip = clipFromBrief(b, { id, file, durationSec: info.durationSec, aspect }, nowOf(c));
     lib.clips = [...lib.clips.filter((x) => x.id !== id), clip].sort((x, y) => x.id.localeCompare(y.id));
     added.push(clip);
-    log(`added ${id} (${b.kind === "lip_sync" ? `lip sync, ${b.voice} from ${b.songStartSec} s` : "b-roll"}, ${info.durationSec} s) as a draft`);
+    log(`added ${id} (${b.kind === "lip_sync" ? `lip sync, ${b.voice} from ${b.songStartSec} s` : b.kind === "trick" ? `${b.trick}, landing at ${clip.trick?.landingSec} s` : "b-roll"}, ${info.durationSec} s) as a draft`);
   }
   writeJson(p.clips, lib);
-  const left = shotBriefs(map, lib, GENERATORS["kling-4.0-flash"]);
+  const left: ShotBrief[] = shotBriefs(map, lib, GENERATORS["kling-4.0-flash"]);
+  if (existsSync(p.tricks)) {
+    const tr = readJson<{ sceneId: string; tricks: { trick: string; atSec: number }[] }>(p.tricks);
+    left.push(...trickBriefs(tr.tricks, tr.sceneId, lib, map, GENERATORS["kling-4.0-flash"]));
+  }
   writeJson(p.briefs, left);
   if (skipped) log(`${skipped} video file(s) didn't match a shot id and were left alone`);
   log(`${added.length} clip(s) added; ${lib.clips.filter((x) => x.approvalStatus === "draft").length} waiting for your check; ${left.length} shots still to generate`);
@@ -267,11 +310,18 @@ export function ingestClips(c: Ctx, trackId: string, folder: string): VisualClip
 }
 
 /** A person's check of a clip. The drift score is theirs; nothing here guesses it. */
-export function setClipStatus(c: Ctx, trackId: string, clipId: string, status: "approved" | "retired", drift?: number): VisualClip {
+export function setClipStatus(
+  c: Ctx, trackId: string, clipId: string, status: "approved" | "retired", drift?: number, landingSec?: number,
+): VisualClip {
   const p = songPaths(c, trackId);
   const lib = readJson<VisualClipLibrary>(p.clips);
   const clip = lib.clips.find((x) => x.id === clipId);
   if (!clip) throw new Error(`no clip "${clipId}" in ${basename(p.clips)}`);
+  if (landingSec !== undefined) {
+    if (!clip.trick) throw new Error(`${clipId} is not a trick clip; --landing is for trick clips`);
+    if (!(landingSec >= 0 && landingSec < clip.durationSec)) throw new Error(`--landing must be between 0 and ${clip.durationSec} s`);
+    clip.trick.landingSec = Math.round(landingSec * 1000) / 1000;
+  }
   if (status === "approved") {
     if (drift === undefined || !(drift >= 0 && drift <= 1)) throw new Error("approve-clip needs --drift with your score from 0 (matches the references) to 1 (unrecognisable)");
     const map = existsSync(p.cuemap) ? readJson<CueMap>(p.cuemap) : null;

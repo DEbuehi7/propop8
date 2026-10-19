@@ -71,6 +71,7 @@ export function candidatesFor(
         c.sceneId === sceneId &&
         c.camera === camera &&
         !c.lipSync &&
+        !c.trick &&
         !(opts.hideMouth && c.mouthVisible) &&
         isEligible(c, map),
     )
@@ -78,6 +79,13 @@ export function candidatesFor(
 }
 
 /** Eligible lip-synced clips for one scene, in stable id order. */
+/** Eligible skate-trick clips for one scene, in stable id order. */
+export function trickClipsFor(library: VisualClipLibrary, map: Pick<CueMap, "aspect" | "maxDriftScore">, sceneId: string): VisualClip[] {
+  return library.clips
+    .filter((c) => c.sceneId === sceneId && !!c.trick && isEligible(c, map))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export function lipSyncedFor(
   library: VisualClipLibrary,
   map: Pick<CueMap, "aspect" | "maxDriftScore">,
@@ -129,6 +137,9 @@ export function validateCueMap(
       if (c.mouthVisible === false) {
         add("lip_sync_invalid", `${p}.mouthVisible`, "a lip-synced clip shows a mouth; mouthVisible cannot be false");
       }
+    }
+    if (c.trick && !(typeof c.trick.landingSec === "number" && c.trick.landingSec >= 0 && c.trick.landingSec < c.durationSec)) {
+      add("invalid_number", `${p}.trick.landingSec`, "the landing must be inside the clip (0 <= landingSec < durationSec)");
     }
     if (c.approvalStatus === "approved") {
       if (c.drift.status !== "known" || c.drift.driftScore === null) {

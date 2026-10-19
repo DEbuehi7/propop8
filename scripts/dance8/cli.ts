@@ -3,6 +3,7 @@
  *
  *   npm run stuttr -- analyze cloyne        (Stuttr measures the stems first)
  *   npm run dance8 -- plan cloyne --key Eb
+ *   npm run dance8 -- plan cloyne --key Eb --skate breakyard_plaza   (skaters play Kirtled, canon D8-16)
  *   npm run dance8 -- clips cloyne ~/Downloads
  *   npm run dance8 -- approve-clip cloyne broll-intro-drone_wide --drift 0.1
  *   npm run dance8 -- retire-clip cloyne broll-intro-drone_wide
@@ -24,16 +25,16 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
 const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
-  plan <trackId> [--key Eb] [--aspect 9:16] [--final] [--replace]
+  plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--final] [--replace]
   clips <trackId> <folder>
-  approve-clip <trackId> <clipId> --drift <0-1>
+  approve-clip <trackId> <clipId> --drift <0-1> [--landing <sec>]
   retire-clip <trackId> <clipId>`;
 
 try {
@@ -42,7 +43,7 @@ try {
       if (!a1) throw new Error("plan needs a track id");
       const aspect = flag("aspect") as AspectRatio | undefined;
       if (aspect && !(aspect in FRAME_SIZE)) throw new Error(`--aspect must be one of ${Object.keys(FRAME_SIZE).join(", ")}`);
-      planTrack(ctx, a1, { key: flag("key"), aspect, final: has("final"), replace: has("replace") });
+      planTrack(ctx, a1, { key: flag("key"), aspect, final: has("final"), replace: has("replace"), skate: flag("skate") });
       break;
     }
     case "clips":
@@ -53,7 +54,8 @@ try {
     case "retire-clip": {
       if (!a1 || !a2) throw new Error(`${cmd} needs a track id and a clip id`);
       const d = flag("drift");
-      setClipStatus(ctx, a1, a2, cmd === "approve-clip" ? "approved" : "retired", d === undefined ? undefined : Number(d));
+      const l = flag("landing");
+      setClipStatus(ctx, a1, a2, cmd === "approve-clip" ? "approved" : "retired", d === undefined ? undefined : Number(d), l === undefined ? undefined : Number(l));
       break;
     }
     default:

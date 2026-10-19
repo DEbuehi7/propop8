@@ -436,6 +436,19 @@ export const KIRTLED_MOVES = [
   { word: null, move: "FREEZE", effect: "Hold chord/pads and suppress drums until release", builtInSongFollowing: false },
 ] as const;
 
+/**
+ * Skaters play Kirtled in song-following mode (D8-16, decided by the owner
+ * 2026-10-18): one trick per chord change, landing on it. Tricks follow the
+ * master recording; they never make sound (that is performance mode, D8-08).
+ */
+export const KIRTLED_SKATE_TRICKS = [
+  { cue: "RA", trick: "floor_carve", label: "Floor carve to the next triangle" },
+  { cue: "LA", trick: "kickflip_sweep", label: "Kickflip sweep" },
+  { cue: "KA", trick: "handplant_roll", label: "Handplant roll or a 180/360 spin" },
+  { cue: "TI", trick: "ollie_leap", label: "Big ollie leap (key change; also a leap too far for the tempo)" },
+  { cue: "HOLD", trick: "board_freeze", label: "Board-assisted freeze (the chord is held)" },
+] as const;
+
 export const KIRTLED_RESERVED = [
   { word: "BU", move: "BEAT" }, { word: "MU", move: "WATER" }, { word: "SI", move: "LIGHT" }, { word: "VE", move: "SKY" },
 ] as const;

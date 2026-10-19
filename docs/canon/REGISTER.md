@@ -1,8 +1,8 @@
-# AIM canon register (v1.1.0)
+# AIM canon register (v1.2.0)
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
-183 entries from 20 studies: CONFLICT 0 · OPEN 9 · LOCKED 117 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
+184 entries from 20 studies: CONFLICT 0 · OPEN 9 · LOCKED 118 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
 
 ## Coverage by study
 
@@ -26,8 +26,8 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | Plate8 Entertainment Suite, Claude Integration & Responsive UI (`plate8-suite`) | dad40a17 | 8 | GOV-14, GOV-17, ST8-02, PL8-01, PL8-02, PL8-03, PL8-04, PL8-05 |
 | California Multifamily Infrastructure, Adaptive Reuse and Phased Development (`ca-infrastructure`) | e1cd2318 | 10 | GOV-26, INF-01, INF-02, INF-03, INF-04, INF-05, INF-06, INF-07, INF-08, LET-07 |
 | Robotic Ecology, Triadic Genome & Systems Integration (`robotic-ecology`) | e1ed3f99 | 17 | P8O-05, TRI-03, ROB-01, ROB-02, ROB-03, ROB-04, ROB-08, ROB-09 |
-| Triadic Genome & Responsive Architecture: Dance8 + Skate-Dance Fusion (`triadic-dance8`) | f9af927e | 14 | TRI-01, TRI-02, TRI-04, TRI-08, TRI-09, TRI-11, TRI-12, D8-01, D8-03, D8-11, D8-12 |
-| Kirtled and Dance8 Spatial Music Integration (`kirtled`) | fece7f38 | 6 | D8-06, D8-07, D8-08, D8-09, D8-10 |
+| Triadic Genome & Responsive Architecture: Dance8 + Skate-Dance Fusion (`triadic-dance8`) | f9af927e | 14 | TRI-01, TRI-02, TRI-04, TRI-08, TRI-09, TRI-11, TRI-12, D8-01, D8-03, D8-11, D8-12, D8-16 |
+| Kirtled and Dance8 Spatial Music Integration (`kirtled`) | fece7f38 | 6 | D8-06, D8-07, D8-08, D8-09, D8-10, D8-16 |
 
 ## OPEN
 
@@ -150,6 +150,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | D8-12 | DANCE8 | Triadic World films follow a 90/10 contract: 90% native world, 10% human-facing film convention. The planet is the performer; no generic cyberpunk armour, unexplained humanoids or arbitrary geometry. | n/a |  | triadic-dance8 p9 |
 | D8-13 | DANCE8 | Dance8 deploys on its own Cloudflare account, separate from Pulse8 and from PropOps8's Netlify site. Its code stays in this repo until it deploys. *Decided by the owner 2026-10-18 (one study had placed Dance8 under the Pulse8 account).* | not_built |  | system-architecture p3 |
 | D8-14 | DANCE8 | Dance8 owns motion, scene and render jobs and approved media derivatives; it never reads property operations, tenant data or canonical media masters. | n/a |  | system-architecture p3; chronolayer p10 |
+| D8-16 | DANCE8 | Skaters play Kirtled in song-following mode: one trick per chord change, landing on it. RA is a floor carve, LA a kickflip sweep, KA a handplant roll or 180/360 spin, TI (and a leap too far for the tempo) a big ollie leap, and a held chord a board-assisted freeze. Tricks stay slower than the beat (D8-03), so faster changes show as floor light only; tricks never make sound (performance mode is D8-08). *Decided by the owner 2026-10-18.* | built | lib/canon/vocab.ts#KIRTLED_SKATE_TRICKS; lib/dance8/harmony/skateTricks.ts | kirtled p2; kirtled p3; triadic-dance8 p10; triadic-dance8 p11 |
 | STU-01 | STUTTR | Preserve the highest-quality source: native Suno stems or the original WAV first. Converting a lossy file never recovers detail. Keep an untouched master and render stems to WAV for editing. | partial | lib/stuttr/library.ts; lib/stuttr/commands.ts | suno-stems p1; suno-stems p3 |
 | STU-02 | STUTTR | Rights gate before public or commercial use: music licences, performer likeness rights and platform terms. Suno features vary by tier and must be checked in the account. | n/a |  | suno-stems p3; suno-stems p5 |
 | STU-05 | STUTTR | Stuttr is content, culture and marketing, never building control or life-safety AI. Media on a facade is an overlay that respects historic geometry and keeps windows, sightlines, balconies and egress clear. | n/a |  | sears-la p10; mural-transit p5; suno-stems p5 |
