@@ -32,7 +32,7 @@ const txt = s => ev('(document.querySelector(' + JSON.stringify(s) + ')||{}).tex
   ev('LOAD({plate:{pts:0,earned:9999,fmt:"classic"}})'); ev('go("home");go("plate")'); await wait(200);
   const hBefore = ev('document.querySelectorAll("#pHist .kv").length');
   const leftBefore = parseInt(txt('#pFoot'));
-  ev('document.querySelectorAll("#pPlayPane .chip[data-fmt]")[1].click()'); await wait(180);
+  ev('[...document.querySelectorAll("#pPlayPane .chip[data-fmt]")].find(b=>b.getAttribute("aria-pressed")!=="true").click()'); await wait(180);
   ok('#3b switching style closes the plate into history', ev('document.querySelectorAll("#pHist .kv").length') === hBefore + 1);
   ok('#3c switching style costs one plate', parseInt(txt('#pFoot')) === leftBefore - 1, leftBefore + ' -> ' + parseInt(txt('#pFoot')));
 

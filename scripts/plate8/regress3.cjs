@@ -155,8 +155,11 @@ const J = s => JSON.parse(ev(s));
   // the word list came from web text: slurs, profanity and porn-spam tokens were taken out.
   // Stored as hashes so this file does not spell them.
   const BLOCK = new Set(["120f6e5b4ea3","8f5083e3e5c7","9915ba2d8222","17bde8b40646","f9d0d9b18ae9","98b52c4b6b7d","e7b98c6aa5b9","16ea09fc78ca","158869a97379","886d51e97ad7","70aafb426695","0be9b885f4a3","c1b4ed05397d","a40ccba874d2","1802d081455e","96c91fa84782","6ac3c336e409","522788b65f01","b690cdbe59f1","85fc17f7069a","45fb7c3b72b6","986c99004163","566f532d486c","517ae3f73216","dd92623b0a4b","796e43a5a8cd","94a2b576a9f5","ad505b0be8a4","99e367bcad7a","0f28c4960d96","13a465fc6616","1600725e92dc","594810adcbee","7bc671151cbf","b81d6dc25832","affc87570066","28f8258878dc","805c0cdff876","8fe1e9c2870c","6556c1a58444","066e6872d931","c2c3b68b4883","11cf8376a157","6dbe0f85a074","9ae315a94e42","937d56e49744","4140197ec795","e99d55248f67","7e85c676fd97","0d335db1f762","d75a838dc758","262f86db0ac7","71ace2cfa542","8c5c04391361","0033728f0fbc","ac3180d2bc33","cd2eb0837c9b","db39009fdacb","f5e1107953d7","9ddcab3ac361","dcd2ee35085f","b9c4682d9f63","6ccffa4977d4","09cc1b93ceee","c183fffb6c55","64e8abab66c8","dc10e452bd36","d5273ab90605"]);
-  const encD = src.match(/const DICT=\(\(\)=>\{const enc="([^"]+)"/)[1], DW = [];
-  { let prev = "", i = 0; while (i < encD.length) { const n = +encD[i]; i++; let t = ""; while (i < encD.length && (encD[i] < "0" || encD[i] > "9")) { t += encD[i]; i++ } const w = prev.slice(0, n) + t; DW.push(w); prev = w } }
+  // the accepted words (DICT) and the words plates are dealt from (DEAL7), both prefix-coded
+  const DW = [];
+  for (const re of [/const DICT=unpack\("([^"]+)"\)/, /const DEAL7=\[\.\.\.unpack\("([^"]+)"\)\]/]) {
+    const encD = src.match(re)[1];
+    let prev = "", i = 0; while (i < encD.length) { const n = +encD[i]; i++; let t = ""; while (i < encD.length && (encD[i] < "0" || encD[i] > "9")) { t += encD[i]; i++ } const w = prev.slice(0, n) + t; DW.push(w); prev = w } }
   const dictHits = DW.filter(w => BLOCK.has(require("crypto").createHash("sha256").update(w).digest("hex").slice(0, 12)));
   ok("the Plate dictionary carries no slurs, profanity or porn tokens", dictHits.length === 0 && DW.length > 10000, dictHits.length + " hits");
   ok('Late has a podcast scope', ev('!!document.getElementById("cbViz")'));
