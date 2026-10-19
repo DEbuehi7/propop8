@@ -318,33 +318,46 @@ export function timingCheck(sourceSec: number | null, takeSec: number | null): {
 
 /** Backing stems are cut to where someone is singing, plus this much on each side. */
 export const BACKING_PAD_SEC = 0.5;
-/** Quieter than this for at least SILENCE_MIN_SEC counts as silence (ffmpeg silencedetect). */
-export const SILENCE_DB = -45;
-export const SILENCE_MIN_SEC = 0.5;
+/**
+ * Singing is measured as average (RMS) loudness in 100 ms windows: louder than
+ * ACTIVE_DB for at least ACTIVE_MIN_SEC in a row. Faint bleed and single clicks
+ * (Suno stems often have both, around -50 dB) don't count, so they no longer
+ * stretch the span and cost credits.
+ */
+export const ACTIVE_WINDOW_SEC = 0.1;
+export const ACTIVE_DB = -40;
+export const ACTIVE_MIN_SEC = 0.3;
 /** ElevenLabs voice changer price used for estimates. */
 export const VOICE_CHANGER_CREDITS_PER_MIN = 1000;
 
 /**
- * The span of a stem that holds sound, from ffmpeg silencedetect output:
- * after a leading silence, up to a trailing silence, padded on both sides and
- * kept inside the file. Null when the whole file is silent.
+ * The span of a stem that holds singing, from the RMS loudness (dBFS) of
+ * consecutive windows: from the first run of loud windows to the end of the
+ * last one, padded on both sides and kept inside the file. Gaps in the middle
+ * are kept. Null when nothing qualifies.
  */
-export function activeSpan(silencedetectLog: string, totalSec: number, padSec = BACKING_PAD_SEC): { startSec: number; endSec: number } | null {
-  const starts = [...silencedetectLog.matchAll(/silence_start:\s*(-?[\d.]+)/g)].map((m) => Number(m[1]));
-  const ends = [...silencedetectLog.matchAll(/silence_end:\s*([\d.]+)/g)].map((m) => Number(m[1]));
-  let start = 0;
-  let end = totalSec;
-  if (starts.length && starts[0] <= 0.01) {
-    if (!ends.length) return null; // silent from the start and never ends
-    start = ends[0];
+export function activeSpan(
+  windowDb: number[], windowSec: number, totalSec: number,
+  o: { thresholdDb?: number; minRunSec?: number; padSec?: number } = {},
+): { startSec: number; endSec: number } | null {
+  const thr = o.thresholdDb ?? ACTIVE_DB;
+  const minRun = Math.max(1, Math.round((o.minRunSec ?? ACTIVE_MIN_SEC) / windowSec));
+  const pad = o.padSec ?? BACKING_PAD_SEC;
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < windowDb.length; ) {
+    if (!(windowDb[i] > thr)) { i++; continue; }
+    let j = i;
+    while (j < windowDb.length && windowDb[j] > thr) j++;
+    if (j - i >= minRun) {
+      if (first < 0) first = i;
+      last = j;
+    }
+    i = j;
   }
-  const lastStart = starts.length ? starts[starts.length - 1] : null;
-  const lastEnd = ends.length ? ends[ends.length - 1] : null;
-  // A trailing silence has a start after the last end (or no end at all).
-  if (lastStart !== null && (lastEnd === null || lastStart > lastEnd || lastEnd >= totalSec - 0.01)) end = lastStart;
-  if (end <= start) return null;
+  if (first < 0) return null;
   const r = (x: number) => Math.round(x * 1000) / 1000;
-  return { startSec: r(Math.max(0, start - padSec)), endSec: r(Math.min(totalSec, end + padSec)) };
+  return { startSec: r(Math.max(0, first * windowSec - pad)), endSec: r(Math.min(totalSec, last * windowSec + pad)) };
 }
 
 export function findTrack(m: LibraryManifest, trackId: string): LibraryTrack | undefined {
