@@ -16,15 +16,21 @@
  *   npm run stuttr -- prep-voice cloyne --from backing_vocals
  *   npm run stuttr -- add-voice cloyne M ~/Downloads/cloyne-m.mp3 --from backing_vocals
  *
+ * Faster: convert does prep-voice, the ElevenLabs voice changer and add-voice
+ * in one step. It needs ELEVENLABS_API_KEY in your shell (never printed).
+ *   npm run stuttr -- convert cloyne Stuttr
+ *   npm run stuttr -- convert cloyne Stuttr M Ja Bo --from backing_vocals
+ *
  * Options: --library <folder> (default ~/StuttrLibrary, or $STUTTR_LIBRARY),
  * --id, --title, --suno-plan, --dry (add); --from vocals|backing_vocals
- * (prep-voice, add-voice, approve, reject, mouth); --full (prep-voice: don't cut the
- * backing stem to its sung span); --lang (default en); --no-backing,
- * --suno-backing (mix).
+ * (prep-voice, add-voice, approve, reject, mouth, convert); --full (prep-voice,
+ * convert: don't cut the backing stem to its sung span); --lang (default en);
+ * --no-backing, --suno-backing (mix); --dry, --format mp3_44100_192|mp3_44100_128
+ * (convert).
  */
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { addSong, addVoice, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
+import { addSong, addVoice, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
 
 const argv = process.argv.slice(2);
@@ -33,7 +39,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -48,10 +54,11 @@ const usage = `Stuttr song library (${ctx.library})
   add-voice <trackId> <voice> <file> [--lang en] [--from backing_vocals]
   mix <trackId> <voice> [--lang en] [--no-backing | --suno-backing]
   approve|reject <trackId> <voice> [--lang en] [--from backing_vocals]
-  mouth <trackId> <voice> [--lang en] [--from backing_vocals]`;
+  mouth <trackId> <voice> [--lang en] [--from backing_vocals]
+  convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
 
-try {
+async function main(): Promise<void> {
   switch (cmd) {
     case "add":
       if (!a1) throw new Error("add needs a song folder");
@@ -84,11 +91,19 @@ try {
       if (!a1 || !a2) throw new Error("mouth needs a track id and a voice name");
       mouthTrack(ctx, a1, a2, flag("lang") ?? "en", fromFlag());
       break;
+    case "convert":
+      if (!a1 || !a2) throw new Error("convert needs a track id and at least one voice name");
+      await convertVoices(ctx, {
+        trackId: a1, voices: positional.slice(2), from: fromFlag(), lang: flag("lang"), full: has("full"), format: flag("format"), dry: has("dry"),
+      });
+      break;
     default:
       console.log(usage);
       if (cmd) process.exitCode = 1;
   }
-} catch (e) {
+}
+
+main().catch((e) => {
   console.error(`stuttr: ${(e as Error).message}`);
   process.exitCode = 1;
-}
+});
