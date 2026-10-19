@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import type { SongAnalysis } from "../../lib/stuttr/analysis";
 import { lyricGroups, lyricLines, parseKey, planSong, spreadLines, sungRuns } from "../../lib/dance8/authoring/plan";
 import { validateCueMap } from "../../lib/dance8/authoring/validateCueMap";
+import { planCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { aspectOf, briefForFile, ingestClips, planTrack, setClipStatus, songPaths, standInClip } from "../../lib/dance8/pipeline";
 import { addSong, analyzeTrack, type Ctx } from "../../lib/stuttr/commands";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
@@ -171,6 +172,23 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     assert.deepEqual(ok.drift, { status: "known", driftScore: 0.1, method: "human_review", checkedAt: "2026-10-18T00:00:00.000Z" });
     const lib = JSON.parse(readFileSync(p.clips, "utf8")) as VisualClipLibrary;
     assert.deepEqual(validateCueMap(JSON.parse(readFileSync(p.cuemap, "utf8")), lib).issues, []);
+
+    // Skaters play Kirtled in the chorus (canon D8-16): C -> Am at bar 8 is RA, a floor carve.
+    planTrack(c, "synthetic-song", { key: "C", skate: "chorus" });
+    const tr = JSON.parse(readFileSync(p.tricks, "utf8")) as { sceneId: string; tricks: { atBar: number; atSec: number; trick: string }[] };
+    assert.equal(tr.sceneId, "chorus");
+    assert.deepEqual(tr.tricks.map((t) => [t.atBar, t.trick]), [[8, "floor_carve"]]);
+    const tb = (JSON.parse(readFileSync(p.briefs, "utf8")) as ShotBrief[]).find((b) => b.kind === "trick")!;
+    assert.deepEqual([tb.id, tb.trick, tb.keyframesSec[0], tb.generateSec, tb.mouth], ["trick-floor_carve-chorus", "floor_carve", 2, 4, "hidden"]);
+    mk(`${tb.id}.mp4`, tb.generateSec);
+    const [trickClip] = ingestClips(c, "synthetic-song", dl);
+    assert.deepEqual(trickClip.trick, { trick: "floor_carve", landingSec: 2 });
+    assert.throws(() => setClipStatus(c, "synthetic-song", lip.id, "approved", 0.1, 1), /not a trick clip/);
+    setClipStatus(c, "synthetic-song", trickClip.id, "approved", 0.1, 1.9);
+    const lib2 = JSON.parse(readFileSync(p.clips, "utf8")) as VisualClipLibrary;
+    assert.equal(lib2.clips.find((x) => x.id === trickClip.id)!.trick!.landingSec, 1.9, "your measured landing is kept");
+    const cut = planCuts(JSON.parse(readFileSync(p.cuemap, "utf8")) as CueMap, lib2, { tricks: tr.tricks }).cuts.find((x) => x.reason === "skate_trick")!;
+    assert.deepEqual([cut.startBar, cut.clipId, cut.clipInSec], [8, trickClip.id, 1.9]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

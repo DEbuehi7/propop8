@@ -79,6 +79,18 @@ export interface VisualClip {
    * lines up with the song, which keeps the sync exact in every variation.
    */
   lipSync?: LipSyncLock;
+  /**
+   * Present on skate-trick clips (canon D8-16): the trick lands at landingSec
+   * into the file. The planner places the clip so that frame falls exactly on
+   * the chord change the trick plays. Trick clips are never used as free
+   * footage.
+   */
+  trick?: TrickLock;
+}
+
+export interface TrickLock {
+  trick: string; // floor_carve, kickflip_sweep, handplant_roll, ollie_leap, board_freeze
+  landingSec: number;
 }
 
 export interface LipSyncLock {
@@ -158,6 +170,7 @@ export type CutReason =
   | "cue_rotation"
   | "shortened_to_clip"
   | "lip_sync"
+  | "skate_trick"
   | "fallback_no_match";
 
 /** One line of the edit decision list. */

@@ -25,7 +25,9 @@ export const ANTI_DRIFT_NOTES = [
 
 export interface ShotBrief {
   id: string;
-  kind: "lip_sync" | "broll";
+  kind: "lip_sync" | "broll" | "trick";
+  /** Trick shots only: which skate trick (canon D8-16); it must land at keyframesSec[0]. */
+  trick?: string;
   cueId: string;
   section: string;
   sceneId: string;

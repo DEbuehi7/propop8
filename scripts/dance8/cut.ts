@@ -13,6 +13,7 @@
  *   --font FILE       font for the "All characters are fictional and AI-generated." caption
  *   --no-caption      leave the caption off (drafts only; --approved always adds it)
  *   --lyrics          burn in the lyric line during each sung phrase (uses vocals[].text)
+ *   --tricks FILE     land skate-trick clips on their chord changes (tricks.json from plan --skate)
  *   --edl FILE        also write a CMX 3600 EDL (open the cut in Resolve/Premiere)
  *   --briefs draft|final   list the shots still to generate, sized for
  *                     Kling 4.0 Flash (draft) or Kling 4.0 (final); --briefs-out FILE saves JSON
@@ -40,7 +41,7 @@ const FONT_GUESSES = [
 ];
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out"]);
+const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out", "--tricks"]);
 const flag = (name: string) => argv.includes(name);
 const opt = (name: string) => {
   const i = argv.indexOf(name);
@@ -58,7 +59,9 @@ const map = JSON.parse(readFileSync(mapPath, "utf8")) as CueMap;
 const lib = JSON.parse(readFileSync(libPath, "utf8")) as VisualClipLibrary;
 const seed = opt("--seed") === undefined ? 0 : Number(opt("--seed"));
 const approved = flag("--approved");
-const plan = planCuts(map, lib, { requireApproved: approved, seed });
+const tricksPath = opt("--tricks");
+const tricks = tricksPath ? (JSON.parse(readFileSync(tricksPath, "utf8")) as { tricks: { atSec: number; trick: string }[] }).tricks : undefined;
+const plan = planCuts(map, lib, { requireApproved: approved, seed, tricks });
 
 if (!plan.ok) {
   console.error("Cue map did not validate:");

@@ -21,6 +21,7 @@ import {
   lipSyncedFor,
   validateCueMap,
   type CueMapIssue,
+  trickClipsFor,
 } from "../authoring/validateCueMap";
 
 export interface CutPlan {
@@ -34,6 +35,12 @@ export interface PlanOptions {
   requireApproved?: boolean;
   /** Whole number. Same seed + same inputs -> same cuts. 0 = no reshuffle. */
   seed?: number;
+  /**
+   * Skate tricks to land (canon D8-16), bar-clock seconds, e.g. from
+   * skateTricks(). A bar holding a trick uses an approved trick clip of that
+   * trick and scene, placed so its landing frame falls on the trick.
+   */
+  tricks?: { atSec: number; trick: string }[];
 }
 
 const EPS = 1e-9;
@@ -76,6 +83,24 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
   const useCount = new Map<string, number>();
   const cursor = new Map<string, number>(); // clipId -> next unused second
   const cuts: Cut[] = [];
+
+  // Skate tricks (canon D8-16): the trick clip for a bar, placed so its
+  // landing frame falls on the trick. Never one showing a mouth during vocals.
+  const trickCutAt = (cue: CueMap["cues"][number], b: number): { clip: VisualClip; clipInSec: number } | null => {
+    if (!opts.tricks?.length || b >= cue.endBar) return null;
+    const s0 = secs(b);
+    const s1 = secs(b + 1);
+    const t = opts.tricks.find((k) => k.atSec >= s0 - EPS && k.atSec < s1 - EPS);
+    if (!t) return null;
+    const hide = anyVocal(b, b + 1);
+    const pool = trickClipsFor(library, map, cue.sceneId).filter((c) => {
+      const inSec = c.trick!.landingSec - (t.atSec - s0);
+      return c.trick!.trick === t.trick && !(hide && c.mouthVisible) && inSec >= -EPS && inSec + (s1 - s0) <= c.durationSec + EPS;
+    });
+    if (!pool.length) return null;
+    const clip = pool[shuffle(`tr|${cue.id}|${b}`) % pool.length];
+    return { clip, clipInSec: round6(Math.max(0, clip.trick!.landingSec - (t.atSec - s0))) };
+  };
 
   for (const cue of map.cues) {
     let bar = cue.startBar;
@@ -133,12 +158,37 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
         continue;
       }
 
+      // 1b) A skate trick in this bar: a trick clip whose landing frame falls
+      //     exactly on it, for one bar.
+      const tc = trickCutAt(cue, bar);
+      if (tc) {
+        cuts.push({
+          index: cuts.length,
+          cueId: cue.id,
+          section: cue.section,
+          startBar: bar,
+          endBar: bar + 1,
+          startSec,
+          endSec: secs(bar + 1),
+          sceneId: cue.sceneId,
+          camera: tc.clip.camera,
+          clipId: tc.clip.id,
+          clipInSec: tc.clipInSec,
+          reason: "skate_trick",
+        });
+        bar += 1;
+        shotInCue++;
+        continue;
+      }
+
       // 2) Free footage.
       const n = useCount.get(key) ?? 0;
       const clip = cands.length > 0 ? cands[(n + shuffle(key)) % cands.length] : fallback;
       useCount.set(key, n + 1);
 
       let bars = wantBars;
+      // Stop before a bar where a skate trick lands.
+      for (let b = bar + 1; b < bar + wantBars; b++) if (trickCutAt(cue, b)) { bars = b - bar; break; }
       // Shorten (never stretch) so the shot fits inside the clip's length.
       while (bars > 1 && secs(bar + bars) - startSec > clip.durationSec + EPS) bars--;
 
