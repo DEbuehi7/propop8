@@ -138,6 +138,13 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     if (r.status !== 0) log("note: could not make the black stand-in clip (is ffmpeg installed?)");
   }
 
+  // Notes about a draft only matter when that draft was written: a kept cue map
+  // already has your scenes and lyrics, a kept harmony your chords.
+  const mapKept = kept.includes(basename(p.cuemap));
+  const harmonyKept = kept.includes(basename(p.harmony));
+  const notes = draft.notes.filter((n) =>
+    /lyric|scene names|no backing vocals/.test(n) ? !mapKept : /no clear chord|no key given/.test(n) ? !harmonyKept : true);
+
   const kirtled = planKirtled(harmony, map.tempo, { requireApproved: false });
   writeJson(p.kirtled, kirtled);
   const g = o.final ? GENERATORS["kling-4.0"] : GENERATORS["kling-4.0-flash"];
@@ -186,7 +193,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     ...(trickNote ? [`  ${basename(p.tricks)}   ${trickNote}`] : []),
     "",
     "Check by ear",
-    ...draft.notes.map((n) => `  - ${n}`),
+    ...notes.map((n) => `  - ${n}`),
     ...(issues.length ? ["", "Cue map checks", ...issues.map((i) => `  - ${i.code} ${i.path}: ${i.message}`)] : []),
     "",
     "Next",
@@ -202,7 +209,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   log(`${briefs.length} shots still to generate (${lyricIdx} lip sync, ${briefs.filter((b) => b.kind === "trick").length} tricks, ${briefs.filter((b) => b.kind === "broll").length} b-roll)`);
   if (kept.length) log(`kept your ${kept.join(", ")} (use --replace to rebuild ${kept.length > 1 ? "them" : "it"})`);
   if (issues.length) log(`warning: the cue map has ${issues.length} problem(s); see README.txt`);
-  for (const n of draft.notes.slice(0, 3)) log(`note: ${n}`);
+  for (const n of notes.slice(0, 3)) log(`note: ${n}`);
   return p;
 }
 
