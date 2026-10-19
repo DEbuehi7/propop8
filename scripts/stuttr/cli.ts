@@ -9,6 +9,7 @@
  *   npm run stuttr -- mix cloyne Stuttr
  *   npm run stuttr -- approve cloyne Stuttr        (or: reject)
  *   npm run stuttr -- mouth cloyne Stuttr          (Dance8 mouth track, approved takes only)
+ *   npm run stuttr -- analyze cloyne               (tempo, bars, sung phrases, chords for Dance8)
  *
  * Shouts and harmonies in several voices: prep the backing stem once, convert
  * it in ElevenLabs once per voice, add each take, then mix; every backing take
@@ -30,7 +31,7 @@
  */
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { addSong, addVoice, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
+import { addSong, addVoice, analyzeTrack, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
 
 const argv = process.argv.slice(2);
@@ -55,7 +56,8 @@ const usage = `Stuttr song library (${ctx.library})
   mix <trackId> <voice> [--lang en] [--no-backing | --suno-backing]
   approve|reject <trackId> <voice> [--lang en] [--from backing_vocals]
   mouth <trackId> <voice> [--lang en] [--from backing_vocals]
-  convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]`;
+  convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]
+  analyze <trackId>`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
 
 async function main(): Promise<void> {
@@ -90,6 +92,10 @@ async function main(): Promise<void> {
     case "mouth":
       if (!a1 || !a2) throw new Error("mouth needs a track id and a voice name");
       mouthTrack(ctx, a1, a2, flag("lang") ?? "en", fromFlag());
+      break;
+    case "analyze":
+      if (!a1) throw new Error("analyze needs a track id");
+      analyzeTrack(ctx, a1);
       break;
     case "convert":
       if (!a1 || !a2) throw new Error("convert needs a track id and at least one voice name");
