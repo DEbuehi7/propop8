@@ -17,6 +17,7 @@ what it holds. Data classes are defined in [DATA_CLASSES.md](DATA_CLASSES.md).
 | Gumroad | Sells the kits and two calculators' downloads | Buyer details (held by Gumroad) | Confidential (Gumroad's side) | Gumroad dashboard; no PropOps8 key | Covered in refund terms |
 | GitHub | Source code | Code only. **The repository is public**: nothing confidential may be committed | Public | Repository settings | n/a |
 | Google (YouTube Data API) | Slate8 video search | Search terms only | Internal | `YOUTUBE_API_KEY` | No (personal rig) |
+| ElevenLabs | Stuttr voice changer: `npm run stuttr -- convert` runs on the owner's computer, uploads a prepared vocal stem, downloads the converted take | The owner's own song vocals and the converted takes. Never property, tenant or client data (canon GOV-15) | Internal (rights: canon STU-02, STU-04) | `ELEVENLABS_API_KEY` in the owner's shell only; not in Netlify | No (personal media, not client-facing) |
 | Cloudflare | Dance8's own account (canon D8-13); Pulse8 is a separate account | Media derivatives only | Internal | Not configured in this repo yet | No |
 | AI services (Anthropic Claude, claude.ai Pure project; research tools) | Development, documentation, research | Code, docs, synthetic data. Never tenant documents or client files (canon GOV-13) | Internal | Per tool | No |
 | n8n | Named in the privacy policy for workflow automation | **Not used by this repo's code.** Confirm whether any n8n workflow touches intake data | Unknown | n/a | Yes (check) |

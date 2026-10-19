@@ -5,14 +5,16 @@
 //  - A file already in the library with the same SHA-256 is skipped; a
 //    different file at the same path is refused, never overwritten.
 //  - library.json is written whole to a temp file, then renamed into place.
-//  - Nothing here uploads, and no secret is read.
-// ffmpeg (prep-voice, mix, mouth) is optional; without it those commands say so.
+//  - Only convert uploads (a prepared vocal, to ElevenLabs). It reads
+//    ELEVENLABS_API_KEY from the environment and never logs or saves it.
+// ffmpeg (prep-voice, mix, mouth, convert) is optional; without it those commands say so.
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
-  copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import {
   activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
@@ -21,6 +23,7 @@ import {
 } from "./library";
 import { buildMouthTrack } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
+import { convertSpeech, KEY_ENV, listVoices, matchVoice, OUTPUT_FORMATS, type Fetch, type OutputFormat } from "./elevenlabs";
 
 export interface Ctx {
   library: string;
@@ -376,4 +379,71 @@ export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", 
       `open on ${Math.round((100 * openish) / Math.max(1, track.open.length))}% of frames)`,
   );
   return rel;
+}
+
+export interface ConvertOptions {
+  trackId: string;
+  voices: string[];
+  from?: VoiceTake["sourceRole"];
+  lang?: string;
+  /** Backing vocals: send the whole stem instead of the sung span. */
+  full?: boolean;
+  format?: string;
+  /** Prepare and match voices, but convert nothing (no credits). */
+  dry?: boolean;
+  /** For tests; defaults to the ELEVENLABS_API_KEY environment variable. */
+  key?: string;
+  fetch?: Fetch;
+}
+
+/**
+ * convert: prep-voice, then the ElevenLabs voice changer once per voice, then
+ * add-voice for each result, in one step. Every voice is matched by name
+ * before any credits are spent; a voice that already has a take for this part
+ * and language is skipped.
+ */
+export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTake[]> {
+  const log = logOf(c);
+  const key = o.key ?? process.env[KEY_ENV];
+  if (!key) throw new Error(`${KEY_ENV} is not set; add your ElevenLabs API key to your shell profile (it is never printed)`);
+  const format = (o.format ?? OUTPUT_FORMATS[0]) as OutputFormat;
+  if (!OUTPUT_FORMATS.includes(format)) throw new Error(`--format must be one of ${OUTPUT_FORMATS.join(", ")}`);
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const from = o.from ?? "vocals";
+  const lang = (o.lang ?? "en").toLowerCase();
+  const f: Fetch = o.fetch ?? ((url, init) => fetch(url, init));
+
+  const wanted = [...new Map(o.voices.map((v) => [voiceKey(v), v] as const)).values()];
+  if (wanted.length === 0) throw new Error("convert needs at least one voice name");
+  const part = from === "vocals" ? "lead" : "backing";
+  const before = trackOrThrow(loadManifest(c), o.trackId);
+  const taken = (v: string) => before.voices.some((t) => voiceKey(t.voice) === voiceKey(v) && t.lang === lang && t.sourceRole === from);
+  for (const v of wanted.filter(taken)) log(`${v} already has a ${part} take (${lang}); skipped, no credits spent`);
+  const todo = wanted.filter((v) => !taken(v));
+  if (todo.length === 0) return [];
+
+  // Match every voice first, so a typo costs nothing.
+  const eleven = await listVoices(key, f);
+  const matched = todo.map((v) => ({ voice: v, el: matchVoice(eleven, v) }));
+
+  const rel = prepVoice(c, o.trackId, from, { full: o.full });
+  const audio = readFileSync(join(c.library, rel));
+  const prep = trackOrThrow(loadManifest(c), o.trackId).preps?.find((p) => p.role === from);
+  const perVoice = prep ? Math.ceil((prep.durationSec / 60) * VOICE_CHANGER_CREDITS_PER_MIN) : null;
+  const names = matched.map((m) => (m.el.name === m.voice ? m.voice : `${m.voice} ("${m.el.name}")`)).join(", ");
+  log(`${o.dry ? "would convert" : "converting"} the ${part} part as ${names}${perVoice !== null ? `: about ${(perVoice * matched.length).toLocaleString("en-US")} credits` : ""}`);
+  if (o.dry) return [];
+
+  const tmp = mkdtempSync(join(tmpdir(), "stuttr-convert-"));
+  const takes: VoiceTake[] = [];
+  for (const m of matched) {
+    log(`${m.voice}: converting in ElevenLabs...`);
+    const out = await convertSpeech(key, f, m.el.voiceId, audio, basename(rel), format);
+    const file = join(tmp, `${o.trackId}.${voiceKey(m.voice)}.${lang}${from === "vocals" ? "" : ".backing"}.mp3`);
+    writeFileSync(file, out);
+    takes.push(addVoice(c, { trackId: o.trackId, voice: m.voice, file, lang, from }));
+  }
+  const leads = trackOrThrow(loadManifest(c), o.trackId).voices.filter((v) => v.sourceRole === "vocals" && v.lang === lang && v.status !== "rejected");
+  if (leads.length === 1) log(`next: listen with  npm run stuttr -- mix ${o.trackId} ${leads[0].voice}${lang === "en" ? "" : ` --lang ${lang}`}`);
+  return takes;
 }

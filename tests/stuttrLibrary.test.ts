@@ -10,7 +10,8 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { activeSpan, classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
-import { addSong, addVoice, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
+import { addSong, addVoice, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
+import { matchVoice, type Fetch } from "../lib/stuttr/elevenlabs";
 import { checkMouthTrack } from "../lib/dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../lib/dance8/contracts/mouth";
 
@@ -362,6 +363,97 @@ test("mouth track: approved takes only, one value per 24 fps frame, written unde
     assert.ok(t.open[36] >= 0.99, String(t.open[36]));
     assert.equal(t.open[60], 0);
     assert.ok(s.lines.some((l) => l.startsWith("mouth track: ") && l.includes("72 frames at 24 fps")));
+  } finally {
+    s.done();
+  }
+});
+
+// ---- convert: a fake ElevenLabs. The key is synthetic; nothing reaches the network.
+const TEST_KEY = "synthetic-test-key";
+const TEST_VOICES = [
+  { voice_id: "id-stuttr", name: "Stuttr" },
+  { voice_id: "id-m", name: "M - Shenzhen Syndicate" },
+  { voice_id: "id-mo", name: "Mo" },
+  { voice_id: "id-ja", name: "Ja" },
+];
+/** Converts by re-encoding the uploaded WAV as MP3, so lengths line up like a real take. */
+function fakeEleven(calls: { method: string; url: string; model?: string; voiceId?: string }[], fail?: number): Fetch {
+  return async (url, init) => {
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    if (headers["xi-api-key"] !== TEST_KEY) return new Response(JSON.stringify({ detail: { status: "invalid_api_key", message: "Invalid API key" } }), { status: 401 });
+    if (url.endsWith("/v1/voices")) {
+      calls.push({ method: "GET", url });
+      return new Response(JSON.stringify({ voices: TEST_VOICES }));
+    }
+    const form = init!.body as FormData;
+    const voiceId = decodeURIComponent(url.split("/v1/speech-to-speech/")[1].split("?")[0]);
+    calls.push({ method: "POST", url, model: String(form.get("model_id")), voiceId });
+    if (fail) return new Response(JSON.stringify({ detail: { message: "quota exceeded" } }), { status: fail });
+    const wavIn = Buffer.from(await (form.get("audio") as Blob).arrayBuffer());
+    const r = spawnSync("ffmpeg", ["-v", "error", "-f", "wav", "-i", "pipe:0", "-c:a", "libmp3lame", "-b:a", "192k", "-f", "mp3", "pipe:1"], { input: wavIn, maxBuffer: 1 << 28 });
+    return new Response(new Uint8Array(r.stdout));
+  };
+}
+
+test("voice names match exactly, or as a whole first word, never a longer name", () => {
+  const vs = TEST_VOICES.map((v) => ({ voiceId: v.voice_id, name: v.name }));
+  assert.equal(matchVoice(vs, "m").voiceId, "id-m");
+  assert.equal(matchVoice(vs, "MO").voiceId, "id-mo");
+  assert.equal(matchVoice(vs, "Stuttr").voiceId, "id-stuttr");
+  assert.throws(() => matchVoice(vs, "Bo"), /no ElevenLabs voice named "Bo". Your voices: Ja, M - Shenzhen Syndicate, Mo, Stuttr/);
+  assert.throws(() => matchVoice([...vs, { voiceId: "x", name: "M (alt)" }], "M"), /2 ElevenLabs voices match "M"/);
+});
+
+test("convert: one step from stem to placed takes, voices matched before any credits are spent", { skip: !hasFfmpeg && "ffmpeg not installed" }, async () => {
+  const s = sandbox();
+  try {
+    const inbox = join(s.root, "inbox", "Convert Song");
+    mkdirSync(inbox, { recursive: true });
+    writeFileSync(join(inbox, "Convert Song (Full Song).wav"), wav({ sec: 3 }));
+    writeFileSync(join(inbox, "Convert Song (Vocals).wav"), wav({ sec: 3, freq: 330 }));
+    writeFileSync(join(inbox, "Convert Song (Backing Vocals).wav"), wavSegments([[1, 0], [1, 550], [1, 0]]));
+    writeFileSync(join(inbox, "Convert Song (Drums).wav"), wav({ sec: 3, freq: 110 }));
+    addSong(s.ctx, { folder: inbox });
+    const calls: { method: string; url: string; model?: string; voiceId?: string }[] = [];
+    const base = { trackId: "convert-song", key: TEST_KEY, fetch: fakeEleven(calls) };
+
+    // No key: refused before anything is sent.
+    const saved = process.env.ELEVENLABS_API_KEY;
+    delete process.env.ELEVENLABS_API_KEY;
+    await assert.rejects(convertVoices(s.ctx, { ...base, key: undefined, voices: ["Stuttr"] }), /ELEVENLABS_API_KEY is not set/);
+    if (saved !== undefined) process.env.ELEVENLABS_API_KEY = saved;
+    // A voice that doesn't exist: no conversion happens at all.
+    await assert.rejects(convertVoices(s.ctx, { ...base, voices: ["Stuttr", "Bo"], from: "backing_vocals" }), /no ElevenLabs voice named "Bo"/);
+    assert.equal(calls.filter((c) => c.method === "POST").length, 0);
+    // Dry run: matches and estimates, converts nothing.
+    assert.deepEqual(await convertVoices(s.ctx, { ...base, voices: ["Stuttr", "M"], from: "backing_vocals", dry: true }), []);
+    assert.ok(s.lines.some((l) => l.startsWith('would convert the backing part as Stuttr, M ("M - Shenzhen Syndicate"): about ') && l.endsWith(" credits")), s.lines.join("\n"));
+    assert.equal(calls.filter((c) => c.method === "POST").length, 0);
+
+    // The lead, then two backing voices.
+    const [lead] = await convertVoices(s.ctx, { ...base, voices: ["Stuttr"] });
+    assert.equal(lead.path, "convert-song/voices/stuttr.en.mp3");
+    assert.equal(lead.timingOk, true, `lead timing ${lead.timingDeltaMs} ms`);
+    const backing = await convertVoices(s.ctx, { ...base, voices: ["Stuttr", "m"], from: "backing_vocals" });
+    assert.deepEqual(backing.map((t) => t.path), ["convert-song/voices/stuttr.en.backing.mp3", "convert-song/voices/m.en.backing.mp3"]);
+    for (const t of backing) {
+      assert.equal(t.timingOk, true, `${t.voice} timing ${t.timingDeltaMs} ms`);
+      assert.ok(Math.abs((t.startSec ?? 0) - 0.5) < 0.05, `${t.voice} placed at ${t.startSec}`);
+    }
+    const posts = calls.filter((c) => c.method === "POST");
+    assert.deepEqual(posts.map((c) => c.voiceId), ["id-stuttr", "id-stuttr", "id-m"]);
+    assert.ok(posts.every((c) => c.model === "eleven_multilingual_sts_v2" && c.url.endsWith("?output_format=mp3_44100_192")));
+    assert.ok(s.lines.includes("next: listen with  npm run stuttr -- mix convert-song Stuttr"));
+
+    // Running it again spends nothing.
+    assert.deepEqual(await convertVoices(s.ctx, { ...base, voices: ["Stuttr", "M"], from: "backing_vocals" }), []);
+    assert.equal(calls.filter((c) => c.method === "POST").length, 3);
+
+    // An API error says what happened and never shows the key.
+    const err = await convertVoices(s.ctx, { ...base, fetch: fakeEleven([], 429), voices: ["Ja"], from: "backing_vocals" }).catch((e: Error) => e);
+    assert.ok(err instanceof Error && /ElevenLabs 429: quota exceeded \(too many requests, or out of credits\)/.test(err.message), String(err));
+    const bad = await convertVoices(s.ctx, { ...base, key: "wrong-synthetic-key", voices: ["Ja"] }).catch((e: Error) => e);
+    assert.ok(bad instanceof Error && bad.message.includes("ElevenLabs 401") && !bad.message.includes("wrong-synthetic-key"), String(bad));
   } finally {
     s.done();
   }
