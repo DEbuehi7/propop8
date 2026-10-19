@@ -38,6 +38,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
   },
   twitter: { card: 'summary_large_image' },
+  // Name under the icon on an iPhone home screen (the icon is app/apple-icon.png).
+  appleWebApp: { title: 'PropOps8' },
 };
 
 export const viewport: Viewport = {
