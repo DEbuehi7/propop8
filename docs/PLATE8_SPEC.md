@@ -2,7 +2,7 @@
 
 **This file supersedes** *ChatGPT to Claude — Plate8 Entertainment App Support* (PDF), *Claude to ChatGPT updates* (RTF), and the two concept boards (the neon hub and the n8n-captioned tile grid). Where they disagree, this file wins. Change it here first, then build.
 
-Last reconciled: 28 September 2026.
+Last reconciled: 19 October 2026 (Plate's rules: section 8c).
 
 ---
 
@@ -119,7 +119,7 @@ Two SVG rules the rig learned the hard way, both pinned by tests: **a filter or 
 
 **Skate.** ✅ spline tracks (three presets + Draw), obstacles and ramps, four genuinely different controllers (pure pursuit, Stanley, follow-the-gap, adaptive), LiDAR occupancy mapping, rivals in the scan, minimum-curvature racing line, forward–backward velocity profile, friction circle with understeer, deck-to-deck contact, sectors, grip telemetry. ⬜ replayable telemetry, braking-zone overlay, steering vectors, deviation heatmap, per-agent predicted path.
 
-**Plate.** ✅ generator, 10-plate runs, scoring, validation, formats that unlock, Any/In-order validation, stamped SVG plate with tilt and glare, derivation tree, streak, best run, best word, plate history, near-miss hints. ⬜ speed and accuracy scores, a transition between plates.
+**Plate.** ✅ the owner's original rules (section 8c): look-alike readings, plate value scoring, three levels open from the start, words from one to seven letters; 10-plate runs, validation, Any/In-order validation, stamped SVG plate with tilt and glare, derivation tree, streak, best run, best word, plate history, near-miss hints. ⬜ speed and accuracy scores, a transition between plates.
 
 **Slate.** ✅ 14 crates seeded to Daniel's music and building interests, per-crate searches, `/api/yt` search and channel follow, oEmbed titles, watch state and progress, sort and filter, import/export, share. ⬜ weighted "For You" ranking; the written spec's lanes (Architecture, Property, AI/Tech, Spatial, Design, Documentary) merged with the music crates; `topics` and `relevanceScore` per item.
 
@@ -168,9 +168,11 @@ node scripts/plate8/audit.cjs         # 68 checks: every page, pane, share path,
 node scripts/plate8/regress.cjs       # 14 checks: the first review's six bugs, pinned
 node scripts/plate8/regress2.cjs      # 22 checks: the second review's fourteen bugs, pinned
 node scripts/plate8/plate-test.cjs    # 15 checks: derivation tree, streaks, bests, history
-node scripts/plate8/regress3.cjs      # 45 checks: palette, the four depths, the engine, every card
+node scripts/plate8/regress3.cjs      # 46 checks: palette, the four depths, the engine, every card
                                       #            against real state, the deck bar, spoiler-free
                                       #            search and markup, the dictionary, no live blur
+node scripts/plate8/rules-test.cjs    # 23 checks: the owner's rules (section 8c), worked examples,
+                                      #            what each level deals, the level chips
 node scripts/plate8/drive.cjs         # walks all panes, reports canvas work and faults
 ```
 
@@ -227,6 +229,47 @@ RICH=1 node scripts/plate8/live.cjs 393x852 shots/m home:hub --full          # t
 - Tokens in `public/plate/index.html`: `--t-plate #E8ECF5`, `-2 #FFFFFF`, `-ink #141821`, `-deep #8A93A6`, `-bg #22252E`, `-h 222`. Every rule, SVG and canvas already reads these, so nothing else changed.
 - `scripts/plate8/regress3.cjs`: the canonical palette is now pink, green, blue, platinum, violet, cyan. A near-neutral accent (chroma under 0.12) is told apart by lightness rather than hue, so it is left out of the 25-degree hue-gap test and checked instead for being light and nearly colourless.
 - Known, not changed: Late's cyan and Mate's green sit on the semantic cyan and green, and State's pink is close to magenta. Plate was the one the owner chose to move.
+
+---
+
+## 8c. The owner's original rules (19 October 2026)
+
+**Decision (owner, 2026-10-19):** Plate's old rules are replaced by the owner's original notes for the game. The name stays Plate8; the notes called it Pl8.
+
+**Reading a plate.** A number reads as the letter it looks like: 0 is O or D, 1 is I, 2 Z, 3 E, 5 S, 6 G, 7 L, 8 B, 9 P. A 4 looks like no letter, so it is only a number and shows as `#` in the reading row.
+
+**Points.** Every character on the plate has a value. A number is worth its face value; a letter is worth the number it looks like (B 8, D 0, E 3, G 6, I 1, L 7, O 0, P 9, S 5, Z 2); any other letter is worth 0. A banked word scores the plate's value plus a bonus:
+
+| Word | Bonus |
+|---|---|
+| uses every character on the plate | +100 |
+| uses every character of a vanity plate (Level 3) | +1000 |
+| any other word | +50 |
+
+Worked examples, pinned in `rules-test.cjs`: 6ALL095 is worth 34, so GALLOPS scores 134 and ALL scores 84. 0ESP017 is worth 25 and DESPOIL scores 125, because 0 reads as D. 1A11111 is worth 6 and the one-letter word A scores 56.
+
+**Three levels, all open from the start:**
+
+1. **All characters.** A special plate, `#XXX###`, where the whole plate spells a word once its numbers are read as letters. Dealt from 657 common seven-letter words whose first letter and last three letters each look like a number.
+2. **Least letters.** Standard `#XXX###` plates, and one plate in four a business plate, `#X#####`. Find the word with the fewest letters. Every deal has a word of four letters or fewer.
+3. **All letters.** A vanity plate: seven letters, a common word scrambled. It reads in any order (the In order chip is off), and using all seven letters is worth +1000.
+
+Saves from the old formats land on a level: classic and short on Level 2, vanity on Level 3.
+
+**The dictionary.** Words run from one letter to seven; the old three-letter minimum is gone.
+
+- One and two letters: *a* and *i*, plus 44 chosen two-letter words.
+- Three to six letters: the existing list.
+- Seven letters: SCOWL at size 50 (notice in `docs/licenses/SCOWL.txt`), plus *seedpod* from the notes.
+- Profanity is filtered when the list is built: the hashes already pinned in `regress3.cjs`, plus two published lists (`badwords-list`, `leo-profanity`).
+- The result is 20,407 words. The 6,705 common seven-letter words (SCOWL size 35) are the ones that get dealt.
+- Rebuild with `scripts/plate8/build-dict.cjs`. It names the npm packages it needs and installs nothing into `package.json`.
+
+**Where the notes and the rule disagree.** SKIPPPY was written as 34, but the rule gives 33 (5 + 0 + 1 + 9 + 9 + 9 + 0). The rule governs. SKIPPPY is not in any word list, so it cannot be banked; the vanity bonus is tested on a scramble of GALLOPS instead.
+
+**Not built.** The rest of the notes were the owner's tests of personal alphanumeric plates and of the scoring. They informed the worked examples above but are not game modes. Plates in the notes that could belong to real people stay out of the repo.
+
+---
 
 ## 9. Earlier passes
 
