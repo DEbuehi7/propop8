@@ -10,7 +10,7 @@ architecture underneath it.** The rest of the memo is not yet ruled on. Where
 this file and the memo disagree on the part it does cover, this file wins.
 Change it here first, then build.
 
-Last reconciled: 2 October 2026.
+Last reconciled: 19 October 2026 (your moves: §6).
 
 ---
 
@@ -169,3 +169,67 @@ Real ideas from the memo, not decided or built in this pass:
    decoding client-side on every load.
 
 None of these are started. Nothing above should be assumed working.
+
+---
+
+## 6. Your moves (canon D8-17, 19 October 2026)
+
+**Decided by the owner (2026-10-19):** film yourself dancing to a song, and
+Dance8 reads the dance as Kirtled move words. The same reading will style the
+skaters (D8-18) and drive the dancers' motion references (next pass). This is
+the first real pose source in Dance8. It reads the owner's own takes; it is
+not a rigged-dancer system (§5 item 3 stays deferred).
+
+**How a take is read** (`npm run dance8 -- moves <song> <video>`):
+
+1. **Sync.** `stuttr analyze` saves the song's onset pattern with its analysis
+   (Dance8 never reads the song's audio, D8-14). The take's own sound is slid
+   against it, with whatever repeats bar to bar removed so a drum loop cannot
+   match a bar off. The match must beat every other position by a clear margin
+   and both halves of the take must agree, or the take is refused and you give
+   `--offset`. This is the only link between the video's clock and the song's
+   (D8-02).
+2. **Body points.** ffmpeg cuts the video into frames in a temporary folder. A
+   page on your computer runs Google's MediaPipe Pose (pinned
+   `@mediapipe/tasks-vision@1.0.1`, model downloaded once into the library) and
+   sends the 33 points per frame back to the Terminal. The video never leaves
+   your computer and is never copied into the library or the repo.
+3. **Per beat.** Energy, level, the body zones that lead, travel, turn, jumps,
+   stillness and where in the beat the body hits hardest. Lengths are in your
+   own torso lengths and body-widths, so distance from the camera does not
+   change them. Across and up-down motion comes from the image; motion toward
+   the camera comes from MediaPipe's 3D estimate, smoothed. A beat the camera
+   cannot read is unknown, never filled in.
+4. **Words.** `lib/dance8/moves/words.ts`. All words are kept, even when two
+   fall together (a jumping spin is TI and KA).
+
+| Word | Move | Read when | Tuning (code constants) |
+|---|---|---|---|
+| DO | STOMP | one foot hits down hard on a beat | lifted at least 0.15 torso, comes down at 2.5 torso/s or faster, lands within 0.2 beat of a beat, other foot down |
+| RA | ROLL | the hips move at least half a body-width within a bar | groove sway smoothed out over a beat; one RA per bar of travel |
+| LA | FLIP | the hips change level without travelling | bands: floor under 0.4, low under 0.75 of standing hip height; the new level holds a beat |
+| KA | SPIN | a turn of 180° or more within a bar | read to about ±15°; tracker left/right swaps undone |
+| TI | JUMP | both feet leave the floor | at least two frames; timed at the landing |
+| FREEZE | FREEZE | holding still for a beat or more | mean joint speed under 0.35 torso/s |
+
+**Files** (in `~/StuttrLibrary/<song>/dance8/moves/`, never in git):
+`<take>.poses.json` (the body points), `<take>.moves.json` (beats and words,
+a draft) and `README.txt` (a readout per section and every move). Run
+`npm run dance8 -- moves <song>` with no video to rebuild every take after
+editing the cue map; `--offset` replaces a take's sync.
+
+**Filming.**
+
+- Play the song out loud from a speaker, not headphones. The sync listens for it.
+- Use a tripod and a still camera, with your whole body in frame, head to feet, and room to move.
+- Use good light and a plain background, and wear clothes that stand out from it.
+- Film alone, and somewhere that is not a work site (GOV-16).
+- 60 fps helps fast moves.
+
+**Limits.** A single phone camera reads turns and floor work least well, and
+motion straight at the camera is a 3D estimate. Thresholds were set on
+synthetic dancers with tracking noise up to four times what MediaPipe usually
+shows (`tests/dance8/moves.test.ts`). The first real takes may call for
+tuning; the constants are named and tested, and re-reading saved takes costs
+nothing.
+

@@ -73,6 +73,11 @@ All seven v1.0.0 conflicts are settled:
 
 - **D8-16**: skaters play Kirtled. One trick per chord change: RA floor carve, LA kickflip sweep, KA handplant roll or 180/360, TI big ollie leap, a held chord a board-assisted freeze.
 
+## Decided by the owner (v1.3.0, 19 Oct 2026)
+
+- **D8-17**: the owner's filmed dance is read as Kirtled words: a stomp on a beat DO, travel of half a body-width within a bar RA, a level change without travel LA, a turn of 180 degrees or more KA, a jump TI, holding still for a beat FREEZE.
+- **D8-18**: that dance styles the skaters without moving the tricks: turn picks the KA version, jump height the ollie size, the freeze the freeze pose, energy how many skaters, travel the carve direction.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
@@ -93,3 +98,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.0.0, 2026-10-18: first lock. 20 studies; entries, vocabularies, rules and tests added; infrastructure register committed; Kirtled canonical example pinned against the solver.
 - 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; Plate's accent set to platinum white (PL8-08); GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
 - 1.2.0, 2026-10-18: D8-16 added (skaters play Kirtled: the owner approved the trick for each move word); built in `lib/dance8/harmony/skateTricks.ts`.
+- 1.3.0, 2026-10-19: D8-17 (the owner's dance read as Kirtled words; built in `lib/dance8/moves/`) and D8-18 (that dance styles the skaters; not built yet) added, both approved by the owner.

@@ -449,6 +449,34 @@ export const KIRTLED_SKATE_TRICKS = [
   { cue: "HOLD", trick: "board_freeze", label: "Board-assisted freeze (the chord is held)" },
 ] as const;
 
+/**
+ * The owner's own filmed dance, read as Kirtled move words (D8-17, decided by
+ * the owner 2026-10-19). Read only after the take is synced to the song's beat
+ * grid (D8-02); the thresholds live in lib/dance8/moves/words.ts. A beat the
+ * camera cannot read is unknown, never guessed.
+ */
+export const KIRTLED_BODY_MOVES = [
+  { body: "stomp", detectedWhen: "One foot hits down hard on a beat", word: "DO", move: "STOMP" },
+  { body: "travel", detectedWhen: "The hips move at least half a body-width within a bar", word: "RA", move: "ROLL" },
+  { body: "drop_or_rise", detectedWhen: "The hips change level without travelling", word: "LA", move: "FLIP" },
+  { body: "turn", detectedWhen: "The body turns 180 degrees or more within a bar", word: "KA", move: "SPIN" },
+  { body: "jump", detectedWhen: "Both feet leave the floor", word: "TI", move: "JUMP" },
+  { body: "freeze", detectedWhen: "Holding still for a beat or more", word: "FREEZE", move: "FREEZE" },
+] as const;
+
+/**
+ * How the owner's dance styles the skaters (D8-18, decided by the owner
+ * 2026-10-19). Which trick lands on which chord change stays D8-16; these
+ * pick the version, the size, how many skaters and which way they carve.
+ */
+export const KIRTLED_SKATE_FROM_DANCE = [
+  { from: "turn", sets: "KA version", rule: "Under 180 degrees a handplant roll, 180 to 359 a 180 spin, 360 or more a 360 spin" },
+  { from: "jump", sets: "TI ollie size", rule: "Low, mid or high by the jump height; standard when there was no jump" },
+  { from: "freeze", sets: "HOLD freeze pose", rule: "Low when the freeze is low or on the floor, high when standing" },
+  { from: "energy", sets: "Skaters doing the trick", rule: "Solo, half the crew or the whole crew, by thirds of the energy" },
+  { from: "travel", sets: "Carve direction between tricks", rule: "The way the dancer travelled since the last trick, or in place" },
+] as const;
+
 export const KIRTLED_RESERVED = [
   { word: "BU", move: "BEAT" }, { word: "MU", move: "WATER" }, { word: "SI", move: "LIGHT" }, { word: "VE", move: "SKY" },
 ] as const;
