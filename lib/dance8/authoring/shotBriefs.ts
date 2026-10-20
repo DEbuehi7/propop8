@@ -23,11 +23,32 @@ export const ANTI_DRIFT_NOTES = [
   "One singer per shot; mouth unobstructed (no hands, mic or hair over the lips).",
 ] as const;
 
+/** The owner's dance for a dancer shot: a cut of a take to use as the motion reference (canon D8-17). */
+export interface MotionRef {
+  takeId: string;
+  /** The take's video file name (it stays where the owner keeps it). */
+  video: string;
+  captureStartSec: number;
+  captureEndSec: number;
+  songStartSec: number;
+  songEndSec: number;
+  /** Share of the span's beats the camera read. */
+  knownShare: number;
+  /** The cut, relative to the song's dance8 folder; null until it is cut. */
+  refFile: string | null;
+}
+
 export interface ShotBrief {
   id: string;
-  kind: "lip_sync" | "broll" | "trick";
+  kind: "lip_sync" | "broll" | "trick" | "dance";
   /** Trick shots only: which skate trick (canon D8-16); it must land at keyframesSec[0]. */
   trick?: string;
+  /** Trick shots only: the version and crew the owner's dance picked (canon D8-18). */
+  trickVersion?: string;
+  crew?: "solo" | "half" | "all";
+  crewCount?: number;
+  /** Dance shots only: the owner's dance to transfer onto the dancer. */
+  motionRef?: MotionRef;
   cueId: string;
   section: string;
   sceneId: string;

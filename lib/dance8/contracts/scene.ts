@@ -86,11 +86,32 @@ export interface VisualClip {
    * footage.
    */
   trick?: TrickLock;
+  /**
+   * Present on dancer clips generated from the owner's own dance (Kling Motion
+   * Control with a reference cut from a take, canon D8-17): frame 0 matches
+   * songStartSec, so the planner plays it where it was danced and the dancer
+   * keeps the owner's timing. Also usable as free footage elsewhere in its scene.
+   */
+  danceLock?: DanceLock;
 }
 
 export interface TrickLock {
   trick: string; // floor_carve, kickflip_sweep, handplant_roll, ollie_leap, board_freeze
   landingSec: number;
+  /** The version the owner's dance picks (canon D8-18): spin_180, ollie_high, freeze_low... Absent: any. */
+  version?: string;
+  /** How many skaters the clip shows (D8-18). Absent: one. */
+  crew?: "solo" | "half" | "all";
+}
+
+export interface DanceLock {
+  takeId: string;
+  /** Song time of the clip's first frame. */
+  songStartSec: number;
+  /** Where the reference was cut from in the take's video (capture seconds). */
+  captureStartSec: number;
+  /** From check-moves: the generated dancer's timing against the take. A measurement; a person still approves. */
+  check?: { lagMs: number; r: number; verdict: "keeps_timing" | "drifts" | "does_not_follow"; checkedAt: string };
 }
 
 export interface LipSyncLock {
@@ -171,6 +192,7 @@ export type CutReason =
   | "shortened_to_clip"
   | "lip_sync"
   | "skate_trick"
+  | "dance_lock"
   | "fallback_no_match";
 
 /** One line of the edit decision list. */

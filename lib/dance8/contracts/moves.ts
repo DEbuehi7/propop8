@@ -43,8 +43,10 @@ export interface PoseCapture {
   schemaVersion: 1;
   takeId: string;
   video: {
-    /** File name only; the video stays where the owner keeps it. */
+    /** File name; the video stays where the owner keeps it. */
     file: string;
+    /** Where it is on the owner's computer, so references can be cut from it (local files only, never the repo). */
+    path?: string;
     sha256: string;
     width: number;
     height: number;

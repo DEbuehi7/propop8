@@ -99,3 +99,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.1.0, 2026-10-18: the owner settled all seven conflicts (B5R-22, B5R-33, LET-02, LET-03, ROB-03, D8-13, PL8-06); EDO-I added to the robot IDs with the EDO-M alias; Plate's accent set to platinum white (PL8-08); GOV-28 (retention enforced by code) added; the Phase 0D security entries point at `docs/security/`.
 - 1.2.0, 2026-10-18: D8-16 added (skaters play Kirtled: the owner approved the trick for each move word); built in `lib/dance8/harmony/skateTricks.ts`.
 - 1.3.0, 2026-10-19: D8-17 (the owner's dance read as Kirtled words; built in `lib/dance8/moves/`) and D8-18 (that dance styles the skaters; not built yet) added, both approved by the owner.
+- 1.3.1, 2026-10-19: D8-18 built in `lib/dance8/moves/skaters.ts` (no change to what the entry says).

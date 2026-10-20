@@ -18,6 +18,7 @@ import type { Cut, CueMap, VisualClip, VisualClipLibrary } from "../contracts/sc
 import {
   barToSec,
   candidatesFor,
+  isEligible,
   lipSyncedFor,
   validateCueMap,
   type CueMapIssue,
@@ -40,7 +41,7 @@ export interface PlanOptions {
    * skateTricks(). A bar holding a trick uses an approved trick clip of that
    * trick and scene, placed so its landing frame falls on the trick.
    */
-  tricks?: { atSec: number; trick: string }[];
+  tricks?: { atSec: number; trick: string; version?: string; crew?: string }[];
 }
 
 const EPS = 1e-9;
@@ -80,6 +81,8 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
   const lockSec = (c: VisualClip) => c.lipSync!.songStartSec - origin;
 
   const fallback = library.clips.find((c) => c.id === map.fallbackClipId)!;
+  // Dancer clips count like any footage: approved, the video's shape, within the drift limit.
+  const isEligibleDance = (c: VisualClip) => isEligible(c, map);
   const useCount = new Map<string, number>();
   const cursor = new Map<string, number>(); // clipId -> next unused second
   const cuts: Cut[] = [];
@@ -93,10 +96,14 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
     const t = opts.tricks.find((k) => k.atSec >= s0 - EPS && k.atSec < s1 - EPS);
     if (!t) return null;
     const hide = anyVocal(b, b + 1);
-    const pool = trickClipsFor(library, map, cue.sceneId).filter((c) => {
+    const fits = trickClipsFor(library, map, cue.sceneId).filter((c) => {
       const inSec = c.trick!.landingSec - (t.atSec - s0);
       return c.trick!.trick === t.trick && !(hide && c.mouthVisible) && inSec >= -EPS && inSec + (s1 - s0) <= c.durationSec + EPS;
     });
+    // The version and crew the owner's dance picked (canon D8-18) first, then the version, then any.
+    const rank = (c: VisualClip) => (t.version && c.trick!.version === t.version ? 2 : 0) + (t.crew && (c.trick!.crew ?? "solo") === t.crew ? 1 : 0);
+    const bestRank = Math.max(-1, ...fits.map(rank));
+    const pool = fits.filter((c) => rank(c) === bestRank);
     if (!pool.length) return null;
     const clip = pool[shuffle(`tr|${cue.id}|${b}`) % pool.length];
     return { clip, clipInSec: round6(Math.max(0, clip.trick!.landingSec - (t.atSec - s0))) };
@@ -177,6 +184,27 @@ export function planCuts(map: CueMap, library: VisualClipLibrary, opts: PlanOpti
           reason: "skate_trick",
         });
         bar += 1;
+        shotInCue++;
+        continue;
+      }
+
+      // 1c) A dancer clip made from the owner's dance at this very song time
+      //     (canon D8-17): it plays where it was danced, so it keeps his timing.
+      //     Same camera first, then any camera of the scene.
+      const danced = library.clips.filter((c) => c.sceneId === cue.sceneId && c.danceLock && isEligibleDance(c)
+        && !(hideMouth && c.mouthVisible) && c.danceLock.songStartSec - origin <= startSec + EPS && c.danceLock.songStartSec - origin + c.durationSec >= secs(bar + 1) - EPS);
+      const dPool = danced.some((c) => c.camera === camera) ? danced.filter((c) => c.camera === camera) : danced;
+      if (dPool.length) {
+        const dc = dPool[shuffle(`dl|${cue.id}|${bar}`) % dPool.length];
+        const end = dc.danceLock!.songStartSec - origin + dc.durationSec;
+        let bars = wantBars;
+        for (let b = bar + 1; b < bar + wantBars; b++) if (trickCutAt(cue, b)) { bars = b - bar; break; }
+        while (bars > 1 && secs(bar + bars) > end + EPS) bars--;
+        cuts.push({
+          index: cuts.length, cueId: cue.id, section: cue.section, startBar: bar, endBar: bar + bars, startSec, endSec: secs(bar + bars),
+          sceneId: cue.sceneId, camera: dc.camera, clipId: dc.id, clipInSec: round6(startSec - (dc.danceLock!.songStartSec - origin)), reason: "dance_lock",
+        });
+        bar += bars;
         shotInCue++;
         continue;
       }

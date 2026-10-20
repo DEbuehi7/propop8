@@ -233,3 +233,49 @@ shows (`tests/dance8/moves.test.ts`). The first real takes may call for
 tuning; the constants are named and tested, and re-reading saved takes costs
 nothing.
 
+### 6a. What your moves drive (canon D8-17, D8-18)
+
+`npm run dance8 -- plan <song> --skate <scene> --dance <scene>` reads every take
+of the song and writes:
+
+- **Skaters (D8-18).** Which trick lands on which chord change stays D8-16. Your
+  dance picks the rest, from the bar before each trick (`tricks.json`):
+  - how far you turned sets the KA version: handplant roll, 180 or 360
+  - your jump height sets the ollie: low, mid or high (standard if you didn't jump)
+  - your freeze sets the freeze pose: low, or standing
+  - your energy, in thirds, sets the crew size: solo, half or all of it (`--crew`, default 8, D8-11)
+  - the way you travelled since the last trick sets the carve
+
+  Trick shots are briefed per version and crew size. The cut planner prefers the
+  clip whose version and crew your dance picked, then any clip of that trick.
+  Where no take covers a trick, it stays D8-16's base version, one skater.
+- **Dancers.** In each dance scene, the bars your takes read well (most beats of
+  a bar) become dance shots of 3 to 30 s, each with a reference cut from your
+  take at that song time (`moves/refs/<shot>.mp4`, video only). Generate each one
+  with Kling Motion Control: the reference plus the dancer's character image,
+  with a prompt describing the scene only. The clip that comes back is locked to
+  the song time it was danced to (`danceLock`). The cut planner plays it there,
+  after lip sync and tricks, so the dancer keeps your timing.
+  `npm run dance8 -- check-moves <song>` reads the generated dancer the same way
+  and compares its motion with your take. It reports the timing offset and how
+  closely it follows you. `--shift` lines a late or early clip up. Approving the
+  clip is still yours.
+- **Kirtled.** `kirtled-dance.json`: at each chord change, whether you made the
+  song's move within a beat (HOLD counts as FREEZE). Your stomps are listed as
+  floor-light flashes; they are light cues only and make no sound (D8-08).
+  Performance mode, where your dance plays the instrument, waits for the D8-09
+  answers.
+- **The pairing rule.** `dance-rules.json` is a draft Gate 1 mapping bundle. For
+  each kind of section it records:
+  - the body zones you lead with
+  - your level and energy band
+  - the moves you reach for at least once every four bars
+
+  The motion scorer uses it for its section and zone fits; without a bundle,
+  scoring is unchanged. `npm run dance8 -- style` adds up every song you have
+  danced to (by section and tempo band) into `~/StuttrLibrary/dance8-style.json`.
+  `plan` uses that profile for songs you haven't danced to.
+
+A video `moves` has already read (same fingerprint) is not tracked again;
+`moves` only notes where it is, so references can be cut from it.
+
