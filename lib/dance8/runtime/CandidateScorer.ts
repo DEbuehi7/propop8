@@ -1,6 +1,7 @@
+import type { MappingRule } from "../contracts/mapping";
 import type { MotionClip } from "../contracts/motion";
 import type { RuntimePolicy } from "../contracts/policy";
-import type { SignalFrame } from "../contracts/signal";
+import { knownValue, type SignalFrame } from "../contracts/signal";
 import type { CandidateScore } from "../contracts/decision";
 
 export type { CandidateScore };
@@ -21,23 +22,49 @@ function computeFit(value: number | null, range: readonly [number, number]): num
 }
 
 /**
- * Scores a candidate clip against the current frame and context.
+ * Fit of a clip to the mapping rules that apply at this frame (a rule applies
+ * when its sections, BPM range and energy range all match the frame; an
+ * unknown value never matches a range). zoneFit: the share of the rules'
+ * preferred zones the clip leads with. sectionFit: the share of their
+ * preferred tags the clip carries (its level counts as the tag
+ * "level:<level>"). Weighted by rule weight. null when no rule applies.
+ */
+export function ruleFits(clip: MotionClip, frame: SignalFrame, rules: MappingRule[]): { sectionFit: number; zoneFit: number } | null {
+  const inRange = (v: number | null, r?: readonly [number, number]) => r === undefined || (v !== null && v >= r[0] && v <= r[1]);
+  const live = rules.filter((r) => (!r.sections?.length || r.sections.includes(frame.section))
+    && inRange(knownValue(frame.bpm), r.bpmRange) && inRange(knownValue(frame.energy), r.energyRange) && r.weight > 0);
+  if (!live.length) return null;
+  const tags = new Set([...clip.tags, `level:${clip.level}`]);
+  let w = 0, zone = 0, tag = 0;
+  for (const r of live) {
+    const pz = r.preferredZones ?? [], pt = r.preferredTags ?? [];
+    zone += r.weight * (pz.length ? pz.filter((z) => clip.dominantZones.includes(z)).length / pz.length : 1);
+    tag += r.weight * (pt.length ? pt.filter((t) => tags.has(t)).length / pt.length : 1);
+    w += r.weight;
+  }
+  return { sectionFit: tag / w, zoneFit: zone / w };
+}
+
+/**
+ * Scores a candidate clip against the current frame and context. With mapping
+ * rules (e.g. the owner's dance rules, canon D8-17) the section and zone fits
+ * come from them; without, both stay at 1 as before.
  */
 export function scoreCandidate(
   clip: MotionClip,
   frame: SignalFrame,
   policy: RuntimePolicy,
-  recentClipHistory: string[]
+  recentClipHistory: string[],
+  rules?: MappingRule[]
 ): CandidateScore {
   // Fit dimensions
   const tempoFit = computeFit(frame.bpm?.value ?? null, clip.bpmRange);
   const energyFit = computeFit(frame.energy?.value ?? null, clip.energyRange);
 
-  // Section: 1.0 if matches, else 0 (placeholder, frames may not have sectionIndex)
-  const sectionFit = 1.0;
-
-  // Zone: overlap between frame zone and clip zone ranges (placeholder)
-  const zoneFit = 1.0;
+  // Section and zone: from the mapping rules when given; otherwise neutral (1.0).
+  const fits = rules?.length ? ruleFits(clip, frame, rules) : null;
+  const sectionFit = fits ? fits.sectionFit : 1.0;
+  const zoneFit = fits ? fits.zoneFit : 1.0;
 
   // Continuity: 1.0 if poses match, else 0 (placeholder, frames/clips may not have pose families)
   const continuityFit = 1.0;
@@ -87,9 +114,10 @@ export function scoreCandidates(
   clips: MotionClip[],
   frame: SignalFrame,
   policy: RuntimePolicy,
-  recentClipHistory: string[]
+  recentClipHistory: string[],
+  rules?: MappingRule[]
 ): CandidateScore[] {
-  const scores = clips.map((clip) => scoreCandidate(clip, frame, policy, recentClipHistory));
+  const scores = clips.map((clip) => scoreCandidate(clip, frame, policy, recentClipHistory, rules));
 
   // Sort descending by total, tiebreak ascending by clipId
   scores.sort((a, b) => {

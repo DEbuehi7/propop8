@@ -138,6 +138,9 @@ export function validateCueMap(
         add("lip_sync_invalid", `${p}.mouthVisible`, "a lip-synced clip shows a mouth; mouthVisible cannot be false");
       }
     }
+    if (c.danceLock && !(typeof c.danceLock.songStartSec === "number" && Number.isFinite(c.danceLock.songStartSec) && c.danceLock.songStartSec >= 0)) {
+      add("invalid_number", `${p}.danceLock.songStartSec`, "a dancer clip's song time must be a number of seconds, 0 or more");
+    }
     if (c.trick && !(typeof c.trick.landingSec === "number" && c.trick.landingSec >= 0 && c.trick.landingSec < c.durationSec)) {
       add("invalid_number", `${p}.trick.landingSec`, "the landing must be inside the clip (0 <= landingSec < durationSec)");
     }

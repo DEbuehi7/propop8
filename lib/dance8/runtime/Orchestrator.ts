@@ -1,3 +1,4 @@
+import type { MappingBundle } from "../contracts/mapping";
 import type { MotionClip } from "../contracts/motion";
 import type { RuntimePolicy } from "../contracts/policy";
 import type { SignalFrame } from "../contracts/signal";
@@ -33,7 +34,9 @@ export class Orchestrator {
     private policy: RuntimePolicy,
     private trackId: string,
     private analysisProfileId: string,
-    audioContext: Pick<AudioContext, "currentTime">
+    audioContext: Pick<AudioContext, "currentTime">,
+    /** Optional mapping (e.g. the owner's dance rules); without it scoring is unchanged. */
+    private mapping?: MappingBundle
   ) {
     this.pulseClock = new PulseClock(audioContext, policy.outputLatencyCompensationMs);
   }
@@ -52,7 +55,7 @@ export class Orchestrator {
     const frame = this.frames[frameIndex];
 
     // Score candidates
-    const scores = scoreCandidates(this.clips, frame, this.policy, this.recentClipHistory);
+    const scores = scoreCandidates(this.clips, frame, this.policy, this.recentClipHistory, this.mapping?.rules);
     const topScore = scores.length > 0 ? scores[0] : null;
 
     // Resolve gate and confidence

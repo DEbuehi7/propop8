@@ -24,9 +24,12 @@ import { basename, extname, join } from "node:path";
 import type { SongAnalysis } from "../stuttr/analysis";
 import { decodeFloat, loadManifest, type Ctx } from "../stuttr/commands";
 import type { CaptureSync, MoveTrack, PoseCapture, PoseFrame } from "./contracts/moves";
-import type { CueMap } from "./contracts/scene";
+import type { CueMap, VisualClip, VisualClipLibrary } from "./contracts/scene";
 import { manualSync, syncTake } from "./moves/sync";
 import { buildMoveTrack, readoutLines, wordLines } from "./moves/track";
+import { loadCapture as loadCaptureIn, loadTakes as loadTakesIn, movesPaths as movesPathsIn, type MovesPaths } from "./moves/files";
+import { compareMotion, motionCurve, verdictOf } from "./moves/dancers";
+import { styleProfile, type StyleProfile } from "./moves/style";
 import { songPaths } from "./pipeline";
 
 const logOf = (c: Ctx) => c.log ?? ((l: string) => console.log(l));
@@ -47,16 +50,8 @@ export const POSE_MODELS = {
 export type PoseModel = keyof typeof POSE_MODELS;
 export const TRACKER_LIBRARY = "@mediapipe/tasks-vision@1.0.1";
 
-export interface MovesPaths {
-  dir: string;
-  readme: string;
-  poses: (take: string) => string;
-  moves: (take: string) => string;
-}
-
 export function movesPaths(c: Ctx, trackId: string): MovesPaths {
-  const dir = join(songPaths(c, trackId).dir, "moves");
-  return { dir, readme: join(dir, "README.txt"), poses: (t) => join(dir, `${t}.poses.json`), moves: (t) => join(dir, `${t}.moves.json`) };
+  return movesPathsIn(c.library, trackId);
 }
 
 export interface SongForMoves {
@@ -136,6 +131,14 @@ export async function prepareTakes(
     if (!existsSync(videoPath)) throw new Error(`no such video: ${videoPath}`);
     const probe = probeVideo(videoPath);
     const sha256 = await sha256File(videoPath);
+    // Already read this video: just note where it is (references are cut from it), no tracking again.
+    const known = [...taken].find((t) => loadCaptureIn(c.library, song.trackId, t)?.video.sha256 === sha256);
+    if (known) {
+      const cap = loadCaptureIn(c.library, song.trackId, known)!;
+      if (cap.video.path !== videoPath) { cap.video.path = videoPath; writeJson(mp.poses(known), cap); }
+      log(`${known}: already read from ${basename(videoPath)}; noted where it is`);
+      continue;
+    }
     const takeId = takeIdFor(videoPath, taken);
     let sync: CaptureSync;
     if (o.offsetSec !== undefined) {
@@ -152,19 +155,25 @@ export async function prepareTakes(
       log(`${takeId}: synced by ear, video second 0 = song second ${sync.songAtCapture0} (match ${sync.r} vs ${sync.rNext})`);
     }
     const fps = o.fps ?? CAPTURE_FPS;
-    const frameDir = mkdtempSync(join(tmpdir(), "dance8-frames-"));
-    const s = FRAME_SHORT_SIDE;
-    const scale = `scale='if(gt(iw,ih),-2,min(${s},iw))':'if(gt(iw,ih),min(${s},ih),-2)'`;
-    const r = run("ffmpeg", ["-v", "error", "-i", videoPath, "-an", "-vf", `fps=${fps},${scale}`, "-q:v", "3", join(frameDir, "%06d.jpg")]);
-    if (r.status !== 0) { rmSync(frameDir, { recursive: true, force: true }); throw new Error(`ffmpeg could not cut ${basename(videoPath)} into frames: ${String(r.stderr).trim().split("\n").pop()}`); }
-    const frames = readdirSync(frameDir).filter((f) => f.endsWith(".jpg")).length;
-    const dim = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", join(frameDir, "000001.jpg")]);
-    const [width, height] = String(dim.stdout).trim().split(",").map(Number);
-    if (!frames || !width || !height) { rmSync(frameDir, { recursive: true, force: true }); throw new Error(`no frames came out of ${basename(videoPath)}`); }
+    const { frameDir, frames, width, height } = extractFrames(videoPath, fps);
     log(`${takeId}: ${frames} frames at ${fps} fps, ${width}×${height}`);
     out.push({ takeId, videoPath, sha256, probe, sync, frameDir, frames, width, height, fps });
   }
   return out;
+}
+
+/** Cuts a video into still frames (short side at most FRAME_SHORT_SIDE) in a temporary folder. */
+export function extractFrames(videoPath: string, fps: number): { frameDir: string; frames: number; width: number; height: number } {
+  const frameDir = mkdtempSync(join(tmpdir(), "dance8-frames-"));
+  const s = FRAME_SHORT_SIDE;
+  const scale = `scale='if(gt(iw,ih),-2,min(${s},iw))':'if(gt(iw,ih),min(${s},ih),-2)'`;
+  const r = run("ffmpeg", ["-v", "error", "-i", videoPath, "-an", "-vf", `fps=${fps},${scale}`, "-q:v", "3", join(frameDir, "%06d.jpg")]);
+  if (r.status !== 0) { rmSync(frameDir, { recursive: true, force: true }); throw new Error(`ffmpeg could not cut ${basename(videoPath)} into frames: ${String(r.stderr).trim().split("\n").pop()}`); }
+  const frames = readdirSync(frameDir).filter((f) => f.endsWith(".jpg")).length;
+  const dim = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", join(frameDir, "000001.jpg")]);
+  const [width, height] = String(dim.stdout).trim().split(",").map(Number);
+  if (!frames || !width || !height) { rmSync(frameDir, { recursive: true, force: true }); throw new Error(`no frames came out of ${basename(videoPath)}`); }
+  return { frameDir, frames, width, height };
 }
 
 /** The pose model in the library, downloaded once. */
@@ -207,7 +216,7 @@ export function saveTakes(
     const frames: PoseFrame[] = t.frames.map((f, i) => ({ t: Math.round((p.probe.videoStartSec + i / p.fps) * 1e4) / 1e4, image: f.image, world: f.world }));
     const cap: PoseCapture = {
       schemaVersion: 1, takeId: p.takeId,
-      video: { file: basename(p.videoPath), sha256: p.sha256, width: p.width, height: p.height, durationSec: p.probe.durationSec, videoStartSec: p.probe.videoStartSec, audioStartSec: p.probe.audioStartSec },
+      video: { file: basename(p.videoPath), path: p.videoPath, sha256: p.sha256, width: p.width, height: p.height, durationSec: p.probe.durationSec, videoStartSec: p.probe.videoStartSec, audioStartSec: p.probe.audioStartSec },
       fps: p.fps, model: { id: model.id, sha256: model.sha256, library: TRACKER_LIBRARY, delegate: t.delegate }, capturedAt: nowOf(c), frames,
     };
     writeJson(mp.poses(p.takeId), cap);
@@ -239,9 +248,7 @@ export function rereadTakes(c: Ctx, song: SongForMoves, o: { offsetSec?: number 
 }
 
 export function loadTakes(c: Ctx, trackId: string): MoveTrack[] {
-  const mp = movesPaths(c, trackId);
-  if (!existsSync(mp.dir)) return [];
-  return readdirSync(mp.dir).filter((f) => f.endsWith(".moves.json")).sort().map((f) => readJson<MoveTrack>(join(mp.dir, f)));
+  return loadTakesIn(c.library, trackId, { includeRetired: true });
 }
 
 function writeReadme(c: Ctx, song: SongForMoves) {
@@ -263,3 +270,81 @@ function writeReadme(c: Ctx, song: SongForMoves) {
 export function cleanupTakes(prepared: PreparedTake[]) {
   for (const p of prepared) rmSync(p.frameDir, { recursive: true, force: true });
 }
+
+// ---------- check-moves: did the generated dancer keep your timing? ----------
+
+export interface DanceCheck { clipId: string; lagMs: number; r: number; verdict: "keeps_timing" | "drifts" | "does_not_follow"; shiftedTo: number | null }
+
+/** Dancer clips to check (with a dance lock, not retired; unchecked unless `again`). */
+export function clipsToCheck(c: Ctx, trackId: string, ids: string[], again: boolean): { lib: VisualClipLibrary; clips: VisualClip[] } {
+  const p = songPaths(c, trackId);
+  if (!existsSync(p.clips)) throw new Error(`no clips yet; run: npm run dance8 -- plan ${trackId}`);
+  const lib = readJson<VisualClipLibrary>(p.clips);
+  const clips = lib.clips.filter((x) => x.danceLock && x.approvalStatus !== "retired" && (ids.length ? ids.includes(x.id) : again || !x.danceLock.check));
+  for (const id of ids) if (!lib.clips.some((x) => x.id === id && x.danceLock)) throw new Error(`${id} is not a dancer clip made from your dance`);
+  return { lib, clips };
+}
+
+export function prepareClipFrames(c: Ctx, trackId: string, clips: VisualClip[], fps = CAPTURE_FPS): PreparedTake[] {
+  const p = songPaths(c, trackId);
+  return clips.map((clip) => {
+    const videoPath = join(p.clipDir, clip.file);
+    const f = extractFrames(videoPath, fps);
+    return { takeId: clip.id, videoPath, sha256: "", probe: { durationSec: clip.durationSec, videoStartSec: 0, audioStartSec: null }, sync: manualSync(0, nowOf(c)), fps, ...f };
+  });
+}
+
+/** Compares each tracked clip with the stretch of your take it was made from, and records the result on the clip. */
+export function saveChecks(c: Ctx, trackId: string, lib: VisualClipLibrary, prepared: PreparedTake[], tracked: TrackedTake[], o: { shift?: boolean } = {}): DanceCheck[] {
+  const p = songPaths(c, trackId);
+  const out: DanceCheck[] = [];
+  prepared.forEach((pr, k) => {
+    const clip = lib.clips.find((x) => x.id === pr.takeId)!;
+    const lock = clip.danceLock!;
+    const take = loadCaptureIn(c.library, trackId, lock.takeId);
+    const moves = existsSync(movesPaths(c, trackId).moves(lock.takeId)) ? readJson<MoveTrack>(movesPaths(c, trackId).moves(lock.takeId)) : null;
+    if (!take || !moves) throw new Error(`${clip.id}: take ${lock.takeId} is no longer in the library`);
+    const gen: PoseCapture = { ...take, takeId: clip.id, fps: pr.fps, frames: tracked[k].frames.map((f, i) => ({ t: i / pr.fps, image: f.image, world: f.world })) };
+    const raw = compareMotion(motionCurve(take, lock.captureStartSec, lock.captureStartSec + clip.durationSec), motionCurve(gen), pr.fps);
+    // The take's first frame in the cut may sit a fraction of a frame after where the reference starts.
+    const t0 = take.frames.find((f) => f.t >= lock.captureStartSec - 1e-9)?.t ?? lock.captureStartSec;
+    const m = { ...raw, lagMs: Math.round(raw.lagMs - (t0 - lock.captureStartSec) * 1000) };
+    const verdict = verdictOf(m);
+    lock.check = { ...m, verdict, checkedAt: nowOf(c) };
+    let shiftedTo: number | null = null;
+    if (o.shift && verdict !== "does_not_follow") {
+      // Late by L: play it L earlier, from where the reference started in the song.
+      shiftedTo = Math.round((lock.captureStartSec + moves.sync.songAtCapture0 - m.lagMs / 1000) * 1000) / 1000;
+      lock.songStartSec = Math.max(0, shiftedTo);
+    }
+    out.push({ clipId: clip.id, ...m, verdict, shiftedTo });
+  });
+  writeFileSync(p.clips, JSON.stringify(lib, null, 2) + "\n");
+  return out;
+}
+
+export function checkLines(checks: DanceCheck[], trackId: string): string[] {
+  return checks.map((k) => {
+    const late = k.lagMs > 0 ? `${k.lagMs} ms late` : `${-k.lagMs} ms early`;
+    const line = k.verdict === "keeps_timing" ? `keeps your timing (${late}, match ${k.r})`
+      : k.verdict === "drifts" ? `follows your moves but ${late} (match ${k.r})${k.shiftedTo === null ? `; run check-moves ${trackId} ${k.clipId} --shift to line it up` : `; now plays from song ${k.shiftedTo} s`}`
+      : `does not follow your moves (match ${k.r}); generate it again`;
+    return `${k.clipId}: ${line}`;
+  });
+}
+
+// ---------- style: your style across every song you have danced to ----------
+
+export function buildStyle(c: Ctx): { profile: StyleProfile; path: string } {
+  const songs = loadManifest(c).tracks.flatMap((t) => {
+    const p = songPaths(c, t.trackId);
+    const tracks = loadTakesIn(c.library, t.trackId);
+    return tracks.length && existsSync(p.cuemap) ? [{ trackId: t.trackId, map: readJson<CueMap>(p.cuemap), tracks }] : [];
+  });
+  if (!songs.length) throw new Error("no takes in the library yet; run: npm run dance8 -- moves <song> <video>");
+  const profile = styleProfile(songs, nowOf(c));
+  const path = join(c.library, "dance8-style.json");
+  writeFileSync(path, JSON.stringify(profile, null, 1) + "\n");
+  return { profile, path };
+}
+
