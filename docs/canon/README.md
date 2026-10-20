@@ -78,11 +78,15 @@ All seven v1.0.0 conflicts are settled:
 - **D8-17**: the owner's filmed dance is read as Kirtled words: a stomp on a beat DO, travel of half a body-width within a bar RA, a level change without travel LA, a turn of 180 degrees or more KA, a jump TI, holding still for a beat FREEZE.
 - **D8-18**: that dance styles the skaters without moving the tricks: turn picks the KA version, jump height the ollie size, the freeze the freeze pose, energy how many skaters, travel the carve direction.
 
+## Decided by the owner (v1.4.0, 20 Oct 2026)
+
+- **D8-09**: Kirtled performance mode exports one multitrack MIDI file: five music tracks (piano, bass, pads, lead, drums on CH1-4 and CH10) and a separate light-cue track (CH16). DASH is the name of FREEZE, not an alias of JUMP.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
-revenue threshold, data sources and binding thresholds, D8-09 Kirtled export
-and the DASH label, STU-04 Stuttr storage and rights, PL8-07 Plate8 public or
+revenue threshold, data sources and binding thresholds, STU-04 Stuttr storage
+and rights, PL8-07 Plate8 public or
 admin-only, PUR-02 Pure permissions, VIS-03 amber and green hex values, VIS-09
 vector logos.
 
@@ -100,3 +104,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.2.0, 2026-10-18: D8-16 added (skaters play Kirtled: the owner approved the trick for each move word); built in `lib/dance8/harmony/skateTricks.ts`.
 - 1.3.0, 2026-10-19: D8-17 (the owner's dance read as Kirtled words; built in `lib/dance8/moves/`) and D8-18 (that dance styles the skaters; not built yet) added, both approved by the owner.
 - 1.3.1, 2026-10-19: D8-18 built in `lib/dance8/moves/skaters.ts` (no change to what the entry says).
+- 1.4.0, 2026-10-20: D8-09 settled by the owner (five music tracks plus a light-cue track; DASH names FREEZE); `KIRTLED_MIDI_EXPORT` added and FREEZE given its name in `KIRTLED_MOVES`.

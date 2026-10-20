@@ -21,7 +21,7 @@ import { CANON_COLORS } from "../../lib/canon/vocab";
 const ROOT = join(__dirname, "..", "..");
 const OUT = join(ROOT, "brand", "icons");
 const INK = "#070B14"; // the site's theme colour (app/layout.tsx)
-const { cyan, magenta, navy, coolGray } = CANON_COLORS;
+const { cyan, magenta, navy } = CANON_COLORS;
 
 /** Inter Bold "8" (font units, y up; bounds 94..1239 x -20..1510). */
 const EIGHT = "M666 -20Q499 -20 370.0 35.0Q241 90 167.5 185.0Q94 280 94 400Q94 493 136.5 571.5Q179 650 251.5 702.5Q324 755 415 770V779Q296 804 222.0 896.0Q148 988 148 1110Q148 1225 215.0 1315.5Q282 1406 399.0 1458.0Q516 1510 666 1510Q815 1510 932.5 1458.0Q1050 1406 1117.5 1315.5Q1185 1225 1185 1110Q1185 988 1110.0 896.0Q1035 804 919 779V770Q1008 755 1080.5 702.5Q1153 650 1196.0 571.5Q1239 493 1239 400Q1239 280 1165.5 185.0Q1092 90 962.5 35.0Q833 -20 666 -20ZM666 206Q743 206 800.0 233.5Q857 261 889.0 310.5Q921 360 921 424Q921 490 888.0 540.5Q855 591 797.5 620.5Q740 650 666 650Q592 650 534.5 621.0Q477 592 444.0 541.5Q411 491 411 424Q411 360 442.5 311.0Q474 262 532.0 234.0Q590 206 666 206ZM666 874Q730 874 779.5 900.0Q829 926 857.5 972.0Q886 1018 886 1077Q886 1137 858.0 1182.0Q830 1227 780.5 1252.0Q731 1277 666 1277Q601 1277 551.5 1252.0Q502 1227 474.0 1182.0Q446 1137 446 1077Q446 1018 474.0 972.0Q502 926 552.0 900.0Q602 874 666 874Z";
@@ -77,21 +77,12 @@ const ICONS: Record<string, string> = {
       `<circle cx="760" cy="760" r="122" fill="${cyan}"/>` +
       gear(760, 760, 104, INK, cyan),
   ),
-  // Dance8 (option B): a Kirtled floor hexagon of six triads around the
-  // dancer; one triad lit, as on the floor when a chord sounds.
-  "dance8-floor": svg(
-    `<defs><radialGradient id="g" cx="0.5" cy="0.45" r="0.75"><stop offset="0" stop-color="${navy}"/><stop offset="1" stop-color="${INK}"/></radialGradient></defs>` +
-      `<rect width="1024" height="1024" fill="url(#g)"/>` +
-      hexFloor(512, 512, 330),
-  ),
-  // Dance8 (option A): the 8 as two Kirtled triangles meeting at one point, the dancer.
+  // Dance8 (the owner's pick, 2026-10-20): a Kirtled floor hexagon of six
+  // triads around the dancer; one triad lit, as on the floor when a chord sounds.
   dance8: svg(
     `<defs><radialGradient id="g" cx="0.5" cy="0.45" r="0.75"><stop offset="0" stop-color="${navy}"/><stop offset="1" stop-color="${INK}"/></radialGradient></defs>` +
       `<rect width="1024" height="1024" fill="url(#g)"/>` +
-      `<polygon points="296,236 728,236 512,512" fill="${magenta}"/>` +
-      `<polygon points="512,512 296,788 728,788" fill="${cyan}"/>` +
-      `<polygon points="296,236 728,236 512,512 728,788 296,788 512,512" fill="none" stroke="${coolGray}" stroke-opacity="0.35" stroke-width="10" stroke-linejoin="round"/>` +
-      `<circle cx="512" cy="512" r="46" fill="#FFFFFF"/>`,
+      hexFloor(512, 512, 330),
   ),
 };
 

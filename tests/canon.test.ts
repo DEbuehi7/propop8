@@ -108,6 +108,14 @@ test("canon vocab: namespaces never share a key", () => {
   for (const t of vocab.TRIADIC_MEANINGS) assert.equal(t.roles.length, 3);
 });
 
+test("canon D8-09: the MIDI export is five music tracks plus light cues on the D8-08 channels; DASH names FREEZE", () => {
+  const ch = vocab.KIRTLED_MIDI_CHANNELS;
+  assert.deepEqual(vocab.KIRTLED_MIDI_EXPORT.tracks.map((t) => t.channel), [ch.piano, ch.bass, ch.pads, ch.lead, ch.drums, ch.lightCues]);
+  assert.equal(vocab.KIRTLED_MIDI_EXPORT.tracks.filter((t) => t.kind === "music").length, 5);
+  assert.equal(vocab.KIRTLED_MOVES.find((m) => m.move === "FREEZE")!.word, "DASH");
+  assert.equal(vocab.KIRTLED_MOVES.find((m) => m.move === "JUMP")!.word, "TI", "JUMP keeps TI; DASH is not its alias");
+});
+
 test("canon vocab: Kirtled canonical sequence is internally consistent", () => {
   const q = vocab.KIRTLED_CANONICAL_SEQUENCE;
   assert.equal(q.words.length, q.chords.length - 1);
