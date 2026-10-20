@@ -59,7 +59,19 @@ export interface SongAnalysis {
   /** RMS dBFS per eighth note (8 per bar), for finding sung phrases. */
   eighthDb: { lead: number[] | null; backing: number[] | null };
   chords: { bar: number; half: 0 | 1; chord: string; fit: number }[];
+  /**
+   * The song's onset pattern (every part summed), so Dance8 can line a filmed
+   * take up with the song without reading the masters (canon D8-14). Absent in
+   * analyses made before 19 Oct 2026; run analyze again to add it.
+   */
+  sync?: SyncFingerprint;
   warnings: string[];
+}
+
+/** Onset strength per frame, square-rooted and scaled to 0-255 at its 99.5th percentile, as base64. */
+export interface SyncFingerprint {
+  frameSec: number;
+  q8: string;
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -175,6 +187,30 @@ export function onsetEnvelope(x: ArrayLike<number>, sr = ANALYSIS_SR, band?: [nu
     prev = cur;
   });
   return env;
+}
+
+// ---------- Sync fingerprint ----------
+
+export function syncFingerprint(x: ArrayLike<number>, sr = ANALYSIS_SR): SyncFingerprint {
+  const env = onsetEnvelope(x, sr).map(Math.sqrt);
+  const sorted = Float64Array.from(env).sort();
+  const scale = sorted[Math.min(sorted.length - 1, Math.floor(0.995 * sorted.length))] || 1;
+  const q = new Uint8Array(env.length);
+  for (let i = 0; i < env.length; i++) q[i] = Math.min(255, Math.round((255 * env[i]) / scale));
+  return { frameSec: r6(ONSET_HOP / sr), q8: Buffer.from(q).toString("base64") };
+}
+
+export function readSyncFingerprint(f: SyncFingerprint): Float64Array {
+  return Float64Array.from(Buffer.from(f.q8, "base64"));
+}
+
+/** Every part summed (what plays from a speaker), plus the instrumental or mix when there are no drum stems. */
+function mixOf(inp: AnalysisInput): Float32Array | null {
+  const srcs = [...Object.values(inp.parts), ...(inp.parts.drums ? [] : [inp.gridFallback])].filter((x): x is Float32Array => !!x);
+  if (!srcs.length) return null;
+  const out = new Float32Array(Math.max(...srcs.map((x) => x.length)));
+  for (const x of srcs) for (let i = 0; i < x.length; i++) out[i] += x[i];
+  return out;
 }
 
 // ---------- Tempo, beat phase and downbeats ----------
@@ -434,6 +470,7 @@ export function analyzeSong(inp: AnalysisInput): SongAnalysis {
       }
     }
   } else warnings.push("no harmony to read chords from");
+  const mix = mixOf(inp);
 
   return {
     schemaVersion: 1,
@@ -456,6 +493,7 @@ export function analyzeSong(inp: AnalysisInput): SongAnalysis {
     },
     eighthDb: { lead: perEighth(inp.parts.lead), backing: perEighth(inp.parts.backing) },
     chords,
+    ...(mix ? { sync: syncFingerprint(mix) } : {}),
     warnings,
   };
 }

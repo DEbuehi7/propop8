@@ -11,7 +11,7 @@ import { CANON_REGISTER } from "./register";
 import { STUDIES } from "./studies";
 import * as vocab from "./vocab";
 
-export const CANON_VERSION = "1.2.0";
+export const CANON_VERSION = "1.3.0";
 
 export { CANON_REGISTER, STUDIES, vocab };
 export type { CanonEntry, CanonStatus, CanonDomain, CanonSource, Impl } from "./register";
