@@ -290,6 +290,8 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     "Next",
     `  Name each Kling download after its shot id in ${basename(p.briefs)}, put them in one folder, then:`,
     `  npm run dance8 -- clips ${trackId} ~/Downloads`,
+    `  Watch each one, approve it (approve-clip ${trackId} <clip> --drift 0.1), then:`,
+    `  npm run dance8 -- render ${trackId}   (add --short chorus-1 for a short, --approved for the final)`,
     "",
   ].join("\n");
   writeFileSync(p.readme, readme);
@@ -462,4 +464,45 @@ export function setClipStatus(
   writeJson(p.clips, lib);
   logOf(c)(`${clipId} is now ${status}`);
   return clip;
+}
+
+export interface RenderRequest {
+  /** A cue id (e.g. chorus-1): render only that part, for a short or teaser. */
+  short?: string;
+  seed?: number;
+  /** Final: refuses drafts, stand-ins and unmeasured drift; always adds the AI disclosure. */
+  approved?: boolean;
+  punch?: number;
+  lyrics?: boolean;
+  /** Override the frame rate; by default the render uses the clips' own rate. */
+  fps?: number;
+  /** Also write a CMX 3600 EDL next to the video (open the cut in Resolve or Premiere). */
+  edl?: boolean;
+}
+
+/**
+ * The scripts/dance8/cut.ts arguments that render a song straight from its
+ * library: cue map, clip library, clips folder, the song's full mix and, when
+ * the plan has skate tricks, tricks.json. The video goes to
+ * <song>/dance8/renders/ (the caller creates the folder).
+ */
+export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { args: string[]; out: string } {
+  const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
+  if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
+  const p = songPaths(c, trackId);
+  if (!existsSync(p.cuemap) || !existsSync(p.clips)) throw new Error(`no plan yet; run: npm run dance8 -- plan ${trackId}`);
+  const mix = t.files.find((f) => f.role === "full_mix");
+  if (!mix) throw new Error(`${trackId} has no full mix in the library; export Full Song from Suno and add it with npm run stuttr -- add`);
+  const name = [trackId, r.short, r.seed ? `seed${r.seed}` : "", r.approved ? "final" : "draft"].filter(Boolean).join("-");
+  const out = join(p.dir, "renders", `${name}.mp4`);
+  const args = [p.cuemap, p.clips, "--render", "--clips", p.clipDir, "--audio", join(c.library, mix.path), "--out", out];
+  if (r.short) args.push("--short", r.short);
+  if (r.seed) args.push("--seed", String(r.seed));
+  if (r.approved) args.push("--approved");
+  if (r.punch !== undefined) args.push("--punch", String(r.punch));
+  if (r.lyrics) args.push("--lyrics");
+  if (r.fps !== undefined) args.push("--fps", String(r.fps));
+  if (existsSync(p.tricks)) args.push("--tricks", p.tricks);
+  if (r.edl) args.push("--edl", out.replace(/\.mp4$/, ".edl"));
+  return { args, out };
 }

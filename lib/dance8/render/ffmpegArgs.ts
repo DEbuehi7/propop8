@@ -122,6 +122,8 @@ export function buildFfmpegArgs(cuts: Cut[], library: VisualClipLibrary, o: Rend
     "-frames:v", String(totalFrames),
     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", String(o.fps),
     "-c:a", "aac", "-shortest",
+    // Index at the front: a web page can start playing before the download ends.
+    "-movflags", "+faststart",
     o.outPath,
   );
   return args;

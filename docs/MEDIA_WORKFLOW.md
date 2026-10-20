@@ -1,0 +1,86 @@
+# Media workflow
+
+Two kinds of video, two short routines. Everything is decided by the files and
+one command each; there is nothing to set by hand in an editor.
+
+| You are making | Source | Command | Output |
+|---|---|---|---|
+| A helper clip for a PropOps8 page | iPhone screen recording | `npm run helpers` | `public/helpers/<id>.mp4` + poster + captions |
+| A Dance8 video | Kling or Veo clips, the Suno full mix | `npm run dance8 -- render <song>` | `<song>/dance8/renders/<song>-….mp4` |
+
+## Formats
+
+**Dance8**
+
+- **Generated clips (Kling, Veo/Gemini).** Keep the file exactly as downloaded
+  (MP4, H.264). Don't re-encode or trim it first: every re-encode loses detail,
+  and the cut planner trims to the beat itself. Generate in the song's shape:
+  9:16 for Shorts, Reels and TikTok (the default), 16:9 for YouTube, 4:5 for the
+  Instagram feed. Generate all of a song's clips at one frame rate if the tool
+  lets you choose; 24 fps is the canon sync grid (D8-03: 12 frames a beat at
+  120 BPM) and what Veo produces.
+- **Your dance takes.** Film on the phone as normal (HEVC is fine), 60 fps if
+  the phone offers it, whole body in frame. `moves` reads them as they are.
+- **The render.** H.264 High, yuv420p, AAC, MP4 with the index at the front,
+  at the shape's full size (1080x1920 for 9:16, 1920x1080 for 16:9, 1080x1350
+  for 4:5). The frame rate is the clips' own: 24 fps clips give a 24 fps video,
+  so no frames are invented or dropped unevenly. 48 or 60 fps clips render at
+  24 or 30 (every other frame, evenly). If one clip doesn't match the rest, the
+  render names it. `--fps 30` overrides.
+- **Audio** always comes from the song's full mix in the Stuttr library (the
+  Suno master), never from a clip's own soundtrack.
+
+**Helper clips** (made by `npm run helpers`; nothing to choose): 540 px wide,
+30 fps, H.264, no sound, MP4 with the index at the front, a JPEG poster and
+WebVTT captions. Each clip is 3 to 15 seconds and under 800 KB. The page loads
+nothing until someone presses play.
+
+**Concept clips** (AI video for AIM-B5R, Transect, Stuttr): not in this
+repository, which is public. When one is used on a page it carries a Concept
+badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
+
+## Dance8: from shot list to video
+
+1. `npm run dance8 -- plan <song>`. The song's `dance8/README.txt` lists the
+   shots to generate, each with an id and a length.
+2. Generate each shot. Rename each download to its shot id (`broll-intro-drone_wide.mp4`;
+   a take number such as `-2` is fine) and keep them in one folder.
+3. `npm run dance8 -- clips <song> ~/Downloads`. Files that match a shot come in
+   as drafts; the rest are left alone.
+4. Watch each draft, then `npm run dance8 -- approve-clip <song> <clip> --drift 0.1`
+   (your score: 0 matches the references, 1 is unrecognisable).
+5. `npm run dance8 -- render <song> --short chorus-1` for a draft short, or
+   `npm run dance8 -- render <song> --approved` for the final. The final refuses
+   drafts and stand-ins and always adds the AI disclosure caption. Add `--edl` to
+   open the cut in Resolve or Premiere for hand finishing, `--lyrics` to burn in
+   the sung lines, `--seed 2` for another variation of the same edit.
+
+Each render writes `<video>.manifest.json`: every clip used, where it came from,
+its drift score, the seed and the frame rate.
+
+## Helper clips: from recording to page
+
+1. **Record** on the phone (Control Centre, Screen Recording) using the
+   synthetic sample data. Go slowly, close the keyboard before scrolling, and
+   stay out of admin, sign-in, checkout and file-picker screens (they get cut
+   anyway). AirDrop the recording to the Mac; it lands in `~/Downloads`.
+2. **Note the seconds** you want: open it in QuickTime and read the times off
+   the scrubber. Several pieces of one recording can be joined.
+3. **Add or edit the entry** in `lib/helpers/registry.ts`: the page (`route`),
+   a title, the recording's file name, the `segments` in seconds, the poster
+   frame and one caption per step (the steps appear beside the video and light
+   up as it plays). Phone recordings use `IPHONE_PAGE`, which crops off the
+   status bar and browser bars.
+4. **Render**: `npm run helpers` (all clips) or `npm run helpers -- <id>`.
+   Recordings elsewhere: `--src <folder>`. Caption text only: `--captions`.
+5. **Check**: `npm run verify` confirms the files match the registry, the page
+   exists and renders the clips, and the sizes are within budget. `npm run dev`
+   to watch them on the page.
+
+A page shows its clips by rendering `<HelperClips route="/tools/…" />`. The
+recert page, the vacancy calculator and every calculator under `app/tools/[slug]`
+already do, so a new clip for those needs only a registry entry.
+
+**Before re-recording**, check the clip still matches the app: a helper must
+never show a button, number or screen the live tool no longer has. Re-record
+after any change to what the recorded screen shows.

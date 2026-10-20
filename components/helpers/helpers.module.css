@@ -1,0 +1,110 @@
+/* Helper clips. Colours come from the host page when it defines them
+   (the recert page sets --text, --muted, --cyan, --line, --panel) and fall
+   back to the PropOps8 tool palette (lib/chaosTokens.ts) everywhere else. */
+
+.section {
+  --h-text: var(--text, #e6edf7);
+  --h-muted: var(--muted, #7f8ea8);
+  --h-accent: var(--cyan, #22d3ee);
+  --h-line: var(--line, rgba(34, 211, 238, 0.14));
+  --h-panel: var(--panel, #111a2b);
+  color: var(--h-text);
+}
+
+.heading {
+  margin: 0 0 18px;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Several clips: a row that scrolls sideways on a phone and sits in columns on a wide screen. */
+.row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(236px, 78%);
+  gap: 18px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
+}
+.row > * { scroll-snap-align: start; }
+@media (min-width: 760px) {
+  .row { grid-auto-columns: minmax(0, 1fr); overflow: visible; }
+}
+
+/* One clip: the recording beside its steps, stacked on a phone. */
+.single > .card { display: grid; gap: 18px; }
+@media (min-width: 640px) {
+  .single > .card { grid-template-columns: minmax(200px, 260px) 1fr; align-items: start; gap: 28px; }
+}
+
+.card { margin: 0; min-width: 0; }
+
+.frame {
+  max-width: 300px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--h-line);
+  background: var(--h-panel);
+}
+.video { display: block; width: 100%; height: auto; }
+
+.body { padding-top: 14px; }
+.single .body { padding-top: 4px; }
+
+.title { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 600; }
+
+.chip {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 3px 8px;
+  border: 1px solid var(--h-line);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--h-muted);
+}
+.concept { border-color: rgba(242, 163, 58, 0.45); color: #f2a33a; }
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 30px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--h-muted);
+  transition: color 0.2s ease;
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--h-line);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--h-muted);
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+.steps li.on { color: var(--h-text); }
+.steps li.on::before { border-color: var(--h-accent); background: var(--h-accent); color: #06202a; }
+
+.note { margin: 18px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--h-muted); max-width: 70ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  .steps li, .steps li::before { transition: none; }
+}

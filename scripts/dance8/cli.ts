@@ -13,16 +13,20 @@
  *                                                            and becomes the dancers' motion references)
  *   npm run dance8 -- check-moves cloyne                      (did each generated dancer keep your timing?)
  *   npm run dance8 -- style                                   (your style across every song you have danced to)
+ *   npm run dance8 -- render cloyne --short chorus-1          (a draft short from the approved clips)
+ *   npm run dance8 -- render cloyne --approved                (the final, with the AI disclosure caption)
  *
  * plan writes <id>/dance8/: cue map, harmony, Kirtled plan, clip library, shot
  * list, mouth tracks and README. It keeps a cue map, harmony or clip library
  * that already exists (yours to edit) unless --replace. Options: --key (Eb, Cm),
  * --aspect (9:16, 16:9, 4:5, 1:1, 21:9), --final (size shots for Kling 4.0).
  */
+import { spawnSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { Ctx } from "../../lib/stuttr/commands";
-import { ingestClips, planTrack, setClipStatus } from "../../lib/dance8/pipeline";
+import { ingestClips, planTrack, renderArgs, setClipStatus } from "../../lib/dance8/pipeline";
 import {
   buildStyle, checkLines, cleanupTakes, clipsToCheck, ensureModel, prepareClipFrames, prepareTakes, rereadTakes, saveChecks, saveTakes, songForMoves, type PoseModel,
 } from "../../lib/dance8/movesPipeline";
@@ -37,7 +41,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -50,7 +54,8 @@ const usage = `Dance8 (${ctx.library})
   retire-clip <trackId> <clipId>
   moves <trackId> [video ...] [--offset <song sec at video start>] [--heavy] [--no-open]
   check-moves <trackId> [clipId ...] [--shift] [--again] [--no-open]
-  style`;
+  style
+  render <trackId> [--short <cueId>] [--approved] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -133,6 +138,22 @@ async function main() {
       if (!a1) throw new Error("moves needs a track id (and your videos, or none to re-read saved takes)");
       await moves(a1, positional.slice(2));
       break;
+    case "render": {
+      if (!a1) throw new Error("render needs a track id");
+      const num = (name: string) => {
+        const v = flag(name);
+        if (v === undefined) return undefined;
+        if (!Number.isFinite(Number(v))) throw new Error(`--${name} must be a number`);
+        return Number(v);
+      };
+      const { args, out } = renderArgs(ctx, a1, {
+        short: flag("short"), seed: num("seed"), approved: has("approved"), punch: num("punch"), lyrics: has("lyrics"), fps: num("fps"), edl: has("edl"),
+      });
+      mkdirSync(dirname(out), { recursive: true });
+      const r = spawnSync("npx", ["--yes", "tsx", join(__dirname, "cut.ts"), ...args], { stdio: "inherit" });
+      if (r.status !== 0) process.exitCode = r.status ?? 1;
+      break;
+    }
     default:
       console.log(usage);
       if (cmd) process.exitCode = 1;

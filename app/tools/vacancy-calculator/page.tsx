@@ -12,6 +12,7 @@
  */
 
 import type { Metadata } from 'next';
+import HelperClips from '@/components/helpers/HelperClips';
 import VacancyBlackHole from './VacancyBlackHole';
 
 export const metadata: Metadata = {
@@ -27,5 +28,11 @@ export const metadata: Metadata = {
 };
 
 export default function VacancyCalculatorPage() {
-  return <VacancyBlackHole />;
+  return (
+    <>
+      <VacancyBlackHole />
+      <div style={{ height: 48 }} aria-hidden />
+      <HelperClips route="/tools/vacancy-calculator" heading="How it works" width={980} />
+    </>
+  );
 }

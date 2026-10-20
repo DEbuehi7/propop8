@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Oswald, JetBrains_Mono } from "next/font/google";
+import HelperClips from "@/components/helpers/HelperClips";
 import hero from "./hero.jpg";
 import s from "./recert.module.css";
 
@@ -71,6 +72,13 @@ export default function RecertLanding() {
             <Image src={hero} alt="Recert Flow Engine concept illustration" priority placeholder="blur" className={s.heroImg} />
             <figcaption>Concept illustration. Figures shown are illustrative; build status is listed below.</figcaption>
           </figure>
+        </section>
+
+        <section aria-labelledby="see-it-run" className={s.flowSec}>
+          <div className={s.secHead}>
+            <h2 id="see-it-run" className={s.h2}>See it run</h2>
+          </div>
+          <HelperClips route="/tools/recert" />
         </section>
 
         <section aria-labelledby="flow" className={s.flowSec}>
