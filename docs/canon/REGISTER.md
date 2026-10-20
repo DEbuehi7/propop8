@@ -1,8 +1,8 @@
-# AIM canon register (v1.3.1)
+# AIM canon register (v1.4.0)
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
-186 entries from 20 studies: CONFLICT 0 · OPEN 9 · LOCKED 120 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
+186 entries from 20 studies: CONFLICT 0 · OPEN 8 · LOCKED 121 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
 
 ## Coverage by study
 
@@ -36,7 +36,6 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | P8O-08 | PROPOPS8 | Recert per-packet price, set from the measured time saving against the manual baseline. | n/a |  | propops8-reliability p9 |
 | P8O-09 | PROPOPS8 | Exact content brief for the Lumen, Eon and Transect L.E.T. node pages. | n/a |  | propops8-reliability p9 |
 | B5R-31 | AIM_B5R | Owner decisions: the PropOps8 revenue threshold that funds B5R compute and storage; authorized data sources for the pilot; binding underwriting fields, scenario tests and go/no-go thresholds; production thresholds that trigger Phase 5 expansion. | n/a |  | system-architecture p10; propops8-reliability p9 |
-| D8-09 | DANCE8 | Kirtled: is the export 'four-track MIDI' or five music tracks plus a separate light-cue track; and is DASH an alias of JUMP or the name of FREEZE? | n/a |  | kirtled p3; kirtled p4 |
 | STU-04 | STUTTR | Where Stuttr assets are stored, and the track-by-track rights and provenance chain. | n/a |  | propops8-reliability p9 |
 | PL8-07 | PLATE8 | Whether Plate8 stays admin-only or gets a public route. | n/a |  | propops8-reliability p9 |
 | VIS-03 | VISUAL | Amber (maintenance) and green (verified/complete) have no canonical hex value yet. | n/a |  | propops8-reliability p6; system-architecture p9 |
@@ -146,6 +145,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | D8-05 | DANCE8 | Production ladder: budget 2D/2.5D first, modular 3D second, selective cinematic AI hero shots last. No cost-saving percentage is advertised without measurement. | n/a | lib/canon/vocab.ts#VIDEO_PRODUCTION_LADDER | chronolayer p12 |
 | D8-06 | DANCE8 | Kirtled song-following: Tonnetz triads; R, L and P side crossings; R = kick, L = hi-hat, P = snare, leap = crash, as light cues only. RA travels, LA flips, KA spins, TI changes key only where the timeline does. | built | lib/dance8/harmony/; lib/dance8/contracts/harmony.ts | kirtled p2; kirtled p3; kirtled p4 |
 | D8-07 | DANCE8 | Canonical example: C, Em, G, Gm, G, Em, C crosses hi-hat, kick, snare, snare, kick, hi-hat with words RA, RA, LA, LA, RA, RA. Gm is chromatic, the relative minor of C is Am, and the diminished triad is omitted. | built | tests/dance8/kirtledCanon.test.ts; lib/canon/vocab.ts#KIRTLED_CANONICAL_SEQUENCE | kirtled p2; kirtled p4 |
+| D8-09 | DANCE8 | Kirtled performance mode exports one standard multitrack MIDI file: five music tracks (piano CH1, bass CH2, pads CH3, lead CH4, drums CH10) and a separate light-cue track (CH16), not four-track MIDI. DASH is the name of FREEZE (a dash holds, as in notation, and pairs with DO as a dash with a dot), not an alias of JUMP, which stays TI. *Decided by the owner 2026-10-20, who asked for the usual answer. Performance mode itself (D8-08) is not built yet.* | n/a | lib/canon/vocab.ts#KIRTLED_MIDI_EXPORT; lib/canon/vocab.ts#KIRTLED_MOVES | kirtled p3; kirtled p4 |
 | D8-10 | DANCE8 | Kirtled diagrams (chord strip, transitions, drum taxonomy, labels) come from one version-controlled schema and are composited over scene art; a browser-only simulation precedes any building integration. Wordmark: K, R, L magenta; T gold; D teal; I, E white. | partial |  | kirtled p6 |
 | D8-12 | DANCE8 | Triadic World films follow a 90/10 contract: 90% native world, 10% human-facing film convention. The planet is the performer; no generic cyberpunk armour, unexplained humanoids or arbitrary geometry. | n/a |  | triadic-dance8 p9 |
 | D8-13 | DANCE8 | Dance8 deploys on its own Cloudflare account, separate from Pulse8 and from PropOps8's Netlify site. Its code stays in this repo until it deploys. *Decided by the owner 2026-10-18 (one study had placed Dance8 under the Pulse8 account).* | not_built |  | system-architecture p3 |

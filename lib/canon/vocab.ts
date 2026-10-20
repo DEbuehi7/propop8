@@ -433,7 +433,8 @@ export const KIRTLED_MOVES = [
   { word: "LA", move: "FLIP", effect: "Switch major/minor on the same root (G -> Gm is chromatic)", builtInSongFollowing: true },
   { word: "KA", move: "SPIN", effect: "Orbit a shared corner: around C, C -> Am -> F", builtInSongFollowing: true },
   { word: "TI", move: "JUMP", effect: "Change the selected key and triangle set; only TI changes key", builtInSongFollowing: true },
-  { word: null, move: "FREEZE", effect: "Hold chord/pads and suppress drums until release", builtInSongFollowing: false },
+  // DASH names FREEZE (D8-09, decided 2026-10-20): a dash holds, as in notation.
+  { word: "DASH", move: "FREEZE", effect: "Hold chord/pads and suppress drums until release", builtInSongFollowing: false },
 ] as const;
 
 /**
@@ -492,5 +493,18 @@ export const KIRTLED_CANONICAL_SEQUENCE = {
 } as const;
 
 export const KIRTLED_MIDI_CHANNELS = { piano: 1, bass: 2, pads: 3, lead: 4, drums: 10, lightCues: 16 } as const;
+
+/**
+ * Performance-mode export (D8-09, decided by the owner 2026-10-20): one
+ * standard multitrack MIDI file (SMF type 1) with five music tracks and a
+ * separate light-cue track, on the D8-08 channels. Not four-track MIDI.
+ */
+export const KIRTLED_MIDI_EXPORT = {
+  format: "smf_type_1",
+  tracks: [
+    { name: "Piano", channel: 1, kind: "music" }, { name: "Bass", channel: 2, kind: "music" }, { name: "Pads", channel: 3, kind: "music" },
+    { name: "Lead", channel: 4, kind: "music" }, { name: "Drums", channel: 10, kind: "music" }, { name: "Light cues", channel: 16, kind: "light" },
+  ],
+} as const;
 
 export const KIRTLED_WORDMARK = { K: "magenta", R: "magenta", L: "magenta", T: "gold", D: "teal", I: "white", E: "white" } as const;

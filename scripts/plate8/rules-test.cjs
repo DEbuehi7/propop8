@@ -74,7 +74,6 @@ ok('old saves land on a level: classic and short on 2, vanity on 3', E.OLD_FMT.c
   ev('document.querySelector("#pAll").click()'); await wait(80);
   const all = ev('document.querySelector("#pMsg").textContent').replace(/^.*?Reachable:\s*/, '').split(' · ').map((x) => x.replace(/[^A-Z]/g, '')).filter(Boolean);
   const w = all.sort((a, c) => a.length - c.length)[0];
-  const plateNow = ev('document.querySelector("#pTiles").textContent').replace(/[^A-Z0-9]/g, '').slice(0, 7);
   ev('document.querySelector("#pIn").value=' + JSON.stringify(w) + ';document.querySelector("#pIn").dispatchEvent(new Event("input"))'); await wait(60);
   ev('document.querySelector("#pGo").click()'); await wait(100);
   const msg = ev('document.querySelector("#pMsg").textContent');
