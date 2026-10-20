@@ -12,7 +12,7 @@ import type { SongAnalysis } from "../../lib/stuttr/analysis";
 import { lyricGroups, lyricLines, parseKey, planSong, spreadLines, sungRuns } from "../../lib/dance8/authoring/plan";
 import { validateCueMap } from "../../lib/dance8/authoring/validateCueMap";
 import { planCuts } from "../../lib/dance8/runtime/CutPlanner";
-import { aspectOf, briefForFile, ingestClips, planTrack, setClipStatus, songPaths, standInClip } from "../../lib/dance8/pipeline";
+import { aspectOf, briefForFile, ingestClips, planTrack, renderArgs, setClipStatus, songPaths, standInClip } from "../../lib/dance8/pipeline";
 import { addSong, analyzeTrack, type Ctx } from "../../lib/stuttr/commands";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import type { CueMap, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
@@ -190,6 +190,20 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     assert.equal(lib2.clips.find((x) => x.id === trickClip.id)!.trick!.landingSec, 1.9, "your measured landing is kept");
     const cut = planCuts(JSON.parse(readFileSync(p.cuemap, "utf8")) as CueMap, lib2, { tricks: tr.tricks }).cuts.find((x) => x.reason === "skate_trick")!;
     assert.deepEqual([cut.startBar, cut.clipId, cut.clipInSec], [8, trickClip.id, 1.9]);
+
+    // render: one command from the library files; the clips are 24 fps, so the video is too.
+    const { args, out } = renderArgs(c, "synthetic-song", { short: "chorus-1", edl: true });
+    assert.equal(out, join(p.dir, "renders", "synthetic-song-chorus-1-draft.mp4"));
+    assert.deepEqual(args.slice(0, 4), [p.cuemap, p.clips, "--render", "--clips"]);
+    assert.ok(args.includes("--tricks") && args[args.indexOf("--audio") + 1].endsWith(".wav"));
+    assert.throws(() => renderArgs(c, "no-such-song"), /no song "no-such-song"/);
+    mkdirSync(join(p.dir, "renders"), { recursive: true });
+    const r = spawnSync("npx", ["--yes", "tsx", join(__dirname, "../../scripts/dance8/cut.ts"), ...args], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^24 fps \(the clips' own rate\)$/m);
+    const fpsOut = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", out], { encoding: "utf8" });
+    assert.equal(fpsOut.stdout.trim(), "24/1");
+    assert.match(readFileSync(out.replace(/\.mp4$/, ".edl"), "utf8"), /^FCM: NON-DROP FRAME$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

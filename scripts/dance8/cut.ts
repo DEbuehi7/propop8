@@ -15,6 +15,8 @@
  *   --lyrics          burn in the lyric line during each sung phrase (uses vocals[].text)
  *   --tricks FILE     land skate-trick clips on their chord changes (tricks.json from plan --skate)
  *   --edl FILE        also write a CMX 3600 EDL (open the cut in Resolve/Premiere)
+ *   --fps N           frame rate for the render and EDL; default is the rate the
+ *                     clips were made at (lib/dance8/render/fps.ts), 30 without --clips
  *   --briefs draft|final   list the shots still to generate, sized for
  *                     Kling 4.0 Flash (draft) or Kling 4.0 (final); --briefs-out FILE saves JSON
  *
@@ -26,6 +28,7 @@ import { spawnSync } from "node:child_process";
 import { FRAME_SIZE, type Cut, type CueMap, type VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import { planCuts, sliceCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { buildFfmpegArgs } from "../../lib/dance8/render/ffmpegArgs";
+import { chooseRenderFps, parseRate, standardFps, type FpsChoice } from "../../lib/dance8/render/fps";
 import { toEdl } from "../../lib/dance8/render/edl";
 import { barToSec } from "../../lib/dance8/authoring/validateCueMap";
 import { GENERATORS } from "../../lib/dance8/authoring/generators";
@@ -41,7 +44,7 @@ const FONT_GUESSES = [
 ];
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out", "--tricks"]);
+const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out", "--tricks", "--fps"]);
 const flag = (name: string) => argv.includes(name);
 const opt = (name: string) => {
   const i = argv.indexOf(name);
@@ -120,27 +123,61 @@ if (standIns.length > 0) {
   for (const c of standIns) console.log(`  bars ${c.startBar}-${c.endBar} ${c.cueId} ${c.sceneId}`);
 }
 
+// One ffprobe per clip file: its length and its frame rate.
+const clipDir = opt("--clips");
+const clipPath = (file: string) => (clipDir!.endsWith("/") ? clipDir + file : `${clipDir}/${file}`);
+const probes = new Map<string, { durationSec: number; rate: number } | null>();
+function probe(file: string) {
+  if (!probes.has(file)) {
+    const p = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate:format=duration", "-of", "json", file]);
+    let info: { durationSec: number; rate: number } | null = null;
+    try {
+      const j = p.status === 0 ? JSON.parse(String(p.stdout)) : null;
+      if (j) info = { durationSec: Number(j.format?.duration), rate: parseRate(String(j.streams?.[0]?.r_frame_rate ?? "")) };
+    } catch { info = null; }
+    probes.set(file, info);
+  }
+  return probes.get(file)!;
+}
+
+// Frame rate: --fps, else the rate the clips were made at, so no frames are
+// invented or dropped unevenly.
+const usedClips = lib.clips.filter((c) => cuts.some((cut) => cut.clipId === c.id));
+let fpsChoice: FpsChoice;
+if (opt("--fps") !== undefined) {
+  const f = Number(opt("--fps"));
+  if (!(Number.isInteger(f) && f > 0 && f <= 120)) fail("--fps takes a whole-number frame rate such as 24 or 30");
+  fpsChoice = { fps: f, sourceFps: null, uneven: [] };
+} else {
+  fpsChoice = chooseRenderFps(clipDir ? usedClips.map((c) => probe(clipPath(c.file))?.rate ?? NaN) : []);
+}
+const fps = fpsChoice.fps;
+if (clipDir || opt("--fps") !== undefined) {
+  console.log(`${fps} fps` + (opt("--fps") !== undefined ? " (--fps)" : fpsChoice.sourceFps ? (fpsChoice.sourceFps === fps ? " (the clips' own rate)" : ` (half the clips' ${fpsChoice.sourceFps} fps)`) : " (clip rates unreadable; the default)"));
+  for (const r of fpsChoice.uneven) {
+    const ids = usedClips.filter((c) => standardFps(probe(clipPath(c.file))?.rate ?? NaN) === r).map((c) => c.id);
+    console.log(`warning: ${ids.join(", ")} ${ids.length === 1 ? "is" : "are"} ${r} fps, which ${fps} fps doesn't divide evenly; motion may stutter. Use a ${fps} fps version or pass --fps ${r}.`);
+  }
+}
+
 const edlPath = opt("--edl");
 if (edlPath) {
-  writeFileSync(edlPath, toEdl(`${map.id} seed ${seed}${shortId ? ` ${shortId}` : ""}`, cuts, lib, 30));
+  writeFileSync(edlPath, toEdl(`${map.id} seed ${seed}${shortId ? ` ${shortId}` : ""}`, cuts, lib, fps));
   console.log(`Saved ${edlPath}`);
 }
 
 if (flag("--render")) {
-  const clipDir = opt("--clips");
   const audioPath = opt("--audio");
   const outPath = opt("--out");
   if (!clipDir || !audioPath || !outPath) fail("--render needs --clips DIR --audio FILE --out FILE");
 
   // The plan trusts durationSec; check every file really is that long, or the
   // picture would come up short and slide off the beat.
-  const used = new Set(cuts.map((c) => c.clipId));
   let bad = 0;
-  for (const clip of lib.clips.filter((c) => used.has(c.id))) {
-    const file = clipDir!.endsWith("/") ? clipDir + clip.file : `${clipDir}/${clip.file}`;
-    const p = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]);
-    const real = Number(String(p.stdout).trim());
-    if (p.status !== 0 || !Number.isFinite(real)) {
+  for (const clip of usedClips) {
+    const file = clipPath(clip.file);
+    const real = probe(file)?.durationSec ?? NaN;
+    if (!Number.isFinite(real)) {
       console.error(`missing or unreadable: ${file}`);
       bad++;
     } else if (real + 0.02 < clip.durationSec) {
@@ -173,7 +210,7 @@ if (flag("--render")) {
     lyrics = { fontFile: font, lines };
   }
   const args = buildFfmpegArgs(cuts, lib, {
-    clipDir: clipDir!, audioPath: audioPath!, outPath: outPath!, width: w, height: h, fps: 30,
+    clipDir: clipDir!, audioPath: audioPath!, outPath: outPath!, width: w, height: h, fps,
     audioOffsetSec, punch, caption, lyrics,
   });
   const r = spawnSync("ffmpeg", args, { stdio: "inherit" });
@@ -184,6 +221,7 @@ if (flag("--render")) {
     renderedAt: new Date().toISOString(),
     cueMap: { id: map.id, version: map.version, trackId: map.trackId, approvalStatus: map.approvalStatus },
     seed,
+    fps,
     excerpt: shortId ?? null,
     audioOffsetSec,
     totalSec,

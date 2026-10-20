@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { renderableCalculators, getCalculator } from "@/lib/diagnosticCalculators";
 import DiagnosticCalculatorClient from "@/components/DiagnosticCalculatorClient";
+import HelperClips from "@/components/helpers/HelperClips";
 
 export function generateStaticParams() {
   return renderableCalculators().map((c) => ({ slug: c.slug }));
@@ -42,5 +43,10 @@ export default async function ToolPage({
   const { slug } = await params;
   const calc = getCalculator(slug);
   if (!calc || calc.externalHref) notFound();
-  return <DiagnosticCalculatorClient slug={slug} />;
+  return (
+    <>
+      <DiagnosticCalculatorClient slug={slug} />
+      <HelperClips route={`/tools/${slug}`} heading="How it works" width={720} />
+    </>
+  );
 }

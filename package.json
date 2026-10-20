@@ -11,6 +11,7 @@
     "b5r:phase1": "npx --yes tsx scripts/b5r/phase1.ts",
     "stuttr": "npx --yes tsx scripts/stuttr/cli.ts",
     "dance8": "npx --yes tsx scripts/dance8/cli.ts",
+    "helpers": "npx --yes tsx scripts/media/helpers.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "verify": "npm run typecheck && npm run lint && npm test",
     "e2e:audit": "node scripts/e2e-audit.mjs"
