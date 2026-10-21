@@ -9,8 +9,13 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { activeSpan, classifyFolder, lengthWarnings, parseWav, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck } from "../lib/stuttr/library";
-import { addSong, addVoice, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../lib/stuttr/commands";
+import {
+  activeSpan, classifyFolder, lengthWarnings, masterProblem, parseWav, pickMaster, roleFromName, sharedPrefix, slugify, stemDownloadParts, timingCheck,
+  type LibraryFile, type LibraryTrack, type VoiceMaster, type VoiceTake,
+} from "../lib/stuttr/library";
+import {
+  addSong, addVoice, buildMaster, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setMasterStatus, setVoiceStatus, type Ctx,
+} from "../lib/stuttr/commands";
 import { matchVoice, type Fetch } from "../lib/stuttr/elevenlabs";
 import { checkMouthTrack } from "../lib/dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../lib/dance8/contracts/mouth";
@@ -500,6 +505,102 @@ test("prep-voice and mix make ElevenLabs-ready vocals and a draft mix", { skip: 
     const mi = parseWav(mixed, mixed.length)!;
     assert.deepEqual([mi.channels, mi.sampleRate, mi.bitsPerSample], [2, 48000, 24]);
     assert.ok(Math.abs(mi.durationSec! - 2) < 0.01);
+  } finally {
+    s.done();
+  }
+});
+
+test("pickMaster: a final needs an approved master that still matches; a draft says what it plays", () => {
+  const take: VoiceTake = {
+    voice: "Stuttr", lang: "en", path: "s/voices/stuttr.en.wav", originalName: "stuttr.wav", sha256: "take-1", bytes: 1,
+    sourceRole: "vocals", sourceSha256: "vocals-1", method: "other", durationSec: 2, timingDeltaMs: 0, timingOk: true,
+    status: "approved", addedAt: "2026-10-20T00:00:00.000Z",
+  };
+  const files: LibraryFile[] = [
+    { role: "full_mix", path: "s/full.wav", originalName: "full.wav", sha256: "full-1", bytes: 1 },
+    { role: "stem", stemName: "drums", path: "s/drums.wav", originalName: "drums.wav", sha256: "drums-1", bytes: 1 },
+  ];
+  const master = (key: string, status: VoiceMaster["status"], builtAt: string, extra: Partial<VoiceMaster> = {}): VoiceMaster => ({
+    key, kind: key === "suno" ? "suno" : "voices", path: `s/masters/s.${key}.master.wav`, sha256: `master-${key}`, bytes: 1,
+    durationSec: 2, lengthDeltaMs: 0, lead: key === "suno" ? null : { path: take.path, sha256: take.sha256, voice: "Stuttr" }, backing: [],
+    beds: key === "suno" ? [{ path: "s/full.wav", sha256: "full-1" }] : [{ path: "s/drums.wav", sha256: "drums-1" }], sunoBacking: [],
+    status, builtAt, ...extra,
+  });
+  const track = (masters: VoiceMaster[], voices = [take], fs = files): LibraryTrack => ({ trackId: "s", title: "S", sunoPlan: "Pro", addedAt: "2026-10-20T00:00:00.000Z", files: fs, voices, masters });
+  const ok = (r: ReturnType<typeof pickMaster>) => { assert.ok("master" in r, "error" in r ? r.error : ""); return r as { master: VoiceMaster; warning: string | null }; };
+  const err = (r: ReturnType<typeof pickMaster>) => { assert.ok("error" in r, "expected an error"); return (r as { error: string }).error; };
+  const t1 = "2026-10-20T01:00:00.000Z", t2 = "2026-10-20T02:00:00.000Z";
+
+  assert.match(err(pickMaster(track([]), { final: false })), /no voice master yet; make one: npm run stuttr -- master s .*--suno/);
+  assert.match(err(pickMaster(track([master("en", "rejected", t1)]), { final: false })), /no voice master yet/, "a rejected master never plays");
+
+  const draft = ok(pickMaster(track([master("en", "draft", t1)]), { final: false }));
+  assert.equal(draft.master.key, "en");
+  assert.equal(draft.warning, "draft audio: the en, Stuttr master isn't approved yet");
+  assert.match(err(pickMaster(track([master("en", "draft", t1)]), { final: true })), /still a draft; listen, then: npm run stuttr -- approve-master s$/);
+  assert.equal(ok(pickMaster(track([master("en", "draft", t1), master("suno", "draft", t2)]), { final: false })).master.key, "suno", "the newest draft");
+
+  const approved = track([master("en", "approved", t1), master("suno", "draft", t2)]);
+  assert.deepEqual([ok(pickMaster(approved, { final: true })).master.key, ok(pickMaster(approved, { final: true })).warning], ["en", null], "approved beats a newer draft");
+  const two = track([master("en", "approved", t1), master("suno", "approved", t2)]);
+  assert.match(err(pickMaster(two, { final: true })), /2 approved masters \(en, suno\); pick one with --master <key>/);
+  assert.equal(ok(pickMaster(two, { final: true, key: "suno" })).master.key, "suno");
+  assert.match(err(pickMaster(two, { final: true, key: "es" })), /no "es" master; masters: en, suno/);
+
+  // Out of date: a take rejected, a stem replaced, or the length off.
+  const rejected = track([master("en", "approved", t1)], [{ ...take, status: "rejected" }]);
+  assert.match(err(pickMaster(rejected, { final: true })), /can't be used in a final: Stuttr's take is rejected now\. Rebuild it with npm run stuttr -- master s --replace/);
+  assert.match(ok(pickMaster(rejected, { final: false })).warning!, /out of date \(Stuttr's take is rejected now\)/);
+  assert.match(masterProblem(track([]), master("en", "draft", t1, { lengthDeltaMs: 80 }))!, /80 ms off the full mix's length \(limit ±50 ms\)/);
+  assert.match(masterProblem(track([], [take], [files[0], { ...files[1], sha256: "drums-2" }]), master("en", "draft", t1))!, /s\/drums\.wav has changed/);
+  assert.match(masterProblem(track([], [{ ...take, sha256: "take-2" }]), master("en", "draft", t1))!, /the Stuttr take it was built from has changed/);
+  assert.equal(masterProblem(track([]), master("suno", "draft", t1)), null);
+});
+
+test("master: approved takes only, at the full mix's exact length; approval checks what it was built from", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+  const s = sandbox();
+  try {
+    addSong(s.ctx, { folder: s.inbox });
+    const id = "bass-drop-anthem";
+    const fullPath = () => join(s.ctx.library, loadManifest(s.ctx).tracks[0].files.find((f) => f.role === "full_mix")!.path);
+    const fullSha = sha(fullPath());
+    assert.throws(() => buildMaster(s.ctx, { trackId: id }), /no approved lead take \(en\); run convert first/);
+    const lead = join(s.root, "stuttr.wav");
+    writeFileSync(lead, wav({ sec: 2, rate: 44100, ch: 1 }));
+    addVoice(s.ctx, { trackId: id, voice: "Stuttr", file: lead });
+    assert.throws(() => buildMaster(s.ctx, { trackId: id }), /listen to Stuttr with mix, then approve one/);
+    setVoiceStatus(s.ctx, id, "Stuttr", "en", "approved");
+    const m = join(s.root, "m.wav");
+    writeFileSync(m, wav({ sec: 2, freq: 520 }));
+    addVoice(s.ctx, { trackId: id, voice: "M", file: m, from: "backing_vocals" });
+
+    // M's backing take is still a draft, so Suno's backing stem goes in instead.
+    const v1 = buildMaster(s.ctx, { trackId: id });
+    assert.ok(s.lines.includes("not in the master (not approved): M backing"), s.lines.join("\n"));
+    assert.ok(s.lines.includes("backing: Suno's backing vocals"));
+    assert.deepEqual([v1.path, v1.status, v1.kind, v1.lead!.voice, v1.backing.length, v1.sunoBacking.length], [`${id}/masters/${id}.en.master.wav`, "draft", "voices", "Stuttr", 0, 1]);
+    const buf = readFileSync(join(s.ctx.library, v1.path));
+    const info = parseWav(buf, buf.length)!;
+    assert.deepEqual([info.channels, info.sampleRate, info.bitsPerSample], [2, 48000, 24]);
+    assert.ok(Math.abs(info.durationSec! - 2) < 0.001, `master ${info.durationSec} s`);
+    assert.ok(v1.lengthDeltaMs !== null && Math.abs(v1.lengthDeltaMs) <= 1);
+    assert.equal(sha(join(s.ctx.library, v1.path)), v1.sha256);
+    assert.equal(sha(fullPath()), fullSha, "the Suno master is never changed");
+
+    setVoiceStatus(s.ctx, id, "M", "en", "approved", "backing_vocals");
+    const v2 = buildMaster(s.ctx, { trackId: id });
+    assert.deepEqual([v2.backing.map((b) => b.voice), v2.sunoBacking.length], [["M"], 0]);
+    setMasterStatus(s.ctx, id, "en", "approved");
+    assert.throws(() => buildMaster(s.ctx, { trackId: id }), /the en master for "bass-drop-anthem" is approved; rebuild it with --replace/);
+    setVoiceStatus(s.ctx, id, "M", "en", "rejected", "backing_vocals");
+    assert.throws(() => setMasterStatus(s.ctx, id, "en", "approved"), /can't be approved: M's take is rejected now/);
+    assert.equal(buildMaster(s.ctx, { trackId: id, replace: true }).status, "draft", "a rebuild goes back to draft");
+
+    // Suno's own vocals: the full mix at 48 kHz, 24-bit, under its own key.
+    const su = buildMaster(s.ctx, { trackId: id, suno: true });
+    assert.deepEqual([su.key, su.kind, su.lead, su.beds.map((b) => b.sha256)], ["suno", "suno", null, [fullSha]]);
+    assert.ok(Math.abs(su.durationSec! - 2) < 0.001);
+    assert.deepEqual(loadManifest(s.ctx).tracks[0].masters!.map((x) => [x.key, x.status]), [["en", "draft"], ["suno", "draft"]]);
   } finally {
     s.done();
   }

@@ -8,9 +8,11 @@
 //   clips         Kling downloads named after their brief -> copied into
 //                 <id>/dance8/clips/ and listed as draft clips.
 //   approve-clip  a person's check: records the drift score they judged.
+//   render        the approved clips cut onto the bar grid over the song's
+//                 Stuttr voice master (renderArgs builds the cut.ts call).
 //
-// Rules: reads Stuttr's analysis and approved takes only, never the masters
-// (canon D8-14). Files a person may have edited (cue map, harmony, clip
+// Rules: reads Stuttr's analysis, approved takes and voice masters only, never
+// the Suno masters (canon D8-14). Files a person may have edited (cue map, harmony, clip
 // library) are never overwritten unless replace is set; derived files (Kirtled
 // plan, shot list, README) are rebuilt from them every time. Nothing here
 // approves anything on its own.
@@ -21,7 +23,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFi
 import { basename, extname, join } from "node:path";
 import type { SongAnalysis } from "../stuttr/analysis";
 import { loadManifest, mouthTrack, type Ctx } from "../stuttr/commands";
-import { voiceKey } from "../stuttr/library";
+import { pickMaster, voiceKey } from "../stuttr/library";
 import { GENERATORS } from "./authoring/generators";
 import { parseKey, planSong, STAND_IN_CLIP_ID } from "./authoring/plan";
 import { shotBriefs, type ShotBrief } from "./authoring/shotBriefs";
@@ -290,7 +292,9 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     "Next",
     `  Name each Kling download after its shot id in ${basename(p.briefs)}, put them in one folder, then:`,
     `  npm run dance8 -- clips ${trackId} ~/Downloads`,
-    `  Watch each one, approve it (approve-clip ${trackId} <clip> --drift 0.1), then:`,
+    `  Watch each one, approve it (approve-clip ${trackId} <clip> --drift 0.1).`,
+    `  The render plays the song's voice master: npm run stuttr -- master ${trackId} (or --suno for Suno's own vocals),`,
+    `  listen, then npm run stuttr -- approve-master ${trackId}. Then:`,
     `  npm run dance8 -- render ${trackId}   (add --short chorus-1 for a short, --approved for the final)`,
     "",
   ].join("\n");
@@ -478,24 +482,36 @@ export interface RenderRequest {
   fps?: number;
   /** Also write a CMX 3600 EDL next to the video (open the cut in Resolve or Premiere). */
   edl?: boolean;
+  /** Which voice master plays ("en", "suno"...), when the song has more than one approved. */
+  master?: string;
 }
 
 /**
  * The scripts/dance8/cut.ts arguments that render a song straight from its
- * library: cue map, clip library, clips folder, the song's full mix and, when
- * the plan has skate tricks, tricks.json. The video goes to
+ * library: cue map, clip library, clips folder, the song's voice master and,
+ * when the plan has skate tricks, tricks.json. The video goes to
  * <song>/dance8/renders/ (the caller creates the folder).
+ *
+ * The audio is a Stuttr voice master, never the Suno master itself (D8-14):
+ * the final needs an approved one that still matches what it was built from;
+ * a draft plays the approved one, else the newest draft, and says so.
  */
-export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { args: string[]; out: string } {
+export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { args: string[]; out: string; audio: { key: string; status: string; path: string; sha256: string } } {
   const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
   if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
   const p = songPaths(c, trackId);
   if (!existsSync(p.cuemap) || !existsSync(p.clips)) throw new Error(`no plan yet; run: npm run dance8 -- plan ${trackId}`);
-  const mix = t.files.find((f) => f.role === "full_mix");
-  if (!mix) throw new Error(`${trackId} has no full mix in the library; export Full Song from Suno and add it with npm run stuttr -- add`);
+  const pick = pickMaster(t, { final: !!r.approved, key: r.master });
+  if ("error" in pick) throw new Error(pick.error);
+  if (pick.warning) logOf(c)(`warning: ${pick.warning}`);
+  const master = pick.master;
+  const label = master.kind === "suno" ? "Suno vocals" : `${master.key}${master.lead?.voice ? ` (${master.lead.voice})` : ""}`;
   const name = [trackId, r.short, r.seed ? `seed${r.seed}` : "", r.approved ? "final" : "draft"].filter(Boolean).join("-");
   const out = join(p.dir, "renders", `${name}.mp4`);
-  const args = [p.cuemap, p.clips, "--render", "--clips", p.clipDir, "--audio", join(c.library, mix.path), "--out", out];
+  const args = [
+    p.cuemap, p.clips, "--render", "--clips", p.clipDir, "--audio", join(c.library, master.path),
+    "--audio-source", `stuttr voice master ${label}, ${master.status}`, "--out", out,
+  ];
   if (r.short) args.push("--short", r.short);
   if (r.seed) args.push("--seed", String(r.seed));
   if (r.approved) args.push("--approved");
@@ -504,5 +520,5 @@ export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { ar
   if (r.fps !== undefined) args.push("--fps", String(r.fps));
   if (existsSync(p.tricks)) args.push("--tricks", p.tricks);
   if (r.edl) args.push("--edl", out.replace(/\.mp4$/, ".edl"));
-  return { args, out };
+  return { args, out, audio: { key: master.key, status: master.status, path: master.path, sha256: master.sha256 } };
 }

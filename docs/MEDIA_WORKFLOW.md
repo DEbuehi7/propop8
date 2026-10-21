@@ -6,7 +6,7 @@ one command each; there is nothing to set by hand in an editor.
 | You are making | Source | Command | Output |
 |---|---|---|---|
 | A helper clip for a PropOps8 page | iPhone screen recording | `npm run helpers` | `public/helpers/<id>.mp4` + poster + captions |
-| A Dance8 video | Kling or Veo clips, the Suno full mix | `npm run dance8 -- render <song>` | `<song>/dance8/renders/<song>-….mp4` |
+| A Dance8 video | Kling or Veo clips, the song's voice master | `npm run dance8 -- render <song>` | `<song>/dance8/renders/<song>-….mp4` |
 
 ## Formats
 
@@ -27,8 +27,12 @@ one command each; there is nothing to set by hand in an editor.
   so no frames are invented or dropped unevenly. 48 or 60 fps clips render at
   24 or 30 (every other frame, evenly). If one clip doesn't match the rest, the
   render names it. `--fps 30` overrides.
-- **Audio** always comes from the song's full mix in the Stuttr library (the
-  Suno master), never from a clip's own soundtrack.
+- **Audio** always comes from the song's voice master in the Stuttr library
+  (`<song>/masters/<song>.<lang>.master.wav`), never from a clip's own
+  soundtrack and never from the Suno master itself (D8-14). The voice master
+  is built from your approved voice takes over the instrument stems, at the
+  full mix's exact length (within 50 ms), 48 kHz, 24-bit. `--suno` builds one
+  from Suno's own vocals instead.
 
 **Helper clips** (made by `npm run helpers`; nothing to choose): 540 px wide,
 30 fps, H.264, no sound, MP4 with the index at the front, a JPEG poster and
@@ -49,14 +53,23 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
    as drafts; the rest are left alone.
 4. Watch each draft, then `npm run dance8 -- approve-clip <song> <clip> --drift 0.1`
    (your score: 0 matches the references, 1 is unrecognisable).
-5. `npm run dance8 -- render <song> --short chorus-1` for a draft short, or
-   `npm run dance8 -- render <song> --approved` for the final. The final refuses
-   drafts and stand-ins and always adds the AI disclosure caption. Add `--edl` to
+5. Build the audio: `npm run stuttr -- master <song>` (your approved voices;
+   `--suno` for Suno's own vocals). Listen to it, then
+   `npm run stuttr -- approve-master <song>`. Only approved takes go in. If a
+   take changes or is rejected later, the master can't be used in a final until
+   you rebuild it with `--replace` and approve it again.
+6. `npm run dance8 -- render <song> --short chorus-1` for a draft short, or
+   `npm run dance8 -- render <song> --approved` for the final. A draft plays the
+   approved master, or the newest draft one with a warning. The final refuses
+   drafts, stand-ins and an unapproved master, and always adds the AI
+   disclosure caption. With two approved masters, `--master en` (or `suno`)
+   picks one. Add `--edl` to
    open the cut in Resolve or Premiere for hand finishing, `--lyrics` to burn in
    the sung lines, `--seed 2` for another variation of the same edit.
 
 Each render writes `<video>.manifest.json`: every clip used, where it came from,
-its drift score, the seed and the frame rate.
+its drift score, the seed, the frame rate and the audio file's SHA-256 with
+which master it was.
 
 ## Helper clips: from recording to page
 

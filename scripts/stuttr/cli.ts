@@ -8,6 +8,8 @@
  *   npm run stuttr -- add-voice cloyne Stuttr ~/Downloads/cloyne-stuttr.wav
  *   npm run stuttr -- mix cloyne Stuttr
  *   npm run stuttr -- approve cloyne Stuttr        (or: reject)
+ *   npm run stuttr -- master cloyne                (the audio Dance8 renders: approved takes only)
+ *   npm run stuttr -- approve-master cloyne        (after listening; or: reject-master)
  *   npm run stuttr -- mouth cloyne Stuttr          (Dance8 mouth track, approved takes only)
  *   npm run stuttr -- analyze cloyne               (tempo, bars, sung phrases, chords for Dance8)
  *
@@ -26,12 +28,15 @@
  * --id, --title, --suno-plan, --dry (add); --from vocals|backing_vocals
  * (prep-voice, add-voice, approve, reject, mouth, convert); --full (prep-voice,
  * convert: don't cut the backing stem to its sung span); --lang (default en);
- * --no-backing, --suno-backing (mix); --dry, --format mp3_44100_192|mp3_44100_128
- * (convert).
+ * --no-backing, --suno-backing (mix, master); --suno (master, approve-master,
+ * reject-master: Suno's own vocals); --replace (master: rebuild an approved one);
+ * --dry, --format mp3_44100_192|mp3_44100_128 (convert).
  */
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { addSong, addVoice, analyzeTrack, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setVoiceStatus, type Ctx } from "../../lib/stuttr/commands";
+import {
+  addSong, addVoice, analyzeTrack, buildMaster, convertVoices, loadManifest, mixVoice, mouthTrack, prepVoice, setMasterStatus, setVoiceStatus, type Ctx,
+} from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
 
 const argv = process.argv.slice(2);
@@ -55,6 +60,9 @@ const usage = `Stuttr song library (${ctx.library})
   add-voice <trackId> <voice> <file> [--lang en] [--from backing_vocals]
   mix <trackId> <voice> [--lang en] [--no-backing | --suno-backing]
   approve|reject <trackId> <voice> [--lang en] [--from backing_vocals]
+  master <trackId> [voice] [--lang en] [--no-backing | --suno-backing] [--replace]
+  master <trackId> --suno [--replace]
+  approve-master|reject-master <trackId> [--lang en | --suno]
   mouth <trackId> <voice> [--lang en] [--from backing_vocals]
   convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]
   analyze <trackId>`;
@@ -88,6 +96,18 @@ async function main(): Promise<void> {
     case "reject":
       if (!a1 || !a2) throw new Error(`${cmd} needs a track id and a voice name`);
       setVoiceStatus(ctx, a1, a2, flag("lang") ?? "en", cmd === "approve" ? "approved" : "rejected", fromFlag());
+      break;
+    case "master":
+      if (!a1) throw new Error("master needs a track id");
+      buildMaster(ctx, {
+        trackId: a1, voice: a2, lang: flag("lang"), suno: has("suno"), replace: has("replace"),
+        backing: has("no-backing") ? "none" : has("suno-backing") ? "suno" : "takes",
+      });
+      break;
+    case "approve-master":
+    case "reject-master":
+      if (!a1) throw new Error(`${cmd} needs a track id`);
+      setMasterStatus(ctx, a1, has("suno") ? "suno" : (flag("lang") ?? "en").toLowerCase(), cmd === "approve-master" ? "approved" : "rejected");
       break;
     case "mouth":
       if (!a1 || !a2) throw new Error("mouth needs a track id and a voice name");
