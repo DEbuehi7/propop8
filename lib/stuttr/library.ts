@@ -57,6 +57,9 @@ export interface VoiceTake {
   addedAt: string;
   /** Where the take starts in the song, in seconds. Backing takes are cut to the stem's active span. Absent = 0. */
   startSec?: number;
+  /** For a take converted from a cast (cast.json): the run it covers (its key) and the run's bounds in song seconds. */
+  section?: string;
+  runSec?: [number, number];
 }
 
 /** A file prepared for the ElevenLabs voice changer, and the part of the song it covers. */
@@ -67,6 +70,9 @@ export interface VoicePrep {
   startSec: number;
   durationSec: number;
   preparedAt: string;
+  /** A cast run's key and bounds, for a file cut from the stem for one voice's sections. */
+  section?: string;
+  runSec?: [number, number];
 }
 
 /** One input a master was built from, pinned by its SHA-256. */
@@ -75,6 +81,8 @@ export interface MasterSource {
   sha256: string;
   /** For a voice take. */
   voice?: string;
+  /** For a take converted from a cast: its run key. */
+  section?: string;
 }
 
 /**
@@ -94,6 +102,10 @@ export interface VoiceMaster {
   /** Master length minus the full mix's, in ms. Null when either is unknown. */
   lengthDeltaMs: number | null;
   lead: MasterSource | null;
+  /** A master built from a cast: each lead run's take (lead is then null). */
+  parts?: MasterSource[];
+  /** A master built from a cast: the cast and the cue map it was read against, pinned. */
+  castPins?: MasterSource[];
   backing: MasterSource[];
   /** Instrument stems or instrumental under the voices; the full mix for a "suno" master. */
   beds: MasterSource[];
@@ -398,7 +410,8 @@ export function activeSpan(
 /** The voice master must be the full mix's length to this tolerance, the same as a voice take. */
 export const MASTER_LENGTH_TOLERANCE_MS = VOICE_TIMING_TOLERANCE_MS;
 
-const masterLabel = (m: VoiceMaster) => (m.kind === "suno" ? "Suno vocals" : `${m.key}${m.lead?.voice ? `, ${m.lead.voice}` : ""}`);
+const masterLabel = (m: VoiceMaster) =>
+  m.kind === "suno" ? "Suno vocals" : `${m.key}${m.lead?.voice ? `, ${m.lead.voice}` : m.parts?.length ? `, cast: ${[...new Set(m.parts.map((p) => p.voice))].join(", ")}` : ""}`;
 
 /**
  * Why a master can no longer be approved or used in a final, or null when it
@@ -408,7 +421,7 @@ const masterLabel = (m: VoiceMaster) => (m.kind === "suno" ? "Suno vocals" : `${
 export function masterProblem(t: LibraryTrack, m: VoiceMaster): string | null {
   if (m.lengthDeltaMs === null) return "its length could not be compared with the full mix";
   if (Math.abs(m.lengthDeltaMs) > MASTER_LENGTH_TOLERANCE_MS) return `it is ${m.lengthDeltaMs} ms off the full mix's length (limit ±${MASTER_LENGTH_TOLERANCE_MS} ms)`;
-  for (const s of [m.lead, ...m.backing].filter((x): x is MasterSource => x !== null)) {
+  for (const s of [m.lead, ...(m.parts ?? []), ...m.backing].filter((x): x is MasterSource => x !== null)) {
     const take = t.voices.find((v) => v.path === s.path);
     if (!take || take.sha256 !== s.sha256) return s.voice ? `the ${s.voice} take it was built from has changed` : "a take it was built from has changed";
     if (take.status !== "approved") return `${take.voice}'s take is ${take.status} now`;
@@ -426,7 +439,7 @@ export function masterProblem(t: LibraryTrack, m: VoiceMaster): string | null {
  * draft (with a warning). With several approved masters, `key` picks one.
  */
 export function pickMaster(
-  t: LibraryTrack, o: { final: boolean; key?: string },
+  t: LibraryTrack, o: { final: boolean; key?: string; /** File checks the caller can make (a cast master's pinned cast and cue map). */ extraProblem?: (m: VoiceMaster) => string | null },
 ): { master: VoiceMaster; warning: string | null } | { error: string } {
   const make = `make one: npm run stuttr -- master ${t.trackId} (from your approved voices), or npm run stuttr -- master ${t.trackId} --suno (Suno's own vocals)`;
   const all = (t.masters ?? []).filter((m) => m.status !== "rejected");
@@ -437,7 +450,7 @@ export function pickMaster(
   const approved = live.filter((m) => m.status === "approved");
   if (approved.length > 1) return { error: `"${t.trackId}" has ${approved.length} approved masters (${approved.map((m) => m.key).join(", ")}); pick one with --master <key>` };
   if (approved.length === 1) {
-    const problem = masterProblem(t, approved[0]);
+    const problem = masterProblem(t, approved[0]) ?? o.extraProblem?.(approved[0]) ?? null;
     if (problem && o.final) return { error: `the ${masterLabel(approved[0])} master can't be used in a final: ${problem}. Rebuild it with npm run stuttr -- master ${t.trackId} --replace, then approve it again` };
     return { master: approved[0], warning: problem ? `the ${masterLabel(approved[0])} master is out of date (${problem}); rebuild it before the final` : null };
   }
