@@ -19,12 +19,16 @@ import { basename, join } from "node:path";
 import {
   activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
   ACTIVE_WINDOW_SEC, MASTER_LENGTH_TOLERANCE_MS, masterProblem, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
-  type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type MasterSource, type VoiceMaster, type VoiceTake,
+  type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type MasterSource, type VoiceMaster, type VoicePrep, type VoiceTake,
 } from "./library";
 import { buildMouthTrack, frameLoudnessDb } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
 import { analyzeSong as analyzeSongAudio, ANALYSIS_SR, groupOfStem, type PartGroup, type SongAnalysis } from "./analysis";
 import { convertSpeech, KEY_ENV, listVoices, matchVoice, OUTPUT_FORMATS, type Fetch, type OutputFormat } from "./elevenlabs";
+import {
+  analysisRel, castRel, castRuns, cuemapRel, runLines, starterCast, SUNO_BACKING, validateCast,
+  type CastCue, type CastFile, type CastRun,
+} from "./cast";
 
 export interface Ctx {
   library: string;
@@ -288,7 +292,7 @@ export function prepVoice(c: Ctx, trackId: string, part: "vocals" | "backing_voc
   const measured = parseWav(outBuf, outBuf.length)?.durationSec ?? durationSec;
   if (measured !== null) {
     const prep = { role: part, path: rel, sourceSha256: src.sha256, startSec, durationSec: measured, preparedAt: nowOf(c) };
-    t.preps = [...(t.preps ?? []).filter((p) => p.role !== part), prep];
+    t.preps = [...(t.preps ?? []).filter((p) => p.role !== part || p.section !== undefined), prep];
     saveManifest(c, m);
   }
   const mb = outBuf.length / 1e6;
@@ -306,6 +310,8 @@ export interface AddVoiceOptions {
   lang?: string;
   from?: "vocals" | "backing_vocals";
   method?: VoiceTake["method"];
+  /** A take converted for one cast run (convert --cast): the run's key. */
+  section?: string;
 }
 
 /** add-voice: copy a converted voice take into the library and check its timing against the source stem. */
@@ -319,22 +325,33 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
   if (!src) throw new Error(`"${o.trackId}" has no ${from} stem to compare against; add the Suno multitrack export first`);
   const lang = (o.lang ?? "en").toLowerCase();
   const ext = extOf(o.file) || "wav";
-  const rel = `${o.trackId}/voices/${voiceKey(o.voice)}.${lang}${from === "vocals" ? "" : ".backing"}.${ext}`;
+  const rel = `${o.trackId}/voices/${voiceKey(o.voice)}.${lang}${from === "vocals" ? "" : ".backing"}${o.section ? `.${o.section}` : ""}.${ext}`;
   const { sha256, bytes, buf } = sha256File(o.file);
-  const prior = t.voices.find((v) => v.path === rel);
+  let prior = t.voices.find((v) => v.path === rel);
+  let replaced = false;
   if (prior && prior.sha256 !== sha256) {
-    throw new Error(`${rel} is already registered with a different take; nothing was changed. Mark it rejected first or use another --lang.`);
+    if (prior.status !== "rejected") {
+      throw new Error(`${rel} is already registered with a different take; nothing was changed. Mark it rejected first or use another --lang.`);
+    }
+    // A rejected take gives way: the new one replaces its file and its record.
+    const old = prior;
+    t.voices = t.voices.filter((v) => v !== old);
+    mkdirSync(join(c.library, rel, ".."), { recursive: true });
+    copyFileSync(o.file, join(c.library, rel));
+    prior = undefined;
+    replaced = true;
   }
-  const action = placeFile(c, o.file, rel, sha256);
+  const action = replaced ? "replaced the rejected take with" : placeFile(c, o.file, rel, sha256);
   const info = audioInfo(o.file, buf);
   // Compare against what was sent to ElevenLabs: the prepared span when prep-voice cut one,
   // or the whole stem (also when the full stem was converted after all).
   const srcSec = src.audio?.durationSec ?? null;
-  const prep = (t.preps ?? []).find((p) => p.role === from && p.sourceSha256 === src.sha256);
+  const prep = (t.preps ?? []).find((p) => p.role === from && p.sourceSha256 === src.sha256 && (p.section ?? null) === (o.section ?? null));
+  if (o.section && !prep) throw new Error(`no prepared ${o.section} part for "${o.trackId}"; run convert --cast, which cuts it from the stem`);
   let expectSec = prep ? prep.durationSec : srcSec;
   let startSec = prep?.startSec ?? 0;
   const takeSec = info?.durationSec ?? null;
-  if (prep && takeSec !== null && !timingCheck(prep.durationSec, takeSec).ok && timingCheck(srcSec, takeSec).ok) {
+  if (!o.section && prep && takeSec !== null && !timingCheck(prep.durationSec, takeSec).ok && timingCheck(srcSec, takeSec).ok) {
     expectSec = srcSec;
     startSec = 0;
   }
@@ -344,6 +361,7 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
     sourceRole: from, sourceSha256: src.sha256, method: o.method ?? "elevenlabs_voice_changer",
     durationSec: info?.durationSec ?? null, timingDeltaMs: check.deltaMs, timingOk: check.ok,
     status: "draft", addedAt: nowOf(c), ...(startSec > 0 ? { startSec } : {}),
+    ...(o.section ? { section: o.section, ...(prep?.runSec ? { runSec: prep.runSec } : {}) } : {}),
   };
   if (!prior) t.voices.push(take);
   else if (info?.durationSec != null) {
@@ -363,18 +381,33 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
   return take;
 }
 
-interface MixInput { path: string; delayMs: number; gain: number }
+export interface MixInput {
+  path: string;
+  delayMs: number;
+  gain: number;
+  /** Only [startSec, startSec + durSec) of the input, with short fades at both ends (cast runs). */
+  cut?: { startSec: number; durSec: number };
+}
+
+/** Fade at each end of a cast run, so a change of singer never clicks. */
+export const RUN_FADE_SEC = 0.01;
 
 /**
  * The mix recipe shared by mix and master: every input at 48 kHz stereo,
- * delayed to its place and scaled, summed without normalising, then limited.
- * `fit` pads the end with silence so `-t` can cut it to an exact length.
+ * cut to its run when it has one, delayed to its place and scaled, summed
+ * without normalising, then limited. `fit` pads the end with silence so `-t`
+ * can cut it to an exact length.
  */
 function mixFilter(inputs: MixInput[], fit = false): string {
+  const f6 = (x: number) => x.toFixed(6);
   const chains = inputs.map((x, i) => {
+    const cut = x.cut
+      ? `,atrim=start=${f6(x.cut.startSec)}:duration=${f6(x.cut.durSec)},asetpts=PTS-STARTPTS` +
+        `,afade=t=in:d=${RUN_FADE_SEC},afade=t=out:st=${f6(Math.max(0, x.cut.durSec - RUN_FADE_SEC))}:d=${RUN_FADE_SEC}`
+      : "";
     const delay = x.delayMs > 0 ? `,adelay=${x.delayMs}:all=1` : "";
     const gain = x.gain !== 1 ? `,volume=${x.gain}` : "";
-    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo${delay}${gain}[a${i}]`;
+    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo${cut}${delay}${gain}[a${i}]`;
   }).join(";");
   return `${chains};${inputs.map((_, i) => `[a${i}]`).join("")}amix=inputs=${inputs.length}:normalize=0:duration=longest,alimiter=limit=0.89${fit ? ",apad" : ""}[out]`;
 }
@@ -392,13 +425,13 @@ export function mixVoice(c: Ctx, trackId: string, voice: string, lang = "en", ke
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
   const lc = lang.toLowerCase();
-  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lc && v.sourceRole === "vocals");
-  if (!take) throw new Error(`no ${voice} (${lang}) take for "${trackId}"; run add-voice first`);
+  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lc && v.sourceRole === "vocals" && !v.section);
+  if (!take) throw new Error(`no ${voice} (${lang}) take for "${trackId}"; run add-voice first${loadCastQuiet(c, t) ? `, or listen to the cast with mix ${trackId} --cast` : ""}`);
   const inst = t.files.find((f) => f.role === "instrumental");
   const beds = inst ? [inst] : t.files.filter((f) => f.role === "stem");
   if (beds.length === 0) throw new Error(`"${trackId}" has no instrumental or instrument stems to mix under the voice`);
   const backingTakes = keepBacking && !opts.sunoBacking
-    ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status !== "rejected") : [];
+    ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status !== "rejected" && !v.section) : [];
   const backingStems = keepBacking && backingTakes.length === 0 ? t.files.filter((f) => f.role === "backing_vocals") : [];
   const layerGain = backingTakes.length > 1 ? Math.round((1 / Math.sqrt(backingTakes.length)) * 1000) / 1000 : 1;
   const inputs: { path: string; delayMs: number; gain: number }[] = [
@@ -417,19 +450,27 @@ export function mixVoice(c: Ctx, trackId: string, voice: string, lang = "en", ke
   return rel;
 }
 
-/** Marks a take approved or rejected after listening. */
+/**
+ * Marks a take approved or rejected after listening. A voice with takes for
+ * several cast runs: every one of them, or only `section`'s.
+ */
 export function setVoiceStatus(
-  c: Ctx, trackId: string, voice: string, lang: string, status: VoiceTake["status"], from: VoiceTake["sourceRole"] = "vocals",
+  c: Ctx, trackId: string, voice: string, lang: string, status: VoiceTake["status"], from: VoiceTake["sourceRole"] = "vocals", section?: string,
 ): VoiceTake {
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
-  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from);
-  if (!take) throw new Error(`no ${voice} (${lang}) ${from === "vocals" ? "lead" : "backing"} take for "${trackId}"`);
-  if (status === "approved" && !take.timingOk) throw new Error("this take's timing is unchecked or off by more than 50 ms; it cannot be approved for lip sync");
-  take.status = status;
+  const takes = t.voices.filter((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from && (section === undefined || v.section === section));
+  const part = from === "vocals" ? "lead" : "backing";
+  if (takes.length === 0) throw new Error(`no ${voice} (${lang}) ${part} take${section ? ` for ${section}` : ""} for "${trackId}"`);
+  if (status === "approved") {
+    const bad = takes.filter((v) => !v.timingOk);
+    if (bad.length === 1 && takes.length === 1) throw new Error("this take's timing is unchecked or off by more than 50 ms; it cannot be approved for lip sync");
+    if (bad.length) throw new Error(`timing is unchecked or off by more than 50 ms on ${bad.map((v) => v.section ?? "the whole-song take").join(", ")}; nothing was approved. Approve the others one by one with --section`);
+  }
+  for (const v of takes) v.status = status;
   saveManifest(c, m);
-  logOf(c)(`${voice} (${lang})${from === "backing_vocals" ? " backing" : ""} for "${trackId}" is now ${status}`);
-  return take;
+  for (const v of takes) logOf(c)(`${voice} (${lang})${from === "backing_vocals" ? " backing" : ""}${v.section ? `, ${v.section},` : ""} for "${trackId}" is now ${status}`);
+  return takes[0];
 }
 
 export interface MasterOptions {
@@ -443,6 +484,8 @@ export interface MasterOptions {
   backing?: "takes" | "suno" | "none";
   /** Rebuild an approved master (it goes back to draft). */
   replace?: boolean;
+  /** Ignore the song's cast.json and use one lead take for the whole song. */
+  noCast?: boolean;
 }
 
 /**
@@ -467,6 +510,32 @@ export function buildMaster(c: Ctx, o: MasterOptions): VoiceMaster {
   }
   const src = (f: { path: string; sha256: string }, voice?: string): MasterSource => ({ path: f.path, sha256: f.sha256, ...(voice ? { voice } : {}) });
 
+  const cast = !o.suno && !o.noCast ? loadCast(c, t) : null;
+  if (cast) {
+    if (o.voice) throw new Error(`"${o.trackId}" has a cast (${castRel(o.trackId)}), which names the singers; leave out the voice, or add --no-cast`);
+    if (cast.cast.lang.toLowerCase() !== lc) throw new Error(`the cast is in "${cast.cast.lang}"; use --lang ${cast.cast.lang} or --no-cast`);
+    if (full.audio?.durationSec == null) throw new Error("the full mix's length is unknown, so the master can't be matched to it");
+    const rel = `${o.trackId}/masters/${o.trackId}.${key}.master.wav`;
+    const used = castAudio(c, t, cast, { approvedOnly: true, outRel: rel });
+    const { sha256, bytes, buf } = sha256File(join(c.library, rel));
+    const durationSec = parseWav(buf, buf.length)?.durationSec ?? null;
+    const lengthDeltaMs = durationSec !== null ? Math.round((durationSec - full.audio.durationSec) * 1000) : null;
+    const master: VoiceMaster = {
+      key, kind: "voices", path: rel, sha256, bytes, durationSec, lengthDeltaMs,
+      lead: null, parts: used.parts, castPins: cast.pins, backing: used.backing, beds: used.beds, sunoBacking: used.sunoBacking,
+      status: "draft", builtAt: nowOf(c),
+    };
+    t.masters = [...(t.masters ?? []).filter((x) => x.key !== key), master].sort((a, b) => a.key.localeCompare(b.key));
+    saveManifest(c, m);
+    log(`cast: ${used.parts.map((p) => `${p.voice} ${p.section}`).join(", ")}`);
+    if (used.backing.length) log(`backing: ${used.backing.map((p) => `${p.voice} ${p.section}`).join(", ")}`);
+    if (used.sunoBacking.length) log(`backing: Suno's own in ${cast.runs.filter((r) => r.voice === SUNO_BACKING).map((r) => r.key).join(", ")}`);
+    if (lengthDeltaMs !== null && Math.abs(lengthDeltaMs) <= MASTER_LENGTH_TOLERANCE_MS) log(`length matches the full mix (${lengthDeltaMs} ms)`);
+    else log(`warning: it is ${lengthDeltaMs ?? "?"} ms off the full mix's length (limit ±${MASTER_LENGTH_TOLERANCE_MS} ms)`);
+    log(`voice master (draft): ${join(c.library, rel)}. Listen, then: npm run stuttr -- approve-master ${o.trackId}${key === "en" ? "" : ` --lang ${key}`}`);
+    return master;
+  }
+
   let inputs: MixInput[];
   let lead: MasterSource | null = null;
   let backing: MasterSource[] = [];
@@ -476,10 +545,10 @@ export function buildMaster(c: Ctx, o: MasterOptions): VoiceMaster {
     beds = [src(full)];
     inputs = [{ path: join(c.library, full.path), delayMs: 0, gain: 1 }];
   } else {
-    const leads = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "approved");
+    const leads = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "approved" && !v.section);
     const take = o.voice ? leads.find((v) => voiceKey(v.voice) === voiceKey(o.voice!)) : leads.length === 1 ? leads[0] : undefined;
     if (!take) {
-      const drafts = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "draft").map((v) => v.voice);
+      const drafts = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "draft" && !v.section).map((v) => v.voice);
       if (o.voice) throw new Error(`no approved ${o.voice} (${lc}) lead take for "${o.trackId}"${drafts.length ? `; draft: ${drafts.join(", ")}` : ""}`);
       if (leads.length > 1) throw new Error(`"${o.trackId}" has ${leads.length} approved lead takes (${leads.map((v) => v.voice).join(", ")}); name one: npm run stuttr -- master ${o.trackId} ${leads[0].voice}`);
       throw new Error(`"${o.trackId}" has no approved lead take (${lc})${drafts.length ? `; listen to ${drafts.join(", ")} with mix, then approve one` : "; run convert first"}`);
@@ -491,8 +560,8 @@ export function buildMaster(c: Ctx, o: MasterOptions): VoiceMaster {
     if (bedFiles.length === 0) throw new Error(`"${o.trackId}" has no instrumental or instrument stems to put under the voices`);
     beds = bedFiles.map((f) => src(f));
     const mode = o.backing ?? "takes";
-    const backingTakes = mode === "takes" ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "approved") : [];
-    const skipped = t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "draft");
+    const backingTakes = mode === "takes" ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "approved" && !v.section) : [];
+    const skipped = t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "draft" && !v.section);
     if (mode === "takes" && skipped.length) log(`not in the master (not approved): ${skipped.map((v) => `${v.voice} backing`).join(", ")}`);
     const stems = mode !== "none" && backingTakes.length === 0 ? t.files.filter((f) => f.role === "backing_vocals") : [];
     sunoBacking = stems.map((f) => src(f));
@@ -542,7 +611,7 @@ export function setMasterStatus(c: Ctx, trackId: string, key: string, status: Vo
   const master = (t.masters ?? []).find((x) => x.key === key);
   if (!master) throw new Error(`"${trackId}" has no ${key === "suno" ? "Suno vocals" : `"${key}"`} master; run master first`);
   if (status === "approved") {
-    const problem = masterProblem(t, master);
+    const problem = masterProblem(t, master) ?? castDrift(c, master);
     if (problem) throw new Error(`this master can't be approved: ${problem}. Rebuild it with npm run stuttr -- master ${trackId}${key === "suno" ? " --suno" : key === "en" ? "" : ` --lang ${key}`}`);
   }
   master.status = status;
@@ -551,18 +620,287 @@ export function setMasterStatus(c: Ctx, trackId: string, key: string, status: Vo
   return master;
 }
 
+// ---------------------------------------------------------------- cast (cast.json)
+
+export interface LoadedCast {
+  cast: CastFile;
+  cues: CastCue[];
+  analysis: SongAnalysis;
+  runs: CastRun[];
+  /** The cast and the cue map, pinned by SHA-256 (a master built from them records these). */
+  pins: MasterSource[];
+}
+
+/** The song's cast.json with what it is read against, or null when the song has no cast. */
+export function loadCast(c: Ctx, t: LibraryTrack): LoadedCast | null {
+  const castPath = join(c.library, castRel(t.trackId));
+  if (!existsSync(castPath)) return null;
+  const mapPath = join(c.library, cuemapRel(t.trackId));
+  const aPath = join(c.library, analysisRel(t.trackId));
+  if (!existsSync(mapPath) || !existsSync(aPath)) {
+    throw new Error(`${castRel(t.trackId)} names the cue map's sections; run npm run stuttr -- analyze ${t.trackId}, then npm run dance8 -- plan ${t.trackId}`);
+  }
+  let cast: CastFile;
+  try {
+    cast = JSON.parse(readFileSync(castPath, "utf8")) as CastFile;
+  } catch (e) {
+    throw new Error(`${castRel(t.trackId)} is not valid JSON (${(e as Error).message})`);
+  }
+  const map = JSON.parse(readFileSync(mapPath, "utf8")) as { cues: CastCue[] };
+  const cues = map.cues.map((q) => ({ id: q.id, startBar: q.startBar, endBar: q.endBar }));
+  const issues = validateCast(cast, cues, t.trackId);
+  if (issues.length) throw new Error(`${castRel(t.trackId)}: ${issues.join("; ")}`);
+  const analysis = JSON.parse(readFileSync(aPath, "utf8")) as SongAnalysis;
+  const songSec = t.files.find((f) => f.role === "full_mix")?.audio?.durationSec ?? analysis.durationSec;
+  return { cast, cues, analysis, runs: castRuns(cast, cues, analysis, songSec), pins: [pinOf(c, castRel(t.trackId)), pinOf(c, cuemapRel(t.trackId))] };
+}
+
+/**
+ * What a cast master depends on: the cast file itself, and only the cue map's
+ * sections (ids and bars). Sung lines, scenes and cameras in the cue map can
+ * change without making the master out of date.
+ */
+function pinOf(c: Ctx, rel: string): MasterSource {
+  const abs = join(c.library, rel);
+  if (!rel.endsWith(".cuemap.json")) return { path: rel, sha256: sha256File(abs).sha256 };
+  const cues = (JSON.parse(readFileSync(abs, "utf8")) as { cues: CastCue[] }).cues.map((q) => [q.id, q.startBar, q.endBar]);
+  return { path: rel, sha256: createHash("sha256").update(JSON.stringify(cues)).digest("hex") };
+}
+
+const loadCastQuiet = (c: Ctx, t: LibraryTrack) => existsSync(join(c.library, castRel(t.trackId)));
+
+/** A master built from a cast is out of date once the cast or the cue map changes. */
+export function castDrift(c: Ctx, m: VoiceMaster): string | null {
+  for (const p of m.castPins ?? []) {
+    if (!existsSync(join(c.library, p.path)) || pinOf(c, p.path).sha256 !== p.sha256) {
+      return p.path.endsWith(".cuemap.json") ? "the cue map's sections changed since it was built" : `${basename(p.path)} changed since it was built`;
+    }
+  }
+  return null;
+}
+
+const runPart = (r: CastRun) => (r.role === "vocals" ? "lead" : "backing");
+const sameRun = (v: VoiceTake, r: CastRun) => !!v.runSec && Math.abs(v.runSec[0] - r.startSec) < 0.002 && Math.abs(v.runSec[1] - r.endSec) < 0.002;
+const takeFor = (t: LibraryTrack, r: CastRun, lang: string, ok: (v: VoiceTake) => boolean) =>
+  t.voices.find((v) => voiceKey(v.voice) === voiceKey(r.voice) && v.lang === lang && v.sourceRole === r.role && v.section === r.key && ok(v));
+
+/**
+ * cast: writes a starter cast.json from the cue map (every section, the lead
+ * where the lead stem sings, Suno's own backing where the backing stem sings),
+ * or, when the song already has one, checks it and lists who sings where.
+ */
+export function castCommand(c: Ctx, trackId: string, o: { lead?: string; replace?: boolean } = {}): CastFile {
+  const log = logOf(c);
+  const t = trackOrThrow(loadManifest(c), trackId);
+  const castPath = join(c.library, castRel(trackId));
+  if (!existsSync(castPath) || o.replace) {
+    const mapPath = join(c.library, cuemapRel(trackId));
+    const aPath = join(c.library, analysisRel(trackId));
+    if (!existsSync(mapPath) || !existsSync(aPath)) {
+      throw new Error(`the cast names the cue map's sections; run npm run stuttr -- analyze ${trackId}, then npm run dance8 -- plan ${trackId}`);
+    }
+    const cues = (JSON.parse(readFileSync(mapPath, "utf8")) as { cues: CastCue[] }).cues;
+    const analysis = JSON.parse(readFileSync(aPath, "utf8")) as SongAnalysis;
+    const leads = [...new Set(t.voices.filter((v) => v.sourceRole === "vocals" && v.status === "approved" && !v.section).map((v) => v.voice))];
+    const lead = o.lead ?? (leads.length === 1 ? leads[0] : "Stuttr");
+    writeFileSync(castPath, JSON.stringify(starterCast(trackId, cues, analysis, lead), null, 2) + "\n");
+    log(`wrote ${castPath}: ${lead} sings the lead wherever the lead stem sings, and Suno's own backing vocals stay where they sing ("suno").`);
+    log(`edit it: change a section's "lead", or replace "suno" with voices such as ["M", "Ja", "Bo"]. Then run cast ${trackId} again to check it.`);
+  }
+  const loaded = loadCast(c, t)!;
+  log(`cast for "${trackId}" (${loaded.cast.lang}):`);
+  for (const l of runLines(loaded.runs)) log(l);
+  const sec = loaded.runs.filter((r) => r.voice !== SUNO_BACKING).reduce((a, r) => a + (r.endSec - r.startSec), 0);
+  log(`converting it all costs at most about ${Math.ceil((sec / 60) * VOICE_CHANGER_CREDITS_PER_MIN).toLocaleString("en-US")} credits (each part is trimmed to where someone sings). Next: npm run stuttr -- convert ${trackId} --cast --dry`);
+  return loaded.cast;
+}
+
+/** Cuts one cast run from its stem, trimmed to where someone sings in it, for the voice changer. Null when nobody sings there. */
+function prepRun(c: Ctx, t: LibraryTrack, r: CastRun, windows: Map<string, number[]>): VoicePrep | null {
+  const src = t.files.find((f) => f.role === r.role);
+  if (!src) throw new Error(`"${t.trackId}" has no ${r.role === "vocals" ? "lead vocal" : "backing vocal"} stem; export Multitrack from Suno Studio and add it again`);
+  const srcPath = join(c.library, src.path);
+  if (!windows.has(src.path)) windows.set(src.path, windowLoudness(srcPath));
+  const w0 = Math.floor(r.startSec / ACTIVE_WINDOW_SEC);
+  const w1 = Math.ceil(r.endSec / ACTIVE_WINDOW_SEC);
+  const base = w0 * ACTIVE_WINDOW_SEC;
+  const span = activeSpan(windows.get(src.path)!.slice(w0, w1), ACTIVE_WINDOW_SEC, (w1 - w0) * ACTIVE_WINDOW_SEC);
+  if (!span) return null;
+  const r3 = (x: number) => Math.round(x * 1000) / 1000;
+  const startSec = r3(Math.max(r.startSec, base + span.startSec));
+  const endSec = r3(Math.min(r.endSec, base + span.endSec));
+  if (endSec - startSec > VOICE_CHANGER_MAX_SEC) {
+    throw new Error(`${r.voice}'s ${runPart(r)} part ${r.key} is ${Math.round(endSec - startSec)} s; the voice changer takes 300 s per file. Split that section in two in the cue map, list both in the cast, and run cast again.`);
+  }
+  const rel = `${t.trackId}/for-elevenlabs/${t.trackId}.${r.role}.${r.key}.wav`;
+  mkdirSync(join(c.library, t.trackId, "for-elevenlabs"), { recursive: true });
+  runFfmpeg(["-i", srcPath, "-ss", startSec.toFixed(3), "-t", (endSec - startSec).toFixed(3), "-ac", "1", "-ar", "44100", "-sample_fmt", "s16", join(c.library, rel)]);
+  const buf = readFileSync(join(c.library, rel));
+  const durationSec = parseWav(buf, buf.length)?.durationSec ?? r3(endSec - startSec);
+  const prep: VoicePrep = { role: r.role, path: rel, sourceSha256: src.sha256, startSec, durationSec, preparedAt: nowOf(c), section: r.key, runSec: [r.startSec, r.endSec] };
+  t.preps = [...(t.preps ?? []).filter((p) => !(p.role === r.role && p.section === r.key)), prep];
+  return prep;
+}
+
+export interface CastConvertOptions {
+  trackId: string;
+  format?: string;
+  /** Cut the parts and match the voices, but convert nothing (no credits). */
+  dry?: boolean;
+  /** For tests; defaults to the ELEVENLABS_API_KEY environment variable. */
+  key?: string;
+  fetch?: Fetch;
+}
+
+/**
+ * convert --cast: each voice converts only the runs of sections the cast
+ * gives it, each cut from the stem and placed back at its own time. Every
+ * voice is matched first, so a typo costs nothing; a run that already has a
+ * take is skipped at no cost.
+ */
+export async function convertCast(c: Ctx, o: CastConvertOptions): Promise<VoiceTake[]> {
+  const log = logOf(c);
+  const key = o.key ?? process.env[KEY_ENV];
+  if (!key) throw new Error(`${KEY_ENV} is not set; add your ElevenLabs API key to your shell profile (it is never printed)`);
+  const format = (o.format ?? OUTPUT_FORMATS[0]) as OutputFormat;
+  if (!OUTPUT_FORMATS.includes(format)) throw new Error(`--format must be one of ${OUTPUT_FORMATS.join(", ")}`);
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const f: Fetch = o.fetch ?? ((url, init) => fetch(url, init));
+  const m = loadManifest(c);
+  const t = trackOrThrow(m, o.trackId);
+  const loaded = loadCast(c, t);
+  if (!loaded) throw new Error(`"${o.trackId}" has no cast yet; run: npm run stuttr -- cast ${o.trackId}`);
+  const lang = loaded.cast.lang.toLowerCase();
+  const todo: CastRun[] = [];
+  for (const r of loaded.runs.filter((x) => x.voice !== SUNO_BACKING)) {
+    const have = takeFor(t, r, lang, (v) => v.status !== "rejected");
+    if (have && sameRun(have, r)) log(`${r.voice} ${runPart(r)} ${r.key} already has a take; skipped, no credits spent`);
+    else if (have) log(`${r.voice} ${runPart(r)} ${r.key}: its take was made for an older cast or cue map; to convert it again, reject it: npm run stuttr -- reject ${o.trackId} ${r.voice} --section ${r.key}${r.role === "vocals" ? "" : " --from backing_vocals"}`);
+    else todo.push(r);
+  }
+  if (todo.length === 0) return [];
+
+  const eleven = await listVoices(key, f);
+  const matched = new Map(todo.map((r) => [voiceKey(r.voice), matchVoice(eleven, r.voice)] as const));
+  const windows = new Map<string, number[]>();
+  const parts: { r: CastRun; prep: VoicePrep }[] = [];
+  for (const r of todo) {
+    const prep = prepRun(c, t, r, windows);
+    if (prep) parts.push({ r, prep });
+    else log(`${r.voice} ${runPart(r)} ${r.key}: nobody sings there in the stem; nothing to convert`);
+  }
+  saveManifest(c, m);
+  const credits = Math.ceil((parts.reduce((a, x) => a + x.prep.durationSec, 0) / 60) * VOICE_CHANGER_CREDITS_PER_MIN);
+  log(`${o.dry ? "would convert" : "converting"} ${parts.map((x) => `${x.r.voice} ${runPart(x.r)} ${x.r.key} (${Math.round(x.prep.durationSec)} s)`).join(", ")}: about ${credits.toLocaleString("en-US")} credits`);
+  if (o.dry) return [];
+
+  const tmp = mkdtempSync(join(tmpdir(), "stuttr-cast-"));
+  const takes: VoiceTake[] = [];
+  for (const { r, prep } of parts) {
+    log(`${r.voice} (${r.key}): converting in ElevenLabs...`);
+    const out = await convertSpeech(key, f, matched.get(voiceKey(r.voice))!.voiceId, readFileSync(join(c.library, prep.path)), basename(prep.path), format);
+    const file = join(tmp, `${o.trackId}.${voiceKey(r.voice)}.${lang}${r.role === "vocals" ? "" : ".backing"}.${r.key}.mp3`);
+    writeFileSync(file, out);
+    takes.push(addVoice(c, { trackId: o.trackId, voice: r.voice, file, lang, from: r.role, section: r.key }));
+  }
+  log(`next: listen with  npm run stuttr -- mix ${o.trackId} --cast`);
+  return takes;
+}
+
+/**
+ * The cast's voices over the instrument stems: each run's take at its own
+ * time, cut to its run with 10 ms fades, backing layers at their run's gain,
+ * and Suno's own backing vocals only where the cast keeps them. approvedOnly
+ * (the master) uses approved takes only; otherwise (the listening mix) any
+ * take that isn't rejected. A run with no usable take, or a take made for an
+ * older cast or cue map, is listed in problems. Pure: no files read.
+ */
+export function castMixPlan(
+  library: string, t: LibraryTrack, cast: Pick<LoadedCast, "cast" | "runs">, approvedOnly: boolean,
+): { inputs: MixInput[]; parts: MasterSource[]; backing: MasterSource[]; beds: MasterSource[]; sunoBacking: MasterSource[]; problems: string[] } {
+  const lang = cast.cast.lang.toLowerCase();
+  const inst = t.files.find((f) => f.role === "instrumental");
+  const bedFiles = inst ? [inst] : t.files.filter((f) => f.role === "stem");
+  if (bedFiles.length === 0) throw new Error(`"${t.trackId}" has no instrumental or instrument stems to put under the voices`);
+  const backingStems = t.files.filter((f) => f.role === "backing_vocals");
+  const inputs: MixInput[] = bedFiles.map((f) => ({ path: join(library, f.path), delayMs: 0, gain: 1 }));
+  const parts: MasterSource[] = [];
+  const backing: MasterSource[] = [];
+  const problems: string[] = [];
+  let sunoUsed = false;
+  const r6 = (x: number) => Math.round(x * 1e6) / 1e6;
+  for (const r of cast.runs) {
+    if (r.voice === SUNO_BACKING) {
+      for (const f of backingStems) inputs.push({ path: join(library, f.path), delayMs: Math.round(r.startSec * 1000), gain: 1, cut: { startSec: r.startSec, durSec: r6(r.endSec - r.startSec) } });
+      sunoUsed = sunoUsed || backingStems.length > 0;
+      continue;
+    }
+    const take = takeFor(t, r, lang, (v) => (approvedOnly ? v.status === "approved" : v.status !== "rejected"));
+    const label = `${r.voice} ${runPart(r)} ${r.key}`;
+    if (!take) {
+      const any = takeFor(t, r, lang, () => true);
+      problems.push(`${label}: ${any ? any.status : "no take yet"}`);
+      continue;
+    }
+    if (!sameRun(take, r)) {
+      problems.push(`${label}: made for an older cast or cue map`);
+      continue;
+    }
+    const at = take.startSec ?? 0;
+    const len = Math.min(take.durationSec ?? r.endSec - at, r.endSec - at);
+    inputs.push({ path: join(library, take.path), delayMs: Math.round(at * 1000), gain: r.gain, cut: { startSec: 0, durSec: r6(len) } });
+    (r.role === "vocals" ? parts : backing).push({ path: take.path, sha256: take.sha256, voice: take.voice, section: r.key });
+  }
+  const pin = (f: LibraryFile): MasterSource => ({ path: f.path, sha256: f.sha256 });
+  return { inputs, parts, backing, beds: bedFiles.map(pin), sunoBacking: sunoUsed ? backingStems.map(pin) : [], problems };
+}
+
+/** Writes castMixPlan's audio at the full mix's exact length. The master refuses any problem; the listening mix reports them. */
+function castAudio(
+  c: Ctx, t: LibraryTrack, cast: LoadedCast, o: { approvedOnly: boolean; outRel: string },
+): { parts: MasterSource[]; backing: MasterSource[]; beds: MasterSource[]; sunoBacking: MasterSource[] } {
+  const plan = castMixPlan(c.library, t, cast, o.approvedOnly);
+  if (plan.problems.length && o.approvedOnly) {
+    throw new Error(`the master needs an approved take, made for this cast, for every part: ${plan.problems.join("; ")}. Convert with convert ${t.trackId} --cast, listen with mix ${t.trackId} --cast, then approve`);
+  }
+  for (const p of plan.problems) logOf(c)(`not in the mix: ${p}`);
+  const songSec = t.files.find((f) => f.role === "full_mix")?.audio?.durationSec ?? null;
+  mkdirSync(join(c.library, o.outRel, ".."), { recursive: true });
+  runFfmpeg([
+    ...plan.inputs.flatMap((x) => ["-i", x.path]), "-filter_complex", mixFilter(plan.inputs, songSec !== null), "-map", "[out]",
+    ...(songSec !== null ? ["-t", songSec.toFixed(6)] : []), "-c:a", "pcm_s24le", join(c.library, o.outRel),
+  ]);
+  return { parts: plan.parts, backing: plan.backing, beds: plan.beds, sunoBacking: plan.sunoBacking };
+}
+
+/** mix --cast: a listening copy of the cast (takes not rejected); the master is approved takes only. */
+export function mixCast(c: Ctx, trackId: string): string {
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const t = trackOrThrow(loadManifest(c), trackId);
+  const cast = loadCast(c, t);
+  if (!cast) throw new Error(`"${trackId}" has no cast yet; run: npm run stuttr -- cast ${trackId}`);
+  const rel = `${trackId}/mixes/${trackId}.cast.${cast.cast.lang.toLowerCase()}.draft.wav`;
+  castAudio(c, t, cast, { approvedOnly: false, outRel: rel });
+  logOf(c)(`draft mix: ${join(c.library, rel)} (listening copy of the cast; the Suno master is unchanged). Approve what you like: npm run stuttr -- approve ${trackId} <voice> [--section <part>]`);
+  return rel;
+}
+
 export const MOUTH_DECODE_RATE = 16000;
 
 /**
  * Dance8 mouth track from an approved take (D8-14): decoded to mono 16 kHz by
  * ffmpeg, measured per 24 fps frame, written to <id>/dance8/ in the library.
  */
-export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", from: VoiceTake["sourceRole"] = "vocals"): string {
+export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", from: VoiceTake["sourceRole"] = "vocals", section?: string): string {
   if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
   const m = loadManifest(c);
   const t = trackOrThrow(m, trackId);
-  const take = t.voices.find((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from);
-  if (!take) throw new Error(`no ${voice} (${lang}) ${from === "vocals" ? "lead" : "backing"} take for "${trackId}"`);
+  const mine = t.voices.filter((v) => voiceKey(v.voice) === voiceKey(voice) && v.lang === lang.toLowerCase() && v.sourceRole === from);
+  const take = mine.find((v) => (section === undefined ? !v.section : v.section === section));
+  if (!take && section === undefined && mine.some((v) => v.section)) {
+    throw new Error(`${voice} has takes for cast parts (${mine.map((v) => v.section).filter(Boolean).join(", ")}); name one with --section`);
+  }
+  if (!take) throw new Error(`no ${voice} (${lang}) ${from === "vocals" ? "lead" : "backing"} take${section ? ` for ${section}` : ""} for "${trackId}"`);
   if (take.status !== "approved") throw new Error(`${voice}'s take is ${take.status}; Dance8 reads approved takes only, so approve it first`);
   const src = join(c.library, take.path);
   if (sha256File(src).sha256 !== take.sha256) throw new Error(`${take.path} changed since it was approved; add and approve it again`);
@@ -571,6 +909,7 @@ export function mouthTrack(c: Ctx, trackId: string, voice: string, lang = "en", 
 
   const track: MouthTrack = buildMouthTrack(samples, MOUTH_DECODE_RATE, {
     trackId, voice: take.voice, lang: take.lang, role: from, source: { path: take.path, sha256: take.sha256 }, startSec: take.startSec ?? 0,
+    ...(take.section ? { id: `${trackId}.${take.voice.toLowerCase()}.${take.lang}${from === "backing_vocals" ? ".backing" : ""}.${take.section}.mouth` } : {}),
   });
   const rel = join(trackId, "dance8", `${track.id}.json`);
   mkdirSync(join(c.library, trackId, "dance8"), { recursive: true });
@@ -619,7 +958,7 @@ export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTak
   if (wanted.length === 0) throw new Error("convert needs at least one voice name");
   const part = from === "vocals" ? "lead" : "backing";
   const before = trackOrThrow(loadManifest(c), o.trackId);
-  const taken = (v: string) => before.voices.some((t) => voiceKey(t.voice) === voiceKey(v) && t.lang === lang && t.sourceRole === from);
+  const taken = (v: string) => before.voices.some((t) => voiceKey(t.voice) === voiceKey(v) && t.lang === lang && t.sourceRole === from && !t.section);
   for (const v of wanted.filter(taken)) log(`${v} already has a ${part} take (${lang}); skipped, no credits spent`);
   const todo = wanted.filter((v) => !taken(v));
   if (todo.length === 0) return [];
@@ -645,7 +984,7 @@ export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTak
     writeFileSync(file, out);
     takes.push(addVoice(c, { trackId: o.trackId, voice: m.voice, file, lang, from }));
   }
-  const leads = trackOrThrow(loadManifest(c), o.trackId).voices.filter((v) => v.sourceRole === "vocals" && v.lang === lang && v.status !== "rejected");
+  const leads = trackOrThrow(loadManifest(c), o.trackId).voices.filter((v) => v.sourceRole === "vocals" && v.lang === lang && v.status !== "rejected" && !v.section);
   if (leads.length === 1) log(`next: listen with  npm run stuttr -- mix ${o.trackId} ${leads[0].voice}${lang === "en" ? "" : ` --lang ${lang}`}`);
   return takes;
 }
