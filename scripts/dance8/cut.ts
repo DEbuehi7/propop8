@@ -8,7 +8,8 @@
  *   --seed N          another variation of the same edit (same N = same video)
  *   --approved        final render: refuse drafts, stand-in clips, unmeasured drift
  *   --short CUE_ID    only that part of the song (e.g. chorus-1) for a short/teaser
- *   --render --clips DIR --audio SONG.mp3 --out OUT.mp4
+ *   --render --clips DIR --audio SONG.wav --out OUT.mp4
+ *   --audio-source TEXT   what the audio is, for the manifest (dance8 render passes the voice master)
  *   --punch 0.05      zoom punch on every bar line (0 = off)
  *   --font FILE       font for the "All characters are fictional and AI-generated." caption
  *   --no-caption      leave the caption off (drafts only; --approved always adds it)
@@ -21,9 +22,12 @@
  *                     Kling 4.0 Flash (draft) or Kling 4.0 (final); --briefs-out FILE saves JSON
  *
  * A render also writes OUT.manifest.json: every clip used, where it came from,
- * its drift score, the seed and the caption. That is the provenance record.
+ * its drift score, the seed, the caption and the audio file's SHA-256. That is
+ * the provenance record.
  */
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 import { spawnSync } from "node:child_process";
 import { FRAME_SIZE, type Cut, type CueMap, type VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import { planCuts, sliceCuts } from "../../lib/dance8/runtime/CutPlanner";
@@ -44,7 +48,7 @@ const FONT_GUESSES = [
 ];
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out", "--tricks", "--fps"]);
+const VALUE_FLAGS = new Set(["--seed", "--short", "--clips", "--audio", "--out", "--punch", "--font", "--edl", "--briefs", "--briefs-out", "--tricks", "--fps", "--audio-source"]);
 const flag = (name: string) => argv.includes(name);
 const opt = (name: string) => {
   const i = argv.indexOf(name);
@@ -223,6 +227,11 @@ if (flag("--render")) {
     seed,
     fps,
     excerpt: shortId ?? null,
+    audio: {
+      file: basename(audioPath!),
+      sha256: createHash("sha256").update(readFileSync(audioPath!)).digest("hex"),
+      source: opt("--audio-source") ?? null,
+    },
     audioOffsetSec,
     totalSec,
     caption: caption?.text ?? null,

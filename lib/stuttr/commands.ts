@@ -7,7 +7,7 @@
 //  - library.json is written whole to a temp file, then renamed into place.
 //  - Only convert uploads (a prepared vocal, to ElevenLabs). It reads
 //    ELEVENLABS_API_KEY from the environment and never logs or saves it.
-// ffmpeg (prep-voice, mix, mouth, convert) is optional; without it those commands say so.
+// ffmpeg (prep-voice, mix, master, mouth, convert) is optional; without it those commands say so.
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -18,8 +18,8 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import {
   activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
-  ACTIVE_WINDOW_SEC, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
-  type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type VoiceTake,
+  ACTIVE_WINDOW_SEC, MASTER_LENGTH_TOLERANCE_MS, masterProblem, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
+  type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type MasterSource, type VoiceMaster, type VoiceTake,
 } from "./library";
 import { buildMouthTrack, frameLoudnessDb } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
@@ -363,6 +363,22 @@ export function addVoice(c: Ctx, o: AddVoiceOptions): VoiceTake {
   return take;
 }
 
+interface MixInput { path: string; delayMs: number; gain: number }
+
+/**
+ * The mix recipe shared by mix and master: every input at 48 kHz stereo,
+ * delayed to its place and scaled, summed without normalising, then limited.
+ * `fit` pads the end with silence so `-t` can cut it to an exact length.
+ */
+function mixFilter(inputs: MixInput[], fit = false): string {
+  const chains = inputs.map((x, i) => {
+    const delay = x.delayMs > 0 ? `,adelay=${x.delayMs}:all=1` : "";
+    const gain = x.gain !== 1 ? `,volume=${x.gain}` : "";
+    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo${delay}${gain}[a${i}]`;
+  }).join(";");
+  return `${chains};${inputs.map((_, i) => `[a${i}]`).join("")}amix=inputs=${inputs.length}:normalize=0:duration=longest,alimiter=limit=0.89${fit ? ",apad" : ""}[out]`;
+}
+
 /**
  * mix: instrumental stems + one lead voice take -> a draft listening mix
  * (48 kHz, 24-bit). Never replaces the Suno master. Backing: every converted
@@ -392,14 +408,7 @@ export function mixVoice(c: Ctx, trackId: string, voice: string, lang = "en", ke
   ];
   const rel = `${trackId}/mixes/${trackId}.${voiceKey(voice)}.${lc}.draft.wav`;
   mkdirSync(join(c.library, trackId, "mixes"), { recursive: true });
-  const n = inputs.length;
-  const chains = inputs.map((x, i) => {
-    const delay = x.delayMs > 0 ? `,adelay=${x.delayMs}:all=1` : "";
-    const gain = x.gain !== 1 ? `,volume=${x.gain}` : "";
-    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo${delay}${gain}[a${i}]`;
-  }).join(";");
-  const filter = `${chains};${inputs.map((_, i) => `[a${i}]`).join("")}amix=inputs=${n}:normalize=0:duration=longest,alimiter=limit=0.89[out]`;
-  runFfmpeg([...inputs.flatMap((x) => ["-i", x.path]), "-filter_complex", filter, "-map", "[out]", "-c:a", "pcm_s24le", join(c.library, rel)]);
+  runFfmpeg([...inputs.flatMap((x) => ["-i", x.path]), "-filter_complex", mixFilter(inputs), "-map", "[out]", "-c:a", "pcm_s24le", join(c.library, rel)]);
   if (backingTakes.length) {
     log(`backing: ${backingTakes.map((v) => v.voice).join(", ")} layered${layerGain !== 1 ? ` at ${layerGain}x each` : ""}`);
     for (const v of backingTakes) if (!v.timingOk) log(`warning: ${v.voice}'s backing take has unchecked or off timing; it may not line up`);
@@ -421,6 +430,125 @@ export function setVoiceStatus(
   saveManifest(c, m);
   logOf(c)(`${voice} (${lang})${from === "backing_vocals" ? " backing" : ""} for "${trackId}" is now ${status}`);
   return take;
+}
+
+export interface MasterOptions {
+  trackId: string;
+  /** The approved lead take to use; needed only when more than one is approved for the language. */
+  voice?: string;
+  lang?: string;
+  /** A master of Suno's own vocals: the full mix at 48 kHz, 24-bit, nothing else changed. */
+  suno?: boolean;
+  /** Backing: approved backing takes (else Suno's backing stem), Suno's stem only, or none. */
+  backing?: "takes" | "suno" | "none";
+  /** Rebuild an approved master (it goes back to draft). */
+  replace?: boolean;
+}
+
+/**
+ * master: the audio a Dance8 render plays (D8-14). Built only from approved
+ * takes over the instrument stems, with the same recipe as mix, cut or padded
+ * to the full mix's exact length, and recorded with what it was built from.
+ * It starts as a draft; approve-master after listening. The Suno master is
+ * never changed.
+ */
+export function buildMaster(c: Ctx, o: MasterOptions): VoiceMaster {
+  if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
+  const log = logOf(c);
+  const m = loadManifest(c);
+  const t = trackOrThrow(m, o.trackId);
+  const full = t.files.find((f) => f.role === "full_mix");
+  if (!full) throw new Error(`"${o.trackId}" has no full mix to match the master's length to; export Full Song from Suno and add it`);
+  const lc = (o.lang ?? "en").toLowerCase();
+  const key = o.suno ? "suno" : lc;
+  const prior = (t.masters ?? []).find((x) => x.key === key);
+  if (prior?.status === "approved" && !o.replace) {
+    throw new Error(`the ${key === "suno" ? "Suno vocals" : key} master for "${o.trackId}" is approved; rebuild it with --replace (it goes back to draft)`);
+  }
+  const src = (f: { path: string; sha256: string }, voice?: string): MasterSource => ({ path: f.path, sha256: f.sha256, ...(voice ? { voice } : {}) });
+
+  let inputs: MixInput[];
+  let lead: MasterSource | null = null;
+  let backing: MasterSource[] = [];
+  let beds: MasterSource[];
+  let sunoBacking: MasterSource[] = [];
+  if (o.suno) {
+    beds = [src(full)];
+    inputs = [{ path: join(c.library, full.path), delayMs: 0, gain: 1 }];
+  } else {
+    const leads = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "approved");
+    const take = o.voice ? leads.find((v) => voiceKey(v.voice) === voiceKey(o.voice!)) : leads.length === 1 ? leads[0] : undefined;
+    if (!take) {
+      const drafts = t.voices.filter((v) => v.sourceRole === "vocals" && v.lang === lc && v.status === "draft").map((v) => v.voice);
+      if (o.voice) throw new Error(`no approved ${o.voice} (${lc}) lead take for "${o.trackId}"${drafts.length ? `; draft: ${drafts.join(", ")}` : ""}`);
+      if (leads.length > 1) throw new Error(`"${o.trackId}" has ${leads.length} approved lead takes (${leads.map((v) => v.voice).join(", ")}); name one: npm run stuttr -- master ${o.trackId} ${leads[0].voice}`);
+      throw new Error(`"${o.trackId}" has no approved lead take (${lc})${drafts.length ? `; listen to ${drafts.join(", ")} with mix, then approve one` : "; run convert first"}`);
+    }
+    if (!take.timingOk) throw new Error(`${take.voice}'s lead take has unchecked or off timing; it can't go in the master`);
+    lead = src(take, take.voice);
+    const inst = t.files.find((f) => f.role === "instrumental");
+    const bedFiles = inst ? [inst] : t.files.filter((f) => f.role === "stem");
+    if (bedFiles.length === 0) throw new Error(`"${o.trackId}" has no instrumental or instrument stems to put under the voices`);
+    beds = bedFiles.map((f) => src(f));
+    const mode = o.backing ?? "takes";
+    const backingTakes = mode === "takes" ? t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "approved") : [];
+    const skipped = t.voices.filter((v) => v.sourceRole === "backing_vocals" && v.lang === lc && v.status === "draft");
+    if (mode === "takes" && skipped.length) log(`not in the master (not approved): ${skipped.map((v) => `${v.voice} backing`).join(", ")}`);
+    const stems = mode !== "none" && backingTakes.length === 0 ? t.files.filter((f) => f.role === "backing_vocals") : [];
+    sunoBacking = stems.map((f) => src(f));
+    backing = backingTakes.map((v) => src(v, v.voice));
+    const layerGain = backingTakes.length > 1 ? Math.round((1 / Math.sqrt(backingTakes.length)) * 1000) / 1000 : 1;
+    inputs = [
+      ...[...bedFiles, ...stems].map((f) => ({ path: join(c.library, f.path), delayMs: 0, gain: 1 })),
+      ...backingTakes.map((v) => ({ path: join(c.library, v.path), delayMs: Math.round((v.startSec ?? 0) * 1000), gain: layerGain })),
+      { path: join(c.library, take.path), delayMs: 0, gain: 1 },
+    ];
+  }
+
+  const rel = `${o.trackId}/masters/${o.trackId}.${key}.master.wav`;
+  mkdirSync(join(c.library, o.trackId, "masters"), { recursive: true });
+  const songSec = full.audio?.durationSec ?? null;
+  const filter = o.suno
+    ? `[0:a]aresample=48000,aformat=channel_layouts=stereo${songSec !== null ? ",apad" : ""}[out]`
+    : mixFilter(inputs, songSec !== null);
+  runFfmpeg([
+    ...inputs.flatMap((x) => ["-i", x.path]), "-filter_complex", filter, "-map", "[out]",
+    ...(songSec !== null ? ["-t", songSec.toFixed(6)] : []), "-c:a", "pcm_s24le", join(c.library, rel),
+  ]);
+  const { sha256, bytes, buf } = sha256File(join(c.library, rel));
+  const durationSec = parseWav(buf, buf.length)?.durationSec ?? null;
+  const lengthDeltaMs = durationSec !== null && songSec !== null ? Math.round((durationSec - songSec) * 1000) : null;
+  const master: VoiceMaster = {
+    key, kind: o.suno ? "suno" : "voices", path: rel, sha256, bytes, durationSec, lengthDeltaMs,
+    lead, backing, beds, sunoBacking, status: "draft", builtAt: nowOf(c),
+  };
+  t.masters = [...(t.masters ?? []).filter((x) => x.key !== key), master].sort((a, b) => a.key.localeCompare(b.key));
+  saveManifest(c, m);
+  if (lead) log(`lead: ${lead.voice}`);
+  if (backing.length) log(`backing: ${backing.map((b) => b.voice).join(", ")}`);
+  else if (sunoBacking.length) log("backing: Suno's backing vocals");
+  if (lengthDeltaMs === null) log("warning: could not compare its length with the full mix; it can't be approved until it can");
+  else if (Math.abs(lengthDeltaMs) > MASTER_LENGTH_TOLERANCE_MS) log(`warning: it is ${lengthDeltaMs} ms off the full mix's length (limit ±${MASTER_LENGTH_TOLERANCE_MS} ms)`);
+  else log(`length matches the full mix (${lengthDeltaMs} ms)`);
+  const which = key === "suno" ? " --suno" : key === "en" ? "" : ` --lang ${key}`;
+  log(`voice master (draft): ${join(c.library, rel)}. Listen, then: npm run stuttr -- approve-master ${o.trackId}${which}`);
+  return master;
+}
+
+/** approve-master / reject-master. Approval checks the master still matches what it was built from. */
+export function setMasterStatus(c: Ctx, trackId: string, key: string, status: VoiceMaster["status"]): VoiceMaster {
+  const m = loadManifest(c);
+  const t = trackOrThrow(m, trackId);
+  const master = (t.masters ?? []).find((x) => x.key === key);
+  if (!master) throw new Error(`"${trackId}" has no ${key === "suno" ? "Suno vocals" : `"${key}"`} master; run master first`);
+  if (status === "approved") {
+    const problem = masterProblem(t, master);
+    if (problem) throw new Error(`this master can't be approved: ${problem}. Rebuild it with npm run stuttr -- master ${trackId}${key === "suno" ? " --suno" : key === "en" ? "" : ` --lang ${key}`}`);
+  }
+  master.status = status;
+  saveManifest(c, m);
+  logOf(c)(`the ${key === "suno" ? "Suno vocals" : key} master for "${trackId}" is now ${status}`);
+  return master;
 }
 
 export const MOUTH_DECODE_RATE = 16000;

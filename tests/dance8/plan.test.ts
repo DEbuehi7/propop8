@@ -13,7 +13,7 @@ import { lyricGroups, lyricLines, parseKey, planSong, spreadLines, sungRuns } fr
 import { validateCueMap } from "../../lib/dance8/authoring/validateCueMap";
 import { planCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { aspectOf, briefForFile, ingestClips, planTrack, renderArgs, setClipStatus, songPaths, standInClip } from "../../lib/dance8/pipeline";
-import { addSong, analyzeTrack, type Ctx } from "../../lib/stuttr/commands";
+import { addSong, analyzeTrack, buildMaster, setMasterStatus, type Ctx } from "../../lib/stuttr/commands";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import type { CueMap, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 
@@ -192,10 +192,18 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     assert.deepEqual([cut.startBar, cut.clipId, cut.clipInSec], [8, trickClip.id, 1.9]);
 
     // render: one command from the library files; the clips are 24 fps, so the video is too.
-    const { args, out } = renderArgs(c, "synthetic-song", { short: "chorus-1", edl: true });
+    // The audio is a Stuttr voice master, never the Suno mix itself (D8-14).
+    assert.throws(() => renderArgs(c, "synthetic-song", { short: "chorus-1" }), /no voice master yet/);
+    const master = buildMaster(c, { trackId: "synthetic-song", suno: true });
+    assert.throws(() => renderArgs(c, "synthetic-song", { approved: true }), /the Suno vocals master is still a draft/);
+    const { args, out, audio } = renderArgs(c, "synthetic-song", { short: "chorus-1", edl: true });
+    assert.ok(lines.includes("warning: draft audio: the Suno vocals master isn't approved yet"));
     assert.equal(out, join(p.dir, "renders", "synthetic-song-chorus-1-draft.mp4"));
     assert.deepEqual(args.slice(0, 4), [p.cuemap, p.clips, "--render", "--clips"]);
-    assert.ok(args.includes("--tricks") && args[args.indexOf("--audio") + 1].endsWith(".wav"));
+    assert.equal(args[args.indexOf("--audio") + 1], join(c.library, "synthetic-song/masters/synthetic-song.suno.master.wav"));
+    assert.equal(args[args.indexOf("--audio-source") + 1], "stuttr voice master Suno vocals, draft");
+    assert.deepEqual([audio.key, audio.status, audio.sha256], ["suno", "draft", master.sha256]);
+    assert.ok(args.includes("--tricks"));
     assert.throws(() => renderArgs(c, "no-such-song"), /no song "no-such-song"/);
     mkdirSync(join(p.dir, "renders"), { recursive: true });
     const r = spawnSync("npx", ["--yes", "tsx", join(__dirname, "../../scripts/dance8/cut.ts"), ...args], { encoding: "utf8" });
@@ -204,6 +212,10 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     const fpsOut = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", out], { encoding: "utf8" });
     assert.equal(fpsOut.stdout.trim(), "24/1");
     assert.match(readFileSync(out.replace(/\.mp4$/, ".edl"), "utf8"), /^FCM: NON-DROP FRAME$/m);
+    const rendered = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8")) as { audio: { file: string; sha256: string; source: string } };
+    assert.deepEqual(rendered.audio, { file: "synthetic-song.suno.master.wav", sha256: master.sha256, source: "stuttr voice master Suno vocals, draft" });
+    setMasterStatus(c, "synthetic-song", "suno", "approved");
+    assert.equal(renderArgs(c, "synthetic-song", { approved: true }).audio.status, "approved");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

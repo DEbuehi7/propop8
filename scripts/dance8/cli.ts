@@ -15,6 +15,7 @@
  *   npm run dance8 -- style                                   (your style across every song you have danced to)
  *   npm run dance8 -- render cloyne --short chorus-1          (a draft short from the approved clips)
  *   npm run dance8 -- render cloyne --approved                (the final, with the AI disclosure caption)
+ *     The audio is the song's Stuttr voice master (npm run stuttr -- master), never the Suno mix (D8-14).
  *
  * plan writes <id>/dance8/: cue map, harmony, Kirtled plan, clip library, shot
  * list, mouth tracks and README. It keeps a cue map, harmony or clip library
@@ -41,7 +42,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -55,7 +56,7 @@ const usage = `Dance8 (${ctx.library})
   moves <trackId> [video ...] [--offset <song sec at video start>] [--heavy] [--no-open]
   check-moves <trackId> [clipId ...] [--shift] [--again] [--no-open]
   style
-  render <trackId> [--short <cueId>] [--approved] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]`;
+  render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -146,9 +147,11 @@ async function main() {
         if (!Number.isFinite(Number(v))) throw new Error(`--${name} must be a number`);
         return Number(v);
       };
-      const { args, out } = renderArgs(ctx, a1, {
+      const { args, out, audio } = renderArgs(ctx, a1, {
         short: flag("short"), seed: num("seed"), approved: has("approved"), punch: num("punch"), lyrics: has("lyrics"), fps: num("fps"), edl: has("edl"),
+        master: flag("master"),
       });
+      console.log(`audio: ${audio.path} (${audio.status})`);
       mkdirSync(dirname(out), { recursive: true });
       const r = spawnSync("npx", ["--yes", "tsx", join(__dirname, "cut.ts"), ...args], { stdio: "inherit" });
       if (r.status !== 0) process.exitCode = r.status ?? 1;
