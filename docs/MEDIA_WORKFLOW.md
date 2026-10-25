@@ -106,6 +106,45 @@ Each render writes `<video>.manifest.json`: every clip used, where it came from,
 its drift score, the seed, the frame rate and the audio file's SHA-256 with
 which master it was.
 
+### Albums: the master list and the voice presets
+
+Each album's songs, in running order, live in a private list next to the
+library, `~/StuttrLibrary/albums.json`. It records only what you decide: the
+order, the album's title, and one voice mode per song:
+
+- `solo`: the lead (Stuttr unless you set `--lead`) replaces Suno's lead, and
+  Suno's backing vocals stay.
+- `crew`: the lead, plus Suno's backing vocals converted into Stuttr, M, Ja
+  and Bo.
+- `cast`: different voices sing different sections (`cast.json`, above).
+
+1. `npm run stuttr -- album SontheraVein` makes the album the first time, then
+   shows its board.
+2. `npm run stuttr -- album-add sontheravein bland clean cold --mode solo` adds
+   songs by library id, at the end. `--at 1` puts them at track 1 (it also
+   moves songs already on the album), and `album-order` sets the whole order at
+   once. A song can be listed before you add it to the library.
+3. `npm run stuttr -- album sontheravein` shows the board. It has one row per
+   song, with these columns: source, stems, lead, backing, mix, master, Dance8
+   and video. Below the table is each song's next step as a command. Every
+   status is read from the library each time, never stored. A song is done when
+   its voice master is approved and still matches its takes.
+4. `npm run stuttr -- voices <song>` uses the song's mode from the list (or
+   `--preset solo|crew|cast`). It first shows what it would convert and the
+   credits; nothing is spent. With `--go` it converts, then makes the listening
+   mix and lists what to approve. Takes the song already has cost nothing.
+5. `npm run stuttr -- album-voices sontheravein` does the same for every song on
+   the album that isn't done, and adds up the total. To convert, add `--go`
+   and `--max-credits` at least that total; if the estimate comes out higher,
+   nothing is converted. If a song fails, it stops there. Run it again to carry
+   on; finished parts are skipped.
+6. Listening, approving and approving the master stay yours. The board shows
+   each command.
+
+A rejected whole-song take isn't converted again by accident. Add `--redo` to
+`convert`, `voices` or `album-voices`, and the new take replaces the rejected
+one.
+
 ## Helper clips: from recording to page
 
 1. **Record** on the phone (Control Centre, Screen Recording) using the

@@ -34,10 +34,29 @@
  *   npm run stuttr -- approve cloyne Mo            (all of Mo's parts; --section verse-2 for one)
  *   npm run stuttr -- master cloyne                (uses the cast when there is one; --no-cast to ignore it)
  *
+ * The album master list (albums.json in the library): each album's songs in
+ * running order with a voice mode each, and a board of where every song stands
+ * from Suno source to video, with its next step.
+ *   npm run stuttr -- album SontheraVein           (makes it the first time; shows the board)
+ *   npm run stuttr -- album-add sontheravein bland clean cold --mode solo
+ *   npm run stuttr -- album-add sontheravein vein --at 1 --mode crew
+ *   npm run stuttr -- album-order sontheravein vein bland clean cold
+ *   npm run stuttr -- albums
+ *
+ * Voice presets: one command per song, or per album. The credit estimate first
+ * (free); --go converts, then makes the listening mix. Approving stays yours.
+ *   npm run stuttr -- voices cloyne --preset solo  (lead only; Suno's backing stays)
+ *   npm run stuttr -- voices cloyne --preset crew --go  (lead + backing as Stuttr, M, Ja, Bo)
+ *   npm run stuttr -- album-voices sontheravein    (every song not done, and the total)
+ *   npm run stuttr -- album-voices sontheravein --go --max-credits 40000
+ *
  * Options: --library <folder> (default ~/StuttrLibrary, or $STUTTR_LIBRARY),
  * --id, --title, --suno-plan, --dry (add); --from vocals|backing_vocals
  * (prep-voice, add-voice, approve, reject, mouth, convert); --full (prep-voice,
  * convert: don't cut the backing stem to its sung span); --lang (default en);
+ * --redo (convert, voices, album-voices: convert again a voice whose take you
+ * rejected); --at, --mode, --lead, --title (album-add); --preset, --go,
+ * --max-credits (voices, album-voices);
  * --no-backing, --suno-backing (mix, master); --suno (master, approve-master,
  * reject-master: Suno's own vocals); --replace (master: rebuild an approved one;
  * cast: start the cast over); --cast (convert, mix); --no-cast (master);
@@ -51,6 +70,7 @@ import {
   setMasterStatus, setVoiceStatus, type Ctx,
 } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
+import { albumAdd, albumCommand, albumOrder, albumRemove, albumsCommand, albumVoices, voicesCommand } from "../../lib/stuttr/albumCommands";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -58,7 +78,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -81,8 +101,23 @@ const usage = `Stuttr song library (${ctx.library})
   mouth <trackId> <voice> [--lang en] [--from backing_vocals] [--section <part>]
   convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]
   convert <trackId> --cast [--dry]
-  analyze <trackId>`;
+  convert <trackId> <voice> --redo              (again, for a take you rejected)
+  analyze <trackId>
+  album <name> [--title "Name"]                 (makes it the first time; shows the board)
+  album-add <album> <trackId> [more ids] [--at N] [--mode solo|crew|cast] [--lead Stuttr] [--title "Song"]
+  album-order <album> <trackId> <trackId> ...   (every song on the album, in the new order)
+  album-remove <album> <trackId> [more ids]
+  albums
+  voices <trackId> [--preset solo|crew|cast] [--lead Stuttr] [--lang en] [--redo] [--go] [--max-credits N]
+  album-voices <album> [--preset solo|crew] [--redo] [--go --max-credits N]`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
+const numFlag = (name: string): number | undefined => {
+  const v = flag(name);
+  if (v === undefined) return undefined;
+  const n = Number(v.replace(/,/g, ""));
+  if (!Number.isFinite(n) || n < 0) throw new Error(`--${name} takes a number`);
+  return n;
+};
 
 async function main(): Promise<void> {
   switch (cmd) {
@@ -145,8 +180,37 @@ async function main(): Promise<void> {
       }
       if (!a1 || !a2) throw new Error("convert needs a track id and at least one voice name (or --cast)");
       await convertVoices(ctx, {
-        trackId: a1, voices: positional.slice(2), from: fromFlag(), lang: flag("lang"), full: has("full"), format: flag("format"), dry: has("dry"),
+        trackId: a1, voices: positional.slice(2), from: fromFlag(), lang: flag("lang"), full: has("full"), format: flag("format"), dry: has("dry"), redo: has("redo"),
       });
+      break;
+    case "album":
+      if (!a1) throw new Error("album needs the album's name");
+      albumCommand(ctx, a1, { title: flag("title") });
+      break;
+    case "albums":
+      albumsCommand(ctx);
+      break;
+    case "album-add":
+      if (!a1 || !a2) throw new Error("album-add needs an album and at least one song id");
+      albumAdd(ctx, a1, positional.slice(2), { at: numFlag("at"), mode: flag("mode"), lead: flag("lead"), title: flag("title") });
+      break;
+    case "album-order":
+      if (!a1 || !a2) throw new Error("album-order needs an album and its songs in the new order");
+      albumOrder(ctx, a1, positional.slice(2));
+      break;
+    case "album-remove":
+      if (!a1 || !a2) throw new Error("album-remove needs an album and the song ids to take off it");
+      albumRemove(ctx, a1, positional.slice(2));
+      break;
+    case "voices":
+      if (!a1) throw new Error("voices needs a track id");
+      await voicesCommand(ctx, {
+        trackId: a1, preset: flag("preset"), lead: flag("lead"), lang: flag("lang"), go: has("go"), maxCredits: numFlag("max-credits"), redo: has("redo"), format: flag("format"),
+      });
+      break;
+    case "album-voices":
+      if (!a1) throw new Error("album-voices needs an album");
+      await albumVoices(ctx, { album: a1, preset: flag("preset"), go: has("go"), maxCredits: numFlag("max-credits"), redo: has("redo"), format: flag("format") });
       break;
     default:
       console.log(usage);

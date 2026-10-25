@@ -747,6 +747,8 @@ export interface CastConvertOptions {
   format?: string;
   /** Cut the parts and match the voices, but convert nothing (no credits). */
   dry?: boolean;
+  /** Told the credits the conversion costs (0 when there is nothing to convert), before any are spent. */
+  onPlan?: (p: { credits: number }) => void;
   /** For tests; defaults to the ELEVENLABS_API_KEY environment variable. */
   key?: string;
   fetch?: Fetch;
@@ -778,7 +780,10 @@ export async function convertCast(c: Ctx, o: CastConvertOptions): Promise<VoiceT
     else if (have) log(`${r.voice} ${runPart(r)} ${r.key}: its take was made for an older cast or cue map; to convert it again, reject it: npm run stuttr -- reject ${o.trackId} ${r.voice} --section ${r.key}${r.role === "vocals" ? "" : " --from backing_vocals"}`);
     else todo.push(r);
   }
-  if (todo.length === 0) return [];
+  if (todo.length === 0) {
+    o.onPlan?.({ credits: 0 });
+    return [];
+  }
 
   const eleven = await listVoices(key, f);
   const matched = new Map(todo.map((r) => [voiceKey(r.voice), matchVoice(eleven, r.voice)] as const));
@@ -791,6 +796,7 @@ export async function convertCast(c: Ctx, o: CastConvertOptions): Promise<VoiceT
   }
   saveManifest(c, m);
   const credits = Math.ceil((parts.reduce((a, x) => a + x.prep.durationSec, 0) / 60) * VOICE_CHANGER_CREDITS_PER_MIN);
+  o.onPlan?.({ credits });
   log(`${o.dry ? "would convert" : "converting"} ${parts.map((x) => `${x.r.voice} ${runPart(x.r)} ${x.r.key} (${Math.round(x.prep.durationSec)} s)`).join(", ")}: about ${credits.toLocaleString("en-US")} credits`);
   if (o.dry) return [];
 
@@ -932,6 +938,10 @@ export interface ConvertOptions {
   format?: string;
   /** Prepare and match voices, but convert nothing (no credits). */
   dry?: boolean;
+  /** Convert again a voice whose take you rejected; the new take replaces it. */
+  redo?: boolean;
+  /** Told the credits the conversion costs (0 when there is nothing to convert), before any are spent. */
+  onPlan?: (p: { credits: number }) => void;
   /** For tests; defaults to the ELEVENLABS_API_KEY environment variable. */
   key?: string;
   fetch?: Fetch;
@@ -941,7 +951,7 @@ export interface ConvertOptions {
  * convert: prep-voice, then the ElevenLabs voice changer once per voice, then
  * add-voice for each result, in one step. Every voice is matched by name
  * before any credits are spent; a voice that already has a take for this part
- * and language is skipped.
+ * and language is skipped, unless the take is rejected and redo is set.
  */
 export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTake[]> {
   const log = logOf(c);
@@ -958,10 +968,26 @@ export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTak
   if (wanted.length === 0) throw new Error("convert needs at least one voice name");
   const part = from === "vocals" ? "lead" : "backing";
   const before = trackOrThrow(loadManifest(c), o.trackId);
-  const taken = (v: string) => before.voices.some((t) => voiceKey(t.voice) === voiceKey(v) && t.lang === lang && t.sourceRole === from && !t.section);
-  for (const v of wanted.filter(taken)) log(`${v} already has a ${part} take (${lang}); skipped, no credits spent`);
+  const takeOf = (v: string) => before.voices.find((t) => voiceKey(t.voice) === voiceKey(v) && t.lang === lang && t.sourceRole === from && !t.section);
+  // A rejected take gives way only to a take of the same file name (what convert writes); one added by hand stays.
+  const redoable = (t: VoiceTake) => t.status === "rejected" && t.path === `${o.trackId}/voices/${voiceKey(t.voice)}.${lang}${from === "vocals" ? "" : ".backing"}.mp3`;
+  const taken = (v: string) => {
+    const t = takeOf(v);
+    return !!t && !(o.redo && redoable(t));
+  };
+  for (const v of wanted.filter(taken)) {
+    const t = takeOf(v)!;
+    const hint = t.status !== "rejected" ? "" : o.redo
+      ? `; it was added by hand (${basename(t.path)}), so convert can't replace it: add the new take with add-voice`
+      : `; it is rejected: to convert it again, add --redo`;
+    log(`${v} already has a ${part} take (${lang}); skipped, no credits spent${hint}`);
+  }
+  for (const v of wanted.filter((x) => !taken(x) && takeOf(x))) log(`${v}'s ${part} take is rejected; ${o.dry ? "it would be converted again" : "converting it again"} (the new take replaces it)`);
   const todo = wanted.filter((v) => !taken(v));
-  if (todo.length === 0) return [];
+  if (todo.length === 0) {
+    o.onPlan?.({ credits: 0 });
+    return [];
+  }
 
   // Match every voice first, so a typo costs nothing.
   const eleven = await listVoices(key, f);
@@ -971,6 +997,7 @@ export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTak
   const audio = readFileSync(join(c.library, rel));
   const prep = trackOrThrow(loadManifest(c), o.trackId).preps?.find((p) => p.role === from);
   const perVoice = prep ? Math.ceil((prep.durationSec / 60) * VOICE_CHANGER_CREDITS_PER_MIN) : null;
+  o.onPlan?.({ credits: (perVoice ?? 0) * matched.length });
   const names = matched.map((m) => (m.el.name === m.voice ? m.voice : `${m.voice} ("${m.el.name}")`)).join(", ");
   log(`${o.dry ? "would convert" : "converting"} the ${part} part as ${names}${perVoice !== null ? `: about ${(perVoice * matched.length).toLocaleString("en-US")} credits` : ""}`);
   if (o.dry) return [];
@@ -982,7 +1009,9 @@ export async function convertVoices(c: Ctx, o: ConvertOptions): Promise<VoiceTak
     const out = await convertSpeech(key, f, m.el.voiceId, audio, basename(rel), format);
     const file = join(tmp, `${o.trackId}.${voiceKey(m.voice)}.${lang}${from === "vocals" ? "" : ".backing"}.mp3`);
     writeFileSync(file, out);
-    takes.push(addVoice(c, { trackId: o.trackId, voice: m.voice, file, lang, from }));
+    const take = addVoice(c, { trackId: o.trackId, voice: m.voice, file, lang, from });
+    if (take.status === "rejected") log(`warning: ElevenLabs returned the same ${m.voice} take you rejected; it stays rejected`);
+    takes.push(take);
   }
   const leads = trackOrThrow(loadManifest(c), o.trackId).voices.filter((v) => v.sourceRole === "vocals" && v.lang === lang && v.status !== "rejected" && !v.section);
   if (leads.length === 1) log(`next: listen with  npm run stuttr -- mix ${o.trackId} ${leads[0].voice}${lang === "en" ? "" : ` --lang ${lang}`}`);
