@@ -85,7 +85,9 @@ test("lip sync card: the singer's face, the set, the cut audio and a fixed-templ
 test("b-roll, trick and dance cards", () => {
   const hidden = compileCard(brief({}), refs({ hidden: "Hands on the railing, sneakers on wet tiles" }), opts);
   assert.equal(hidden.prompt.split("\n")[0], "SUBJECT: Hands on the railing, sneakers on wet tiles. No face or mouth is visible at any moment.");
-  assert.match(hidden.prompt, /AVOID: .*faces, mouths$/);
+  assert.match(hidden.prompt, /CONTINUITY: Keep the set's architecture, materials and light from the start frame\.\nAVOID: .*faces, mouths$/);
+  const freeze = compileCard(brief({ id: "trick-board_freeze-rooftop", kind: "trick", trick: "board_freeze", trickVersion: "freeze_high", keyframesSec: [2.6] }), refs(), opts);
+  assert.match(freeze.prompt, /ACTION: The skater rises into a standing freeze balanced on the board, holding the freeze from about 2\.6 s into the clip\./);
   assert.deepEqual(hidden.uploads.map((u) => u.role), ["Start frame"]);
   assert.equal(hidden.ready, true);
   const free = compileCard(brief({ mouth: "any", camera: "drone_wide" }), refs({ master: null }), opts);
@@ -97,7 +99,7 @@ test("b-roll, trick and dance cards", () => {
 
   const trick = compileCard(brief({ id: "trick-handplant_roll-spin_360-half-rooftop", kind: "trick", trick: "handplant_roll", trickVersion: "spin_360", crew: "half", crewCount: 4, keyframesSec: [2.607], camera: "wide" }), refs({ skater: "Stuttr" }), opts);
   assert.match(trick.prompt, /^SUBJECT: 4 skaters moving in unison, dressed like Stuttr, full bodies in frame\./);
-  assert.match(trick.prompt, /\nACTION: In unison, each skater spins a full turn on the board and rides away, landing cleanly at about 2\.607 s into the clip\. One trick only\.\n/);
+  assert.match(trick.prompt, /\nACTION: In unison, each skater spins a full turn on the board, landing cleanly at about 2\.607 s into the clip\. One trick only\.\n/);
   assert.deepEqual(trick.uploads.map((u) => [u.role, u.required]), [["Skater (reference)", false], ["Start frame", true]]);
   assert.match(trick.steps[0], /lands somewhere other than 2\.607 s/);
 

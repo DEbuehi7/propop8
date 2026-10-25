@@ -134,18 +134,19 @@ const CAMERA_TEXT: Record<CameraShot, string> = {
 const TRICK_TEXT: Record<string, string> = {
   floor_carve: "rides low and carves one long, smooth arc across the ground",
   kickflip_sweep: "kickflips the board and sweeps one leg through low to the ground",
-  handplant_roll: "plants one hand, swings the board overhead and rolls out riding",
-  spin_180: "spins a half turn on the board and rides away",
-  spin_360: "spins a full turn on the board and rides away",
-  ollie_leap: "pops a big ollie leap and lands riding",
-  ollie_standard: "pops a big ollie leap and lands riding",
-  ollie_low: "pops a quick, low ollie and lands riding",
-  ollie_mid: "pops a mid-height ollie leap and lands riding",
-  ollie_high: "pops a high ollie leap and lands riding",
+  handplant_roll: "plants one hand, swings the board overhead and rolls out",
+  spin_180: "spins a half turn on the board",
+  spin_360: "spins a full turn on the board",
+  ollie_leap: "pops a big ollie leap",
+  ollie_standard: "pops a big ollie leap",
+  ollie_low: "pops a quick, low ollie",
+  ollie_mid: "pops a mid-height ollie leap",
+  ollie_high: "pops a high ollie leap",
   board_freeze: "drops into a low freeze, balanced on one hand with the board",
   freeze_low: "drops into a low freeze, balanced on one hand with the board",
-  freeze_high: "holds a standing freeze balanced on the board",
+  freeze_high: "rises into a standing freeze balanced on the board",
 };
+const isFreeze = (k: string) => k === "board_freeze" || k.startsWith("freeze_");
 
 const CONTINUITY = "Keep the reference character's face, hair and clothing, and the set's architecture and materials.";
 const AVOID = "identity drift, clothing changes, extra limbs or fingers, warped objects, readable text, logos, real people, brands, flicker";
@@ -220,6 +221,7 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
       subject = "The set and its atmosphere; any people only at a distance.";
     }
     action = "One continuous moment with gentle movement in the set (light, air, people passing); no cuts.";
+    continuity = "Keep the set's architecture, materials and light from the start frame.";
   } else if (b.kind === "trick") {
     const slug = scene?.skater ? voiceKey(scene.skater) : null;
     const c = char(slug);
@@ -228,9 +230,12 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
     const n = b.crewCount ?? 1;
     const base = c ? who(c) : "A skater";
     subject = n > 1 ? `${n} skaters moving in unison${c ? `, dressed like ${c.name}` : ""}, full bodies in frame.` : `${base}, full body in frame.`;
-    const what = TRICK_TEXT[b.trickVersion ?? b.trick ?? ""] ?? (b.trick ?? "").replace(/_/g, " ");
+    const key = b.trickVersion ?? b.trick ?? "";
+    const what = TRICK_TEXT[key] ?? key.replace(/_/g, " ");
     const landing = b.keyframesSec[0];
-    action = `${n > 1 ? "In unison, each skater" : "The skater"} ${what}, landing cleanly at about ${landing} s into the clip. One trick only.`;
+    const lands = isFreeze(key) ? `holding the freeze from about ${landing} s into the clip` : `landing cleanly at about ${landing} s into the clip`;
+    action = `${n > 1 ? "In unison, each skater" : "The skater"} ${what}, ${lands}. One trick only.`;
+    continuity = "Keep the skater's clothing and board, and the set's architecture and materials.";
     camera = "Wide shot, full body and board always in frame; the camera nearly still.";
     avoid = `${AVOID}, face close-ups`;
     steps.push(`If the board lands somewhere other than ${landing} s, note the real second for approve-clip --landing.`);
