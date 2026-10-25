@@ -4,7 +4,8 @@
  *   npm run stuttr -- analyze cloyne        (Stuttr measures the stems first)
  *   npm run dance8 -- plan cloyne --key Eb
  *   npm run dance8 -- plan cloyne --key Eb --skate breakyard_plaza   (skaters play Kirtled, canon D8-16)
- *   npm run dance8 -- clips cloyne ~/Downloads
+ *   npm run dance8 -- kling cloyne                            (the upload pack: files and a prompt per shot)
+ *   npm run dance8 -- clips cloyne ~/Downloads/cloyne
  *   npm run dance8 -- approve-clip cloyne broll-intro-drone_wide --drift 0.1
  *   npm run dance8 -- retire-clip cloyne broll-intro-drone_wide
  *   npm run dance8 -- moves cloyne ~/Movies/me-dancing.mov   (your dance as Kirtled words, canon D8-17)
@@ -28,6 +29,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { Ctx } from "../../lib/stuttr/commands";
 import { ingestClips, planTrack, renderArgs, setClipStatus } from "../../lib/dance8/pipeline";
+import { klingPack } from "../../lib/dance8/klingPipeline";
 import {
   buildStyle, checkLines, cleanupTakes, clipsToCheck, ensureModel, prepareClipFrames, prepareTakes, rereadTakes, saveChecks, saveTakes, songForMoves, type PoseModel,
 } from "../../lib/dance8/movesPipeline";
@@ -50,6 +52,7 @@ const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
   plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
+  kling <trackId>                                    (upload pack: files and a prompt per shot, in <song>/dance8/kling/)
   clips <trackId> <folder>
   approve-clip <trackId> <clipId> --drift <0-1> [--landing <sec>]
   retire-clip <trackId> <clipId>
@@ -113,6 +116,10 @@ async function main() {
       });
       break;
     }
+    case "kling":
+      if (!a1) throw new Error("kling needs a track id");
+      klingPack(ctx, a1);
+      break;
     case "clips":
       if (!a1 || !a2) throw new Error("clips needs a track id and a folder of downloads");
       ingestClips(ctx, a1, expand(a2));

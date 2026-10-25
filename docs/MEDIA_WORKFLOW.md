@@ -47,10 +47,34 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
 
 1. `npm run dance8 -- plan <song>`. The song's `dance8/README.txt` lists the
    shots to generate, each with an id and a length.
-2. Generate each shot. Rename each download to its shot id (`broll-intro-drone_wide.mp4`;
-   a take number such as `-2` is fine) and keep them in one folder.
-3. `npm run dance8 -- clips <song> ~/Downloads`. Files that match a shot come in
-   as drafts; the rest are left alone.
+2. `npm run dance8 -- kling <song>` writes the upload pack,
+   `<song>/dance8/kling/index.html`. It has one card per shot, giving:
+   - the files to upload;
+   - a prompt compiled from a fixed template;
+   - the length, shape and resolution;
+   - for lip sync, the singer's approved voice cut to the shot.
+
+   The first run also makes the reference folders the shots need, each with a
+   starter text file. Fill them in and run `kling` again; it never overwrites
+   what you wrote. The folders are:
+   - `~/StuttrLibrary/refs/cast/<character>/` holds `face.png` (mouth fully
+     visible), `fullbody.png` and `character.txt` (`name:`, `look:`).
+   - `~/StuttrLibrary/refs/scenes/<scene>/` holds `master.png` (the set's first
+     frame), an optional `dancer.png`, and `scene.txt`.
+   - `scene.txt` takes `place:`, `light:`, `hidden:` (what b-roll shows while
+     someone sings), `dancer:`, `skater:`, and `cast:` (such as
+     `Stuttr=brick-built-stuttr`).
+
+   Scenes are shared by every song that uses the same scene id. A placeholder
+   id from plan (`verse-1`, `chorus`) lives in the song's own `refs/` instead.
+   Rename it in the cue map to a place to share it. Prompts describe the subject,
+   set, action, camera and light; they never mention tempo or beats (D8-01).
+3. Generate each card in Kling. Save the download as its shot id
+   (`broll-intro-drone_wide.mp4`; a take number such as `-2` is fine) in one
+   folder per song, `~/Downloads/<song>`, so shot ids from different songs never
+   mix. Then run `npm run dance8 -- clips <song> ~/Downloads/<song>`. Files that
+   match a shot come in as drafts; the rest are left alone. Run `kling` again
+   for the shots still to make.
 4. Watch each draft, then `npm run dance8 -- approve-clip <song> <clip> --drift 0.1`
    (your score: 0 matches the references, 1 is unrecognisable).
 5. Build the audio: `npm run stuttr -- master <song>` (your approved voices;
