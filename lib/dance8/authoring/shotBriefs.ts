@@ -114,7 +114,8 @@ export function shotBriefs(map: CueMap, library: VisualClipLibrary, g: Generator
     return out;
   };
   const lengthFor = (sec: number) => {
-    const want = g.wholeSeconds ? Math.ceil(sec - EPS) : sec;
+    // Whole seconds, or (a generator that follows its reference, like Motion Control) up to the next millisecond.
+    const want = g.wholeSeconds ? Math.ceil(sec - EPS) : Math.ceil(sec * 1000 - 1e-6) / 1000;
     return Math.min(g.maxSec, Math.max(g.minSec, want));
   };
 

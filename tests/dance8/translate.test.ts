@@ -18,7 +18,7 @@ import clipsDemo from "../../fixtures/clips-demo.json";
 import graphDemo from "../../fixtures/transitions-demo.json";
 import policyV1 from "../../fixtures/policy-v1.json";
 import posesData from "../../fixtures/poses.json";
-import { GENERATORS } from "../../lib/dance8/authoring/generators";
+import { danceGenerator, GENERATORS } from "../../lib/dance8/authoring/generators";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import { validateBundle } from "../../lib/dance8/authoring/validateBundle";
 import { barToSec } from "../../lib/dance8/authoring/validateCueMap";
@@ -29,7 +29,7 @@ import type { CueMap, VisualClip, VisualClipLibrary } from "../../lib/dance8/con
 import type { SignalFrame } from "../../lib/dance8/contracts/signal";
 import { planKirtled } from "../../lib/dance8/harmony/pathSolver";
 import type { TrickEvent } from "../../lib/dance8/harmony/skateTricks";
-import { compareMotion, danceBriefs, motionCurve, verdictOf } from "../../lib/dance8/moves/dancers";
+import { compareMotion, danceBriefs, danceWindowBars, motionCurve, verdictOf } from "../../lib/dance8/moves/dancers";
 import { kirtledDance } from "../../lib/dance8/moves/kirtled";
 import { carveOf, crewFor, kaVersion, ollieVersion, styleTricks } from "../../lib/dance8/moves/skaters";
 import { danceRules, styleProfile, tempoBand } from "../../lib/dance8/moves/style";
@@ -122,12 +122,24 @@ test("Kirtled: your words against the song's chord changes, and stomps on the fl
 });
 
 test("dance shots: one per stretch a take reads, the reference cut at that song time", () => {
-  const g = GENERATORS["kling-4.0-flash"];
+  const g = danceGenerator(false);
+  assert.deepEqual([g.id, g.maxSec, g.resolution, danceGenerator(true).resolution], ["kling-3.0-motion-control-720p", 30, "720p", "1080p"],
+    "dance shots are Motion Control: drafts at 720p, finals at 1080p, references up to 30 s");
   const lib: VisualClipLibrary = { version: 1, clips: [] };
   const t = { ...take("t1", 16), sync: manualSync(-1.5, "x") }; // the video started 1.5 s before the song
   const briefs = danceBriefs(MAP, lib, [t], { t1: "IMG_0001.MOV" }, ["stage"], g);
   assert.deepEqual(briefs.map((b) => [b.id, b.songStartSec, b.songEndSec]), [["dance-verse-b0", songOf(0), songOf(8)], ["dance-hook-b8", songOf(8), songOf(16)]],
-    "8 bars (19.2 s) fit the 20 s generator");
+    "8 bars (19.2 s) fit one 30 s Motion Control reference");
+  assert.deepEqual([briefs[0].generator, briefs[0].resolution, briefs[0].aspect, briefs[0].cropTo], ["kling-3.0-motion-control-720p", "720p", MAP.aspect, null]);
+  // Motion Control has no 21:9: generate 16:9 and crop to the video's shape.
+  const wide = danceBriefs({ ...MAP, aspect: "21:9" }, lib, [t], {}, ["stage"], g)[0];
+  assert.deepEqual([wide.aspect, wide.cropTo], ["16:9", "21:9"]);
+  // The 20 s Flash limit would have split a 9-bar stretch (21.6 s); Motion Control keeps it whole.
+  assert.equal(danceWindowBars(MAP, g), 12);
+  assert.equal(danceWindowBars(MAP, GENERATORS["kling-4.0-flash"]), 8);
+  // A 20 s video (song -1.5 s to 18.5 s): only bars it holds from bar line to bar line.
+  assert.deepEqual(danceBriefs(MAP, lib, [t], {}, ["stage"], g, { t1: 20 }).map((b) => [b.id, b.songStartSec, b.songEndSec, b.motionRef!.captureEndSec]),
+    [["dance-verse-b0", songOf(0), songOf(7), songOf(7) + 1.5]]);
   const short = { ...take("t1", 12), sync: manualSync(-1.5, "x") };
   assert.deepEqual(danceBriefs(MAP, lib, [short], {}, ["stage"], g).map((b) => [b.id, b.songEndSec]), [["dance-verse-b0", songOf(8)], ["dance-hook-b8", songOf(12)]],
     "the hook shot stops where the take does");

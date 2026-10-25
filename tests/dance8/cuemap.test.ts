@@ -295,7 +295,7 @@ test("shot briefs: within generator limits, start on bar lines, deterministic", 
     assert.equal(ids.size, a.length, "brief ids are unique");
     for (const b of a) {
       assert.ok(b.generateSec >= g.minSec && b.generateSec <= g.maxSec, `${b.id} length ${b.generateSec}`);
-      assert.ok(Number.isInteger(b.generateSec));
+      if (g.wholeSeconds) assert.ok(Number.isInteger(b.generateSec));
       assert.ok(b.generateSec >= b.songEndSec - b.songStartSec - 1e-6 || b.songEndSec - b.songStartSec > g.maxSec);
       if (g.maxKeyframes) assert.ok(b.keyframesSec.length <= g.maxKeyframes);
       assert.equal(b.keyframesSec[0], 0);

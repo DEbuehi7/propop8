@@ -26,7 +26,7 @@ import { castDrift, loadCast, loadManifest, mouthTrack, type Ctx } from "../stut
 import { castRel } from "../stuttr/cast";
 import { pickMaster, voiceKey, type LibraryTrack } from "../stuttr/library";
 import { castVocals } from "./authoring/castVoices";
-import { GENERATORS } from "./authoring/generators";
+import { danceGenerator, GENERATORS } from "./authoring/generators";
 import { parseKey, planSong, STAND_IN_CLIP_ID } from "./authoring/plan";
 import { shotBriefs, type ShotBrief } from "./authoring/shotBriefs";
 import { validateCueMap } from "./authoring/validateCueMap";
@@ -247,8 +247,10 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     if (!takes.length) {
       danceNote = `no takes yet for the dance scenes; film yourself and run: npm run dance8 -- moves ${trackId} <video>`;
     } else {
-      const videos = Object.fromEntries(takes.map((t) => [t.takeId, loadCapture(c.library, trackId, t.takeId)?.video.file ?? t.takeId]));
-      const dance = danceBriefs(map, lib, takes, videos, o.dance, g);
+      const caps = takes.map((t) => [t.takeId, loadCapture(c.library, trackId, t.takeId)] as const);
+      const videos = Object.fromEntries(caps.map(([id, cap]) => [id, cap?.video.file ?? id]));
+      const lengths = Object.fromEntries(caps.flatMap(([id, cap]) => (cap ? [[id, cap.video.durationSec] as const] : [])));
+      const dance = danceBriefs(map, lib, takes, videos, o.dance, danceGenerator(!!o.final), lengths);
       const missing = cutReferences(c, trackId, dance);
       briefs = [...withoutDanceBroll(briefs, dance, lib, map, o.dance), ...dance];
       danceNote = dance.length
