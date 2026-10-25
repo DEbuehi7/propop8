@@ -250,10 +250,14 @@ of the song and writes:
   clip whose version and crew your dance picked, then any clip of that trick.
   Where no take covers a trick, it stays D8-16's base version, one skater.
 - **Dancers.** In each dance scene, the bars your takes read well (most beats of
-  a bar) become dance shots of 3 to 30 s, each with a reference cut from your
-  take at that song time (`moves/refs/<shot>.mp4`, video only). Generate each one
-  with Kling Motion Control: the reference plus the dancer's character image,
-  with a prompt describing the scene only. The clip that comes back is locked to
+  a bar, and the whole bar inside the take's video) become dance shots of 3 to
+  30 s, each with a reference cut from your take at that song time
+  (`moves/refs/<shot>.mp4`, video only). Generate each one with Kling 3.0 Motion
+  Control, character orientation following the video (the 30 s limit; 10 s when
+  it follows the image): the reference plus the dancer's character image, with a
+  prompt describing the scene only. The briefs say 720p for drafts and 1080p for
+  finals, and 16:9, 9:16 or 1:1 (a 21:9 video is generated at 16:9 and cropped).
+  The clip that comes back is locked to
   the song time it was danced to (`danceLock`). The cut planner plays it there,
   after lip sync and tricks, so the dancer keeps your timing.
   `npm run dance8 -- check-moves <song>` reads the generated dancer the same way

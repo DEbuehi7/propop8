@@ -58,7 +58,34 @@ export const GENERATORS: Record<string, GeneratorProfile> = {
     aspects: ["16:9", "1:1", "9:16"],
     wholeSeconds: true,
   },
+  // Dance shots (your dance onto a character). Kling 3.0 Motion Control: a 3-30 s
+  // reference video with character orientation following the video (10 s when it
+  // follows the image), output 720p or 1080p at 16:9, 9:16 or 1:1 (checked
+  // 25 Oct 2026 against the Kling Motion Control node docs and Runway's Kling 3.0
+  // Motion Control guide). The clip is as long as the reference, so not whole seconds.
+  "kling-3.0-motion-control-720p": {
+    id: "kling-3.0-motion-control-720p",
+    label: "Kling 3.0 Motion Control, 720p (dance drafts)",
+    minSec: 3,
+    maxSec: 30,
+    resolution: "720p",
+    aspects: ["16:9", "1:1", "9:16"],
+    wholeSeconds: false,
+  },
+  "kling-3.0-motion-control-1080p": {
+    id: "kling-3.0-motion-control-1080p",
+    label: "Kling 3.0 Motion Control, 1080p (dance finals)",
+    minSec: 3,
+    maxSec: 30,
+    resolution: "1080p",
+    aspects: ["16:9", "1:1", "9:16"],
+    wholeSeconds: false,
+  },
 };
+
+/** The generator for dance shots: Motion Control, at the tier's resolution. */
+export const danceGenerator = (final: boolean): GeneratorProfile =>
+  GENERATORS[final ? "kling-3.0-motion-control-1080p" : "kling-3.0-motion-control-720p"];
 
 /** Supported aspect to generate at when the video's own aspect is not offered. */
 export function generateAspect(want: AspectRatio, g: GeneratorProfile): { aspect: AspectRatio; cropped: boolean } {

@@ -10,7 +10,7 @@
 // a measurement for the person; approving a clip stays theirs. Pure.
 
 import { ANTI_DRIFT_NOTES, type ShotBrief } from "../authoring/shotBriefs";
-import type { GeneratorProfile } from "../authoring/generators";
+import { generateAspect, type GeneratorProfile } from "../authoring/generators";
 import { barToSec } from "../authoring/validateCueMap";
 import type { CameraShot, CueMap, VisualClipLibrary } from "../contracts/scene";
 import type { MoveTrack, PoseCapture } from "../contracts/moves";
@@ -28,6 +28,9 @@ export const CHECK_MAX_LAG_MS = 84;
 export const CHECK_MIN_R = 0.5;
 /** Timing offsets searched (seconds either way). */
 export const CHECK_MAX_LAG_SEC = 0.5;
+
+/** Slack when checking a bar lies inside the take's video (seconds). */
+const SPAN_EPS = 0.001;
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -49,17 +52,25 @@ export function danceCovered(lib: VisualClipLibrary, sceneId: string, songStart:
  * Dance shots for the dance scenes: the bars your takes read well (at least
  * MIN_KNOWN_SHARE of the beats), grouped into runs from the same take and
  * split into shots as long as the generator allows; a run shorter than 3 s is
- * skipped. A stretch a dancer clip already covers is skipped too.
+ * skipped. A stretch a dancer clip already covers is skipped too. With each
+ * take's video length (videoSec), a bar the video doesn't hold from bar line
+ * to bar line is left out, so a reference is never cut short of its shot.
  */
 export function danceBriefs(
   map: CueMap, lib: VisualClipLibrary, tracks: MoveTrack[], videos: Record<string, string>, sceneIds: string[], g: GeneratorProfile,
+  videoSec: Record<string, number> = {},
 ): ShotBrief[] {
   const origin = map.firstDownbeatSec ?? 0;
   const W = danceWindowBars(map, g);
+  // Generated at a shape the generator offers, cropped to the video's when it doesn't offer that one.
+  const { aspect, cropped } = generateAspect(map.aspect, g);
   const songAt = (bar: number) => r3(origin + barToSec(map.tempo, bar));
   const minBars = Math.ceil(REF_MIN_SEC / barToSec(map.tempo, 1) - 1e-9);
   const sorted = [...tracks].sort((a, b) => a.takeId.localeCompare(b.takeId));
   const shareIn = (t: MoveTrack, bar: number) => {
+    const len = videoSec[t.takeId];
+    const at0 = t.sync.songAtCapture0;
+    if (len !== undefined && (songAt(bar) - at0 < -SPAN_EPS || songAt(bar + 1) - at0 > len + SPAN_EPS)) return 0;
     const per = map.tempo[0].beatsPerBar;
     return t.beats.filter((x) => x.bar === bar && x.status === "known").length / per;
   };
@@ -91,7 +102,7 @@ export function danceBriefs(
         out.push({
           id, kind: "dance", cueId: cue.id, section: cue.section, sceneId: cue.sceneId, camera, voice: null, lyric: null,
           songStartSec: songStart, songEndSec: songEnd, generateSec: r3(songEnd - songStart), keyframesSec: keyframes,
-          aspect: map.aspect, cropTo: null, generator: g.id, resolution: g.resolution, referenceSetId: null, mouth: "any",
+          aspect, cropTo: cropped ? map.aspect : null, generator: g.id, resolution: g.resolution, referenceSetId: null, mouth: "any",
           motionRef: {
             takeId: t.takeId, video: videos[t.takeId] ?? t.takeId,
             captureStartSec: r3(songStart - at0), captureEndSec: r3(songEnd - at0), songStartSec: songStart, songEndSec: songEnd,
