@@ -22,8 +22,10 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import type { SongAnalysis } from "../stuttr/analysis";
-import { loadManifest, mouthTrack, type Ctx } from "../stuttr/commands";
-import { pickMaster, voiceKey } from "../stuttr/library";
+import { castDrift, loadCast, loadManifest, mouthTrack, type Ctx } from "../stuttr/commands";
+import { castRel } from "../stuttr/cast";
+import { pickMaster, voiceKey, type LibraryTrack } from "../stuttr/library";
+import { castVocals } from "./authoring/castVoices";
 import { GENERATORS } from "./authoring/generators";
 import { parseKey, planSong, STAND_IN_CLIP_ID } from "./authoring/plan";
 import { shotBriefs, type ShotBrief } from "./authoring/shotBriefs";
@@ -48,6 +50,8 @@ export interface SongPaths {
   dir: string;
   analysis: string;
   cuemap: string;
+  /** Your cue map with the singers from cast.json; rebuilt by plan, clips and render, never edited. */
+  castCuemap: string;
   harmony: string;
   kirtled: string;
   clips: string;
@@ -70,7 +74,7 @@ export function songPaths(c: Ctx, trackId: string): SongPaths {
   return {
     dir,
     analysis: join(c.library, trackId, "analysis", `${trackId}.analysis.json`),
-    cuemap: f("cuemap.json"), harmony: f("harmony.json"), kirtled: f("kirtled.json"),
+    cuemap: f("cuemap.json"), castCuemap: f("cuemap.cast.json"), harmony: f("harmony.json"), kirtled: f("kirtled.json"),
     clips: f("clips.json"), clipDir: join(dir, "clips"), briefs: f("briefs.json"), tricks: f("tricks.json"), readme: join(dir, "README.txt"),
     standIn: join(dir, "clips", `${STAND_IN_CLIP_ID}.mp4`),
     kirtledDance: f("kirtled-dance.json"), rules: f("dance-rules.json"), style: join(c.library, "dance8-style.json"),
@@ -153,6 +157,25 @@ export function trickBriefs(
 /** The fixed bundle versions for the dance rules until a live motion library is wired (Gate 1 fixtures are version 1). */
 const RULE_VERSIONS = { motionLibraryVersion: 1, transitionGraphVersion: 1, runtimePolicyVersion: 1 };
 
+/**
+ * The cue map as plan, clips and render use it: yours, with each sung line's
+ * singer from the song's cast.json when it has one. That copy is written to
+ * <song>.cuemap.cast.json and rebuilt every time; your cue map is never
+ * changed, so a singer you take out of the cast can come back.
+ */
+export function withCast(c: Ctx, t: LibraryTrack, p: SongPaths, map: CueMap): { map: CueMap; file: string; note: string | null } {
+  if (!existsSync(join(c.library, castRel(t.trackId)))) return { map, file: p.cuemap, note: null };
+  const loaded = loadCast(c, t)!;
+  const { vocals, dropped } = castVocals(map, loaded.cast);
+  const cast: CueMap = { ...map, vocals };
+  writeJson(p.castCuemap, cast);
+  const singers = [...new Set(vocals.map((v) => v.voice))].join(", ");
+  return {
+    map: cast, file: p.castCuemap,
+    note: `singers from cast.json: ${singers || "none"}${dropped.length ? `; ${dropped.length} sung line(s) left out where the cast has nobody in that part` : ""}`,
+  };
+}
+
 /** In dance scenes, a cue the takes cover gets dance shots instead of a generic b-roll shot. */
 function withoutDanceBroll(briefs: ShotBrief[], dance: ShotBrief[], lib: VisualClipLibrary, map: CueMap, scenes: string[]): ShotBrief[] {
   const danced = new Set(dance.map((b) => b.cueId));
@@ -173,7 +196,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   if (o.key && !key) throw new Error(`--key must look like Eb, F#, Am or Cm (got "${o.key}")`);
   const lyricsFile = t.files.find((f) => f.role === "lyrics");
   const lyrics = lyricsFile ? readFileSync(join(c.library, lyricsFile.path), "utf8") : undefined;
-  const leads = [...new Set(t.voices.filter((v) => v.sourceRole === "vocals" && v.status === "approved").map((v) => v.voice))];
+  const leads = [...new Set(t.voices.filter((v) => v.sourceRole === "vocals" && v.status === "approved" && !v.section).map((v) => v.voice))];
   const draft = planSong({
     analysis, lyrics, key: key ?? undefined, aspect: o.aspect,
     leadVoice: leads.length === 1 ? leads[0] : undefined,
@@ -186,7 +209,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     writeJson(path, fresh);
     return fresh;
   };
-  const map = keepOr<CueMap>(p.cuemap, draft.map);
+  const { map, note: castNote } = withCast(c, t, p, keepOr<CueMap>(p.cuemap, draft.map));
   const harmony = keepOr<HarmonyTimeline>(p.harmony, draft.harmony);
   const lib = keepOr<VisualClipLibrary>(p.clips, { version: 1, clips: [standInClip(map.aspect, nowOf(c))] });
   if (!existsSync(p.standIn)) {
@@ -253,10 +276,10 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   // Mouth tracks for every approved take that doesn't have one yet.
   const mouths: string[] = [];
   for (const v of t.voices.filter((x) => x.status === "approved")) {
-    const file = join(p.dir, `${trackId}.${voiceKey(v.voice)}.${v.lang}${v.sourceRole === "backing_vocals" ? ".backing" : ""}.mouth.json`);
+    const file = join(p.dir, `${trackId}.${voiceKey(v.voice)}.${v.lang}${v.sourceRole === "backing_vocals" ? ".backing" : ""}${v.section ? `.${v.section}` : ""}.mouth.json`);
     if (!existsSync(file)) {
       try {
-        mouthTrack({ ...c, log: () => {} }, trackId, v.voice, v.lang, v.sourceRole);
+        mouthTrack({ ...c, log: () => {} }, trackId, v.voice, v.lang, v.sourceRole, v.section);
       } catch (e) {
         log(`note: no mouth track for ${v.voice}: ${(e as Error).message}`);
         continue;
@@ -275,6 +298,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     "",
     "Files",
     `  ${basename(p.cuemap)}   sections and sung lines${kept.includes(basename(p.cuemap)) ? " (kept: yours)" : " (new draft)"}`,
+    ...(castNote ? [`  ${basename(p.castCuemap)}   the same with the ${castNote}`] : []),
     `  ${basename(p.harmony)}  chords per change${kept.includes(basename(p.harmony)) ? " (kept: yours)" : " (new draft)"}`,
     `  ${basename(p.kirtled)}  Kirtled floor plan (light cues only, no sound)`,
     `  ${basename(p.clips)}    footage library${kept.includes(basename(p.clips)) ? " (kept: yours)" : " (stand-in only)"}`,
@@ -395,7 +419,9 @@ export function ingestClips(c: Ctx, trackId: string, folder: string): VisualClip
   const p = songPaths(c, trackId);
   if (!existsSync(p.cuemap) || !existsSync(p.clips)) throw new Error(`no plan yet; run: npm run dance8 -- plan ${trackId}`);
   if (!existsSync(folder)) throw new Error(`${folder} does not exist`);
-  const map = readJson<CueMap>(p.cuemap);
+  const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
+  if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
+  const map = withCast(c, t, p, readJson<CueMap>(p.cuemap)).map;
   const lib = readJson<VisualClipLibrary>(p.clips);
   const saved = existsSync(p.briefs) ? readJson<ShotBrief[]>(p.briefs) : [];
   const current = shotBriefs(map, lib, GENERATORS["kling-4.0-flash"]);
@@ -501,7 +527,7 @@ export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { ar
   if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
   const p = songPaths(c, trackId);
   if (!existsSync(p.cuemap) || !existsSync(p.clips)) throw new Error(`no plan yet; run: npm run dance8 -- plan ${trackId}`);
-  const pick = pickMaster(t, { final: !!r.approved, key: r.master });
+  const pick = pickMaster(t, { final: !!r.approved, key: r.master, extraProblem: (m) => castDrift(c, m) });
   if ("error" in pick) throw new Error(pick.error);
   if (pick.warning) logOf(c)(`warning: ${pick.warning}`);
   const master = pick.master;
@@ -509,7 +535,7 @@ export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { ar
   const name = [trackId, r.short, r.seed ? `seed${r.seed}` : "", r.approved ? "final" : "draft"].filter(Boolean).join("-");
   const out = join(p.dir, "renders", `${name}.mp4`);
   const args = [
-    p.cuemap, p.clips, "--render", "--clips", p.clipDir, "--audio", join(c.library, master.path),
+    withCast(c, t, p, readJson<CueMap>(p.cuemap)).file, p.clips, "--render", "--clips", p.clipDir, "--audio", join(c.library, master.path),
     "--audio-source", `stuttr voice master ${label}, ${master.status}`, "--out", out,
   ];
   if (r.short) args.push("--short", r.short);

@@ -67,6 +67,41 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
    open the cut in Resolve or Premiere for hand finishing, `--lyrics` to burn in
    the sung lines, `--seed 2` for another variation of the same edit.
 
+### Who sings which section (`cast.json`)
+
+To give a section to another singer (Mo on the chorus, M, Ja and Bo shouting
+the hook), the song gets a private cast file, `~/StuttrLibrary/<song>/cast.json`.
+It names the lead voice and the backing voices for every section of the cue
+map. Suno's lyric file is never changed.
+
+1. `npm run stuttr -- analyze <song>`, then `npm run dance8 -- plan <song>`
+   (the cast uses the cue map's sections).
+2. `npm run stuttr -- cast <song>` writes a starter: the lead voice wherever
+   the lead stem sings, and `"suno"` (Suno's own backing vocals) wherever the
+   backing stem sings. Edit it, for example `"lead": "Mo"` for a section, or
+   `"backing": ["M", "Ja", "Bo"]` in place of `"suno"`; `[]` means no backing.
+   Run `cast <song>` again to check it and see who sings where.
+3. `npm run stuttr -- convert <song> --cast --dry` shows what each voice would
+   convert and the credits; without `--dry` it converts. Each voice converts
+   only its own sections, cut from the stem at the quietest eighth note within
+   a beat of the section line and trimmed to where someone sings, with the
+   same ±50 ms timing check. A part that already has a take costs nothing.
+4. `npm run stuttr -- mix <song> --cast` to listen, then approve each voice
+   (`approve <song> Mo`, or `--section chorus-1` for one part; add
+   `--from backing_vocals` for backing).
+5. `npm run stuttr -- master <song>` builds the master from the cast's approved
+   takes, each at its own time with 10 ms fades where the singer changes.
+   `--no-cast` builds it from one whole-song lead take instead.
+6. `npm run dance8 -- plan <song>` again: each sung line gets its singer, and a
+   line that crosses a change of singer is split there, so the lip-sync shots
+   are per singer. That goes into `<song>.cuemap.cast.json`, which is rebuilt
+   every time; your own cue map is never changed.
+
+If the cast or the cue map's sections change after the master is approved, the
+final render refuses it until you rebuild and approve it again. Scene, camera
+and lyric edits don't affect it. If a part's take was made for an older cast,
+reject it and run `convert --cast` again.
+
 Each render writes `<video>.manifest.json`: every clip used, where it came from,
 its drift score, the seed, the frame rate and the audio file's SHA-256 with
 which master it was.
