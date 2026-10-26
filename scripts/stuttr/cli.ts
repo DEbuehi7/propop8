@@ -42,6 +42,7 @@
  *   npm run stuttr -- album-add sontheravein vein --at 1 --mode crew
  *   npm run stuttr -- album-order sontheravein vein bland clean cold
  *   npm run stuttr -- albums
+ *   npm run stuttr -- media-vault                  (one read-only index of every song's records: media-vault.json)
  *
  * Voice presets: one command per song, or per album. The credit estimate first
  * (free); --go converts, then makes the listening mix. Approving stays yours.
@@ -71,6 +72,7 @@ import {
 } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
 import { albumAdd, albumCommand, albumOrder, albumRemove, albumsCommand, albumVoices, voicesCommand } from "../../lib/stuttr/albumCommands";
+import { mediaVaultCommand } from "../../lib/stuttr/mediaVault";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -108,6 +110,7 @@ const usage = `Stuttr song library (${ctx.library})
   album-order <album> <trackId> <trackId> ...   (every song on the album, in the new order)
   album-remove <album> <trackId> [more ids]
   albums
+  media-vault                                   (read-only index of every song's records, in media-vault.json)
   voices <trackId> [--preset solo|crew|cast] [--lead Stuttr] [--lang en] [--redo] [--go] [--max-credits N]
   album-voices <album> [--preset solo|crew] [--redo] [--go --max-credits N]`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
@@ -189,6 +192,9 @@ async function main(): Promise<void> {
       break;
     case "albums":
       albumsCommand(ctx);
+      break;
+    case "media-vault":
+      mediaVaultCommand(ctx);
       break;
     case "album-add":
       if (!a1 || !a2) throw new Error("album-add needs an album and at least one song id");
