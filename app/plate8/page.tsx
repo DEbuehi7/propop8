@@ -10,6 +10,7 @@ import {
   Late8Card,
 } from '@/components/plate8';
 import ActivityFeed from '@/components/plate8/ActivityFeed';
+import { MockTag } from '@/components/plate8/MockLabel';
 
 interface Instrument {
   id: string;
@@ -140,7 +141,7 @@ export default function Plate8Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-16">
           {/* Live Activity */}
           <div className="lg:col-span-2">
-            <h3 className="text-xl font-semibold text-[#E8EAEF] mb-4">Live Activity</h3>
+            <h3 className="text-xl font-semibold text-[#E8EAEF] mb-4">Activity<MockTag /></h3>
             <ActivityFeed activities={activities} />
           </div>
 

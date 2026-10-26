@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { MockTag } from './MockLabel';
 
 interface Late8CardProps {
   isOnline?: boolean;
@@ -28,11 +29,11 @@ export function Late8Card({ isOnline = true }: Late8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">New Dispatches</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">New Dispatches<MockTag /></p>
           <p className="text-2xl font-bold text-teal-400">3</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Listening Time</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Listening Time<MockTag /></p>
           <p className="text-2xl font-bold text-teal-400">8.3 hrs</p>
         </div>
       </div>
