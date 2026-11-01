@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
 
 export default function Late8Page() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -27,22 +28,29 @@ export default function Late8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <MockNotice>
+            Every dispatch, source, topic, number and play button on this page is a placeholder for the Late8 design.
+            None of it is live news, and nothing here plays audio yet.
+          </MockNotice>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">New Dispatches</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">New Dispatches<MockTag /></p>
             <p className="text-3xl font-bold text-teal-400">1,842</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Listening Time</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Listening Time<MockTag /></p>
             <p className="text-3xl font-bold text-teal-400">847h</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Sources Tracked</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Sources Tracked<MockTag /></p>
             <p className="text-3xl font-bold text-teal-400">287</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Topics Covered</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Topics Covered<MockTag /></p>
             <p className="text-3xl font-bold text-teal-400">64</p>
           </div>
         </div>
@@ -67,7 +75,7 @@ export default function Late8Page() {
         {/* Feed */}
         {activeTab === 'feed' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">News & Audio Feed</h2>
+            <h2 className="text-lg font-semibold mb-6">News & Audio Feed<MockTag /></h2>
             <div className="space-y-4">
               {[
                 { id: 1, title: 'AI Safety Frameworks Update', source: 'Tech Today', duration: '12:34', time: '2h ago', category: 'AI' },
@@ -134,7 +142,7 @@ export default function Late8Page() {
         {/* Trending */}
         {activeTab === 'trending' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Trending Topics</h2>
+            <h2 className="text-lg font-semibold mb-6">Trending Topics<MockTag /></h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { topic: 'Artificial Intelligence', mentions: 1247, trend: '+34%', color: 'from-teal-600 to-teal-400' },
@@ -164,7 +172,7 @@ export default function Late8Page() {
         {/* Sources */}
         {activeTab === 'sources' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">News Sources</h2>
+            <h2 className="text-lg font-semibold mb-6">News Sources<MockTag /></h2>
             <div className="space-y-3">
               {[
                 { name: 'Tech Today', category: 'Technology', reliability: 98, articles: 342 },
