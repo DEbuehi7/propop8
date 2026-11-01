@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
 import Link from 'next/link';
 
 export default function Slate8Page() {
@@ -26,22 +27,28 @@ export default function Slate8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <MockNotice>
+            Every video, rating, watch time and ranking on this page is a placeholder for the Slate8 design. Nothing here is a real library.
+          </MockNotice>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Videos Added</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Videos Added<MockTag /></p>
             <p className="text-3xl font-bold text-purple-400">2,847</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Total Watch Time</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Total Watch Time<MockTag /></p>
             <p className="text-3xl font-bold text-purple-400">1,247h</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg Rating</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg Rating<MockTag /></p>
             <p className="text-3xl font-bold text-purple-400">4.6★</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Collections</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Collections<MockTag /></p>
             <p className="text-3xl font-bold text-purple-400">32</p>
           </div>
         </div>
@@ -66,7 +73,7 @@ export default function Slate8Page() {
         {/* Discover */}
         {activeTab === 'discover' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Recommended Videos</h2>
+            <h2 className="text-lg font-semibold mb-6">Recommended Videos<MockTag /></h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { title: 'The Art of Motion Design', creator: 'Design Horizons', rating: 4.8, views: 2.3 },
@@ -99,7 +106,7 @@ export default function Slate8Page() {
         {/* Trending */}
         {activeTab === 'trending' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Trending This Week</h2>
+            <h2 className="text-lg font-semibold mb-6">Trending This Week<MockTag /></h2>
             <div className="space-y-3">
               {[
                 { rank: 1, title: 'Breakthrough in Quantum Computing', growth: '+342%', duration: '24:15' },
@@ -129,7 +136,7 @@ export default function Slate8Page() {
         {/* Watch History */}
         {activeTab === 'watch' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Watch History</h2>
+            <h2 className="text-lg font-semibold mb-6">Watch History<MockTag /></h2>
             <div className="space-y-4">
               <div className="bg-[#0F1220] rounded p-4">
                 <p className="text-sm font-semibold text-purple-400 mb-4">By Category</p>

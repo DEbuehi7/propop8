@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { MockTag } from './MockLabel';
 
 interface Slate8CardProps {
   isOnline?: boolean;
@@ -28,11 +29,11 @@ export function Slate8Card({ isOnline = true }: Slate8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Videos Added</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Videos Added<MockTag /></p>
           <p className="text-2xl font-bold text-purple-400">892</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Watch Time</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Watch Time<MockTag /></p>
           <p className="text-2xl font-bold text-purple-400">156 hrs</p>
         </div>
       </div>

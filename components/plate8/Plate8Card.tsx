@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MockTag } from './MockLabel';
 
 interface Plate8CardProps {
   isOnline?: boolean;
@@ -27,11 +28,11 @@ export function Plate8Card({ isOnline = true }: Plate8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Plates Decoded</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Plates Decoded<MockTag /></p>
           <p className="text-2xl font-bold text-orange-400">1,247</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Avg. Word Length</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Avg. Word Length<MockTag /></p>
           <p className="text-2xl font-bold text-orange-400">4.2 chars</p>
         </div>
       </div>

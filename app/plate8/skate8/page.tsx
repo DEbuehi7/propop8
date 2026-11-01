@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
 import Link from 'next/link';
 
 export default function Skate8Page() {
@@ -26,22 +27,28 @@ export default function Skate8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <MockNotice>
+            Every lap time, speed, telemetry reading and map on this page is a placeholder for the Skate8 design. No vehicle or track is connected.
+          </MockNotice>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Best Lap Time</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Best Lap Time<MockTag /></p>
             <p className="text-3xl font-bold text-red-400">28.4s</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Top Speed</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Top Speed<MockTag /></p>
             <p className="text-3xl font-bold text-red-400">2,101 km/h</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Laps Completed</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Laps Completed<MockTag /></p>
             <p className="text-3xl font-bold text-red-400">156</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">SLAM Accuracy</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">SLAM Accuracy<MockTag /></p>
             <p className="text-3xl font-bold text-red-400">99.8%</p>
           </div>
         </div>
@@ -66,7 +73,7 @@ export default function Skate8Page() {
         {/* Telemetry */}
         {activeTab === 'telemetry' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Real-time Vehicle Telemetry</h2>
+            <h2 className="text-lg font-semibold mb-6">Real-time Vehicle Telemetry<MockTag /></h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Speed Gauge */}
               <div className="bg-[#0F1220] rounded p-6">
@@ -147,7 +154,7 @@ export default function Skate8Page() {
         {/* Track Map */}
         {activeTab === 'track' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Track Layout & Racing Line</h2>
+            <h2 className="text-lg font-semibold mb-6">Track Layout & Racing Line<MockTag /></h2>
             <svg viewBox="0 0 500 400" className="w-full max-w-2xl mx-auto bg-[#0F1220] rounded border border-red-500/30">
               {/* Track outer */}
               <path
@@ -214,7 +221,7 @@ export default function Skate8Page() {
         {/* Obstacles & SLAM */}
         {activeTab === 'obstacles' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Obstacle Detection & SLAM Mapping</h2>
+            <h2 className="text-lg font-semibold mb-6">Obstacle Detection & SLAM Mapping<MockTag /></h2>
             <div className="space-y-4">
               <div className="bg-[#0F1220] rounded p-4">
                 <p className="text-sm font-semibold text-red-400 mb-3">Active Sensors</p>

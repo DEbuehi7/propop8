@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
 import Link from 'next/link';
 
 export default function Mate8Page() {
@@ -38,22 +39,28 @@ export default function Mate8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <MockNotice>
+            Every game, evaluation, engine name and diagram on this page is a placeholder for the Mate8 design. No games are analysed here yet.
+          </MockNotice>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Games Analyzed</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Games Analyzed<MockTag /></p>
             <p className="text-3xl font-bold text-cyan-400">247</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg. Evaluation</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg. Evaluation<MockTag /></p>
             <p className="text-3xl font-bold text-cyan-400">+2.1</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Best Game</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Best Game<MockTag /></p>
             <p className="text-3xl font-bold text-cyan-400">+5.8</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Engine Used</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Engine Used<MockTag /></p>
             <p className="text-lg font-bold text-cyan-400">Stockfish 16</p>
           </div>
         </div>
@@ -78,7 +85,7 @@ export default function Mate8Page() {
         {/* Position Visualization - Sword & Shield */}
         {activeTab === 'position' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Sword & Shield Analysis</h2>
+            <h2 className="text-lg font-semibold mb-6">Sword & Shield Analysis<MockTag /></h2>
             <p className="text-sm text-[#A0A7B8] mb-8">
               Circles represent defensive pieces (shields), vectors represent attacking pieces (swords)
             </p>
@@ -199,7 +206,7 @@ export default function Mate8Page() {
         {/* Analysis Tab */}
         {activeTab === 'analysis' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Game Analysis</h2>
+            <h2 className="text-lg font-semibold mb-6">Game Analysis<MockTag /></h2>
             <div className="space-y-4">
               {[
                 { move: '1. e4 e5', eval: '+0.3', bestMove: 'e4', depth: 25 },
@@ -223,7 +230,7 @@ export default function Mate8Page() {
         {/* Games Tab */}
         {activeTab === 'games' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Recent Games</h2>
+            <h2 className="text-lg font-semibold mb-6">Recent Games<MockTag /></h2>
             <div className="space-y-3">
               {[
                 { result: 'Win', opponent: 'Stockfish 16', rating: 3200, date: 'Oct 5' },

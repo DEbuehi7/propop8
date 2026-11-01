@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useEffectEvent } from 'react';
+import { MockTag } from '@/components/plate8/MockLabel';
 import Link from 'next/link';
 import { useAudioAnalyzer } from '@/hooks/useAudioAnalyzer';
 
@@ -249,11 +250,11 @@ export default function State8Page() {
                       </div>
                       <div>
                         <p className="text-magenta-400 font-mono">{session.wordsTranscribed}</p>
-                        <p>Words</p>
+                        <p>Words<MockTag /></p>
                       </div>
                       <div>
                         <p className="text-magenta-400 font-mono">{session.transcriptionAccuracy}%</p>
-                        <p>Accuracy</p>
+                        <p>Accuracy<MockTag /></p>
                       </div>
                     </div>
                   </div>
@@ -282,7 +283,7 @@ export default function State8Page() {
                 <ul className="text-sm text-[#A0A7B8] space-y-1">
                   <li>• Total sessions: {sessions.length}</li>
                   <li>• Average session duration: {sessions.length > 0 ? (sessions.reduce((sum, s) => sum + s.duration, 0) / sessions.length).toFixed(0) : 0}s</li>
-                  <li>• Peak accuracy: {sessions.length > 0 ? Math.max(...sessions.map(s => s.transcriptionAccuracy)).toFixed(1) : 0}%</li>
+                  <li>• Peak accuracy: {sessions.length > 0 ? Math.max(...sessions.map(s => s.transcriptionAccuracy)).toFixed(1) : 0}%<MockTag /></li>
                   <li>• Recording status: {isRecording ? '🔴 Live' : '⚪ Idle'}</li>
                 </ul>
               </div>
