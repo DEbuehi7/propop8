@@ -1,9 +1,9 @@
 {
-  "version": "1.4.0",
-  "sha256": "d2c02f08065a5167a20d927bd2ab82ef7a3c72f89d0b06a3cc98e51b38e6b99d",
-  "entries": 186,
+  "version": "1.5.0",
+  "sha256": "893535c56a58a1cd8ff5239ecb5e51c4cb97e2df6b18bedcac59fd47919a6481",
+  "entries": 188,
   "byStatus": {
-    "LOCKED": 121,
+    "LOCKED": 123,
     "SPEC": 22,
     "PROPOSED": 14,
     "CONCEPT": 8,
