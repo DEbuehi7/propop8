@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { MockTag } from './MockLabel';
 
 interface Mate8CardProps {
   isOnline?: boolean;
@@ -28,11 +29,11 @@ export function Mate8Card({ isOnline = true }: Mate8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Games Analyzed</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Games Analyzed<MockTag /></p>
           <p className="text-2xl font-bold text-cyan-400">247</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Avg. Evaluation</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Avg. Evaluation<MockTag /></p>
           <p className="text-2xl font-bold text-cyan-400">+2.1</p>
         </div>
       </div>

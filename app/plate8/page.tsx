@@ -150,7 +150,7 @@ export default function Plate8Dashboard() {
             {/* System Status */}
             <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-6">
               <h4 className="text-sm font-semibold text-[#A0A7B8] uppercase tracking-wide mb-4">
-                System Status
+                System Status<MockTag />
               </h4>
               <div className="space-y-2">
                 {instruments.map((instrument) => (
@@ -166,7 +166,7 @@ export default function Plate8Dashboard() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 text-xs text-green-400">✓ All Systems Nominal</div>
+              <div className="mt-4 text-xs text-[#A0A7B8]">Placeholder: no health checks run yet.</div>
             </div>
 
             {/* Horizon Section */}

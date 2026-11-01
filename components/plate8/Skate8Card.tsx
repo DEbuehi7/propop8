@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { MockTag } from './MockLabel';
 
 interface Skate8CardProps {
   isOnline?: boolean;
@@ -28,11 +29,11 @@ export function Skate8Card({ isOnline = true }: Skate8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Top Speed</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Top Speed<MockTag /></p>
           <p className="text-2xl font-bold text-red-400">2,101 km/h</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Best Lap</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Best Lap<MockTag /></p>
           <p className="text-2xl font-bold text-red-400">28.4s</p>
         </div>
       </div>

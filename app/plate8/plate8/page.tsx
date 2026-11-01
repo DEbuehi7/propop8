@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
 import Link from 'next/link';
 
 export default function Plate8Page() {
@@ -26,22 +27,28 @@ export default function Plate8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <MockNotice>
+            Every plate, word, rate and score on this page is a placeholder for the Plate8 design. The decoder does not run yet.
+          </MockNotice>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Plates Decoded</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Plates Decoded<MockTag /></p>
             <p className="text-3xl font-bold text-orange-400">1,247</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg. Word Length</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Avg. Word Length<MockTag /></p>
             <p className="text-3xl font-bold text-orange-400">4.2</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Success Rate</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Success Rate<MockTag /></p>
             <p className="text-3xl font-bold text-orange-400">94.7%</p>
           </div>
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-4">
-            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Personal Best</p>
+            <p className="text-xs text-[#A0A7B8] uppercase tracking-wide mb-2">Personal Best<MockTag /></p>
             <p className="text-3xl font-bold text-orange-400">2 chars</p>
           </div>
         </div>
@@ -66,7 +73,7 @@ export default function Plate8Page() {
         {/* Decoder */}
         {activeTab === 'decoder' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Plate Decoder</h2>
+            <h2 className="text-lg font-semibold mb-6">Plate Decoder<MockTag /></h2>
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-[#A0A7B8] mb-2">Enter License Plate</label>
@@ -118,7 +125,7 @@ export default function Plate8Page() {
         {/* Solutions History */}
         {activeTab === 'solutions' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Recent Decodings</h2>
+            <h2 className="text-lg font-semibold mb-6">Recent Decodings<MockTag /></h2>
             <div className="space-y-3">
               {[
                 { plate: '2FAST4U', words: ['FAST', 'AFT', '2FAST'], best: 'FAST', date: 'Today' },
@@ -154,7 +161,7 @@ export default function Plate8Page() {
         {/* Stats */}
         {activeTab === 'stats' && (
           <div className="bg-[#1A1F3A] border border-[#2D3456] rounded-lg p-8">
-            <h2 className="text-lg font-semibold mb-6">Decoding Statistics</h2>
+            <h2 className="text-lg font-semibold mb-6">Decoding Statistics<MockTag /></h2>
             <div className="space-y-4">
               <div className="bg-[#0F1220] rounded p-4">
                 <p className="text-sm font-semibold text-orange-400 mb-4">Word Length Distribution</p>

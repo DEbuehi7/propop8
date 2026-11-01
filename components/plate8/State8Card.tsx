@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { MockTag } from './MockLabel';
 
 interface State8CardProps {
   isOnline?: boolean;
@@ -28,11 +29,11 @@ export function State8Card({ isOnline = true }: State8CardProps) {
       {/* Stats Section */}
       <div className="space-y-3 mb-6 flex-1">
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Current Session</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Current Session<MockTag /></p>
           <p className="text-2xl font-bold text-magenta-400">2h 14m</p>
         </div>
         <div className="bg-[#0F1220] rounded p-3">
-          <p className="text-xs text-[#A0A7B8] mb-1">Transcription Accuracy</p>
+          <p className="text-xs text-[#A0A7B8] mb-1">Transcription Accuracy<MockTag /></p>
           <p className="text-2xl font-bold text-magenta-400">98.2%</p>
         </div>
       </div>
