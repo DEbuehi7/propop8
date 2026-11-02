@@ -62,13 +62,39 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
    - `~/StuttrLibrary/refs/scenes/<scene>/` holds `master.png` (the set's first
      frame), an optional `dancer.png`, and `scene.txt`.
    - `scene.txt` takes `place:`, `light:`, `hidden:` (what b-roll shows while
-     someone sings), `dancer:`, `skater:`, and `cast:` (such as
-     `Stuttr=brick-built-stuttr`).
+     someone sings), `dancer:`, `skater:`, `cast:` (such as
+     `Stuttr=brick-built-stuttr`) and `props:` (such as `equus-x`).
+   - `~/StuttrLibrary/refs/props/<prop>/` holds `prop.png` (a vehicle or object
+     on its own) and `prop.txt` (`name:`, `look:`). A set's props go into its
+     b-roll and trick prompts and uploads, never into lip sync.
 
    Scenes are shared by every song that uses the same scene id. A placeholder
    id from plan (`verse-1`, `chorus`) lives in the song's own `refs/` instead.
    Rename it in the cue map to a place to share it. Prompts describe the subject,
    set, action, camera and light; they never mention tempo or beats (D8-01).
+
+   **Credits.** Every card shows its estimated cost and a batch:
+   - *test first*: a set's first shot, when the set has no clip yet. Generate
+     it, bring it in with `clips`, and check it before the set's other shots
+     (they are marked *after this set's test clip*). A drifting face or set is
+     then fixed in the reference, not paid for again and again.
+   - *covered*: b-roll of a set and camera that another card's clip covers.
+     Generate the lead card (it is sized to the longest shot it covers),
+     approve it, run `kling` again, and the covered shots drop out.
+   - `--budget 600` keeps the batch inside 600 credits: test cards first, then
+     lip sync, dance, tricks and b-roll, each by song time. The rest wait for
+     the next batch.
+   - `--model kling-3.0-720p` puts b-roll, lip-sync and trick shots on Kling
+     3.0 at 720p (6 credits a second with native audio off, a published rate), for when
+     Kling 4.0 Flash isn't on your plan. Dance keeps Motion Control, and a shot
+     longer than 15 s keeps the planned model.
+   - Native audio is off on every shot: the song goes on in the edit.
+
+   Rates come from `~/StuttrLibrary/kling-rates.json` when you add one (credits
+   per second, as Kling shows on its Generate button), such as
+   `{"kling-4.0-flash": 5, "lip-sync": 2}`; otherwise only from published
+   figures. A cost with no rate stays "unknown" and never counts toward a
+   budget.
 3. Generate each card in Kling. Save the download as its shot id
    (`broll-intro-drone_wide.mp4`; a take number such as `-2` is fine) in one
    folder per song, `~/Downloads/<song>`, so shot ids from different songs never

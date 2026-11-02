@@ -58,6 +58,17 @@ export const GENERATORS: Record<string, GeneratorProfile> = {
     aspects: ["16:9", "1:1", "9:16"],
     wholeSeconds: true,
   },
+  // The same model at 720p: 6 credits a second with native audio off, a published rate (klingCredits),
+  // for drafts when Kling 4.0 Flash isn't on the plan.
+  "kling-3.0-720p": {
+    id: "kling-3.0-720p",
+    label: "Kling 3.0, 720p (drafts, published rate)",
+    minSec: 3,
+    maxSec: 15,
+    resolution: "720p",
+    aspects: ["16:9", "1:1", "9:16"],
+    wholeSeconds: true,
+  },
   // Dance shots (your dance onto a character). Kling 3.0 Motion Control: a 3-30 s
   // reference video with character orientation following the video (10 s when it
   // follows the image), output 720p or 1080p at 16:9, 9:16 or 1:1 (checked

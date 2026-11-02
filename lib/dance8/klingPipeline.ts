@@ -9,7 +9,10 @@
 //   prompts.txt  every prompt, in the same order
 //   cards.json   the same cards, for tools
 //   audio/       the lip-sync cuts (only that singer's voice)
-// Nothing here uploads anything or calls Kling; generating stays Daniel's.
+// Every card carries a credit estimate and a batch (./authoring/klingCredits):
+// rates come from kling-rates.json in the library when Daniel adds one, else
+// only from published figures. Nothing here uploads anything or calls Kling;
+// generating stays Daniel's.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -17,12 +20,14 @@ import { join, relative } from "node:path";
 import { loadManifest, type Ctx } from "../stuttr/commands";
 import { voiceKey, type LibraryTrack, type VoiceTake } from "../stuttr/library";
 import { GENERATORS } from "./authoring/generators";
+import { mergeRates, parseRates, planCredits, RATES_FILE, summarize, type Rates } from "./authoring/klingCredits";
 import {
-  CHARACTER_TEXT, compileCard, IMAGE_EXTS, isPlaceholderScene, packHtml, parseCast, parseFields, promptsText, SCENE_TEXT, sortCards,
-  type CharacterRefs, type RefIndex, type SceneRefs, type UploadCard,
+  CHARACTER_TEXT, compileCard, IMAGE_EXTS, isPlaceholderScene, packHtml, parseCast, parseFields, parseProps, promptsText, PROP_TEXT, SCENE_TEXT, sortCards,
+  type CharacterRefs, type PropRefs, type RefIndex, type SceneRefs, type UploadCard,
 } from "./authoring/klingPack";
 import type { ShotBrief } from "./authoring/shotBriefs";
-import type { CueMap } from "./contracts/scene";
+import type { CueMap, VisualClipLibrary } from "./contracts/scene";
+import { STAND_IN_CLIP_ID } from "./authoring/plan";
 import { songPaths } from "./pipeline";
 
 const logOf = (c: Ctx) => c.log ?? ((l: string) => console.log(l));
@@ -61,6 +66,7 @@ function sceneStarter(id: string, trackId: string, placeholder: boolean): string
     "# dancer: the refs/cast folder of the character who dances here, for dance shots.",
     "# skater: the refs/cast folder of the skater, for trick shots (optional).",
     "# cast: who plays a voice here when it isn't the voice's own folder, like Stuttr=brick-built-stuttr.",
+    "# props: refs/props folders that appear in b-roll and trick shots here, like equus-x (comma-separated).",
     "# Images in this folder: master.png (the set's first frame), dancer.png (optional: the dancer in the set).",
     "place:",
     "light:",
@@ -68,6 +74,18 @@ function sceneStarter(id: string, trackId: string, placeholder: boolean): string
     "dancer:",
     "skater:",
     "cast:",
+    "props:",
+    "",
+  ].join("\n");
+}
+
+function propStarter(slug: string): string {
+  return [
+    `# Prop "${slug}": a vehicle or object that appears in b-roll and trick shots. Image in this folder:`,
+    "#   prop.png  the prop on its own, plain background, whole object in frame",
+    "# name: how the prompts name it. look: shape, materials, colours and lights, one line.",
+    `name: the ${slug.replace(/-/g, " ")}`,
+    "look:",
     "",
   ].join("\n");
 }
@@ -90,7 +108,7 @@ function loadScene(dir: string, id: string): SceneRefs {
   return {
     id, dir, issues,
     place: fields.place ?? null, light: fields.light ?? null, hidden: fields.hidden ?? null,
-    cast: parseCast(fields.cast), dancer: fields.dancer ?? null, skater: fields.skater ?? null,
+    cast: parseCast(fields.cast), dancer: fields.dancer ?? null, skater: fields.skater ?? null, props: parseProps(fields.props),
     master: imageIn(dir, "master"), dancerImage: imageIn(dir, "dancer"),
   };
 }
@@ -99,6 +117,12 @@ function loadCharacter(dir: string, slug: string, fallbackName: string): Charact
   const text = join(dir, CHARACTER_TEXT);
   const { fields } = existsSync(text) ? parseFields(readFileSync(text, "utf8")) : { fields: {} as Record<string, string> };
   return { id: slug, dir, name: fields.name ?? fallbackName, look: fields.look ?? null, face: imageIn(dir, "face"), fullbody: imageIn(dir, "fullbody") };
+}
+
+function loadProp(dir: string, slug: string): PropRefs {
+  const text = join(dir, PROP_TEXT);
+  const { fields } = existsSync(text) ? parseFields(readFileSync(text, "utf8")) : { fields: {} as Record<string, string> };
+  return { id: slug, dir, name: fields.name ?? `the ${slug.replace(/-/g, " ")}`, look: fields.look ?? null, image: imageIn(dir, "prop") };
 }
 
 /**
@@ -138,7 +162,42 @@ export function indexRefs(c: Ctx, trackId: string, briefs: ShotBrief[]): { refs:
     ensure(dir, CHARACTER_TEXT, characterStarter(slug, name));
     characters[slug] = loadCharacter(dir, slug, name);
   }
-  return { refs: { characters, scenes }, made };
+  const props: Record<string, PropRefs> = {};
+  const propSlugs = new Set(briefs.filter((b) => b.kind === "broll" || b.kind === "trick").flatMap((b) => scenes[b.sceneId].props ?? []));
+  for (const slug of [...propSlugs].sort()) {
+    const dir = join(refsRoot(c), "props", slug);
+    ensure(dir, PROP_TEXT, propStarter(slug));
+    props[slug] = loadProp(dir, slug);
+  }
+  return { refs: { characters, scenes, props }, made };
+}
+
+/** Daniel's per-second rates from the library, over the published ones. */
+export function loadRates(c: Ctx): { rates: Rates; issues: string[]; file: string } {
+  const file = join(c.library, RATES_FILE);
+  if (!existsSync(file)) return { rates: mergeRates(), issues: [], file };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return { rates: mergeRates(), issues: [`${RATES_FILE} is not valid JSON; using published rates only`], file };
+  }
+  const { rates, issues } = parseRates(raw);
+  return { rates: mergeRates(rates), issues, file };
+}
+
+/** Sets that already have a clip in the song's library (approved or still to check), so need no test card. */
+function testedScenes(clipsFile: string): Set<string> {
+  if (!existsSync(clipsFile)) return new Set();
+  const lib = readJson<VisualClipLibrary>(clipsFile);
+  return new Set(lib.clips.filter((x) => x.id !== STAND_IN_CLIP_ID && x.approvalStatus !== "retired").map((x) => x.sceneId));
+}
+
+export interface KlingOptions {
+  /** Credits for this batch: cards go in priority order until it runs out. */
+  budget?: number;
+  /** Generate b-roll, lip-sync and trick shots with this generator instead of the planned one (dance keeps Motion Control). */
+  model?: string;
 }
 
 const hasFfmpeg = () => spawnSync("ffmpeg", ["-version"]).status === 0;
@@ -179,34 +238,58 @@ function cutAudio(c: Ctx, t: LibraryTrack, b: ShotBrief, outDir: string): { path
  * adding images or words; it never overwrites your scene.txt or character.txt,
  * and after clips it lists only the shots still missing.
  */
-export function klingPack(c: Ctx, trackId: string): { cards: UploadCard[]; dir: string; made: string[] } {
+export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { cards: UploadCard[]; dir: string; made: string[] } {
   const log = logOf(c);
+  if (o.budget !== undefined && !(Number.isFinite(o.budget) && o.budget > 0)) throw new Error("--budget takes a number of credits, more than 0");
+  const model = o.model ? GENERATORS[o.model] : null;
+  if (o.model && !model) throw new Error(`no generator "${o.model}"; one of: ${Object.keys(GENERATORS).join(", ")}`);
+  if (model && !model.wholeSeconds) throw new Error(`${model.id} follows a motion video; --model is for b-roll, lip-sync and trick shots`);
   const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
   if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
   const p = songPaths(c, trackId);
   if (!existsSync(p.briefs)) throw new Error(`no shot list yet; run: npm run dance8 -- plan ${trackId}`);
+  const kept: string[] = [];
   const briefs = readJson<ShotBrief[]>(p.briefs).map((b) => (b.motionRef ? {
     ...b, motionRef: { ...b.motionRef, refFile: b.motionRef.refFile && existsSync(join(p.dir, b.motionRef.refFile)) ? join(p.dir, b.motionRef.refFile) : null },
-  } : b));
+  } : b)).map((b) => {
+    if (!model || b.kind === "dance" || b.generator === model.id) return b;
+    if (b.generateSec > model.maxSec || !model.aspects.includes(b.aspect)) { kept.push(b.id); return b; }
+    return { ...b, generator: model.id, resolution: model.resolution };
+  });
   const mapFile = existsSync(p.castCuemap) ? p.castCuemap : p.cuemap;
   const sceneOrder = existsSync(mapFile) ? [...new Set(readJson<CueMap>(mapFile).cues.map((q) => q.sceneId))] : [];
   const { refs, made } = indexRefs(c, trackId, briefs);
   const dir = klingDir(c, trackId);
   mkdirSync(dir, { recursive: true });
   const downloads = downloadsFor(trackId);
-  const cards = sortCards(briefs.map((b) => compileCard(b, refs, {
+  const { rates, issues, file: ratesFile } = loadRates(c);
+  const compiled = sortCards(briefs.map((b) => compileCard(b, refs, {
     tool: GENERATORS[b.generator]?.label ?? b.generator,
     audio: b.kind === "lip_sync" ? cutAudio(c, t, b, join(dir, "audio")) : undefined,
     downloads,
   })), sceneOrder);
+  const cards = planCredits(compiled, rates, { budget: o.budget, testedScenes: testedScenes(p.clips) });
+  const summary = summarize(cards, rates);
   const clipsCommand = `npm run dance8 -- clips ${trackId} ${downloads}`;
   writeFileSync(join(dir, "cards.json"), JSON.stringify(cards, null, 2) + "\n");
   writeFileSync(join(dir, "prompts.txt"), promptsText(t.title, cards));
-  writeFileSync(join(dir, "index.html"), packHtml(cards, { title: t.title, trackId, downloads, clipsCommand, href: (abs) => relative(dir, abs) }));
+  writeFileSync(join(dir, "index.html"), packHtml(cards, {
+    title: t.title, trackId, downloads, clipsCommand, href: (abs) => relative(dir, abs), credits: { summary, budget: o.budget, ratesFile },
+  }));
 
   const ready = cards.filter((x) => x.ready).length;
   log(`kling pack: ${join(dir, "index.html")}`);
   log(`${cards.length} shots: ${ready} ready, ${cards.length - ready} waiting for files or words`);
+  for (const i of issues) log(`note: ${i}`);
+  if (kept.length) log(`kept the planned generator for ${kept.length} shot(s) too long or the wrong shape for ${model!.label}: ${kept.join(", ")}`);
+  log(`generate now: ${summary.now} shot(s)${summary.nowKnown ? `, about ${summary.nowCredits} credits${summary.nowKnown < summary.now ? ` for the ${summary.nowKnown} with a known rate` : ""}` : ""}${o.budget !== undefined ? ` (budget ${o.budget})` : ""}`);
+  if (summary.afterTest) log(`  ${summary.afterTest} wait for their set's test clip (the cards marked TEST FIRST go first)`);
+  if (summary.covered) log(`  ${summary.covered} b-roll shot(s) covered by another card's clip: skip them${summary.savedByCover ? ` (saves about ${summary.savedByCover} credits)` : ""}`);
+  if (summary.later) log(`  ${summary.later} past the budget: next batch`);
+  if (summary.noRate) log(`  ${summary.noRate} left out of the budget: cost unknown`);
+  if (summary.unknownTools.length || summary.lipSyncUnknown) {
+    log(`  cost unknown for ${[...summary.unknownTools, ...(summary.lipSyncUnknown ? ["lip sync"] : [])].join(", ")}: add credits per second to ${ratesFile}`);
+  }
   for (const d of made) log(`made ${d} (put its images there and fill in its .txt)`);
   const todo = [...new Set(cards.flatMap((x) => x.missing))];
   for (const m of todo.slice(0, 12)) log(`  to do: ${m}`);

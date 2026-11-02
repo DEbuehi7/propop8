@@ -16,14 +16,18 @@
 //   refs/cast/<character>/character.txt  name: ... / look: ...
 //   refs/scenes/<scene>/master.png       the set's first-frame image
 //   refs/scenes/<scene>/dancer.png       optional: the scene's dancer standing in the set
-//   refs/scenes/<scene>/scene.txt        place: ... / light: ... / hidden: ... / dancer: ... / skater: ... / cast: ...
+//   refs/scenes/<scene>/scene.txt        place: ... / light: ... / hidden: ... / dancer: ... / skater: ... / cast: ... / props: ...
+//   refs/props/<prop>/prop.png           a vehicle or object on its own (b-roll and trick shots)
+//   refs/props/<prop>/prop.txt           name: ... / look: ...
 
 import { voiceKey } from "../../stuttr/library";
 import type { AspectRatio, CameraShot } from "../contracts/scene";
+import type { Batch, CreditNote, CreditSummary } from "./klingCredits";
 import type { ShotBrief } from "./shotBriefs";
 
 export const SCENE_TEXT = "scene.txt";
 export const CHARACTER_TEXT = "character.txt";
+export const PROP_TEXT = "prop.txt";
 export const IMAGE_EXTS = ["png", "jpg", "jpeg", "webp"] as const;
 /** Kling's prompt limit (characters). */
 export const KLING_PROMPT_MAX = 2500;
@@ -48,6 +52,10 @@ export function parseFields(text: string): { fields: Record<string, string>; iss
   });
   return { fields, issues };
 }
+
+/** "equus-x, Tri Mop" -> ["equus-x", "tri-mop"] (refs/props folders). */
+export const parseProps = (v: string | undefined): string[] =>
+  [...new Set((v ?? "").split(",").map((x) => voiceKey(x.trim())).filter(Boolean))];
 
 /** "Stuttr=brick-built-stuttr, Mo=mo" -> { stuttr: "brick-built-stuttr", mo: "mo" } (voice keys to character folders). */
 export function parseCast(v: string | undefined): Record<string, string> {
@@ -77,15 +85,26 @@ export interface SceneRefs {
   cast: Record<string, string>;
   dancer: string | null;
   skater: string | null;
+  /** refs/props folders that appear in this set's b-roll and trick shots. */
+  props?: string[];
   master: string | null;
   dancerImage: string | null;
   dir: string;
   issues: string[];
 }
 
+export interface PropRefs {
+  id: string;
+  name: string;
+  look: string | null;
+  image: string | null;
+  dir: string;
+}
+
 export interface RefIndex {
   characters: Record<string, CharacterRefs>;
   scenes: Record<string, SceneRefs>;
+  props?: Record<string, PropRefs>;
 }
 
 export interface CardUpload {
@@ -107,6 +126,8 @@ export interface UploadCard {
   songEndSec: number;
   /** Rename the download to exactly this. */
   download: string;
+  /** The generator's id (GENERATORS key) and its label. */
+  generator: string;
   tool: string;
   lengthSec: number;
   aspect: AspectRatio;
@@ -119,6 +140,9 @@ export interface UploadCard {
   steps: string[];
   missing: string[];
   ready: boolean;
+  mouth: ShotBrief["mouth"];
+  /** Credits and batch (./klingCredits planCredits); absent until planned. */
+  credit?: CreditNote;
 }
 
 const CAMERA_TEXT: Record<CameraShot, string> = {
@@ -255,6 +279,18 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
     steps.unshift('Kling 3.0 Motion Control: keep "character orientation matches video" (the 30 s limit; it is 10 s when it follows the image).');
   }
 
+  if ((b.kind === "broll" || b.kind === "trick") && scene?.props?.length) {
+    const shown: string[] = [];
+    for (const id of scene.props) {
+      const p = refs.props?.[id] ?? null;
+      const name = p?.name ?? id.replace(/-/g, " ");
+      need({ role: `Prop (reference): ${name}`, path: p?.image ?? null, required: false, need: `add ${p?.dir ?? `refs/props/${id}`}/prop.png: ${name} on its own, whole object in frame` });
+      shown.push(p?.look ? `${name}: ${p.look}` : name);
+    }
+    subject = `${subject} In the shot: ${shown.join("; ")}.`;
+    continuity = `${continuity.slice(0, -1)}, and the look of ${shown.length > 1 ? "each prop" : "the prop"}.`;
+  }
+
   const prompt = [
     line("SUBJECT", subject), line("SETTING", setting), line("ACTION", action), line("CAMERA", camera), line("LIGHT", light),
     line("CONTINUITY", continuity), line("AVOID", avoid),
@@ -265,8 +301,8 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
   return {
     shotId: b.id, kind: b.kind, sceneId: b.sceneId, section: b.section, camera: b.camera, voice: b.voice,
     songStartSec: b.songStartSec, songEndSec: b.songEndSec, download: `${b.id}.mp4`,
-    tool: o.tool, lengthSec: b.generateSec, aspect: b.aspect, cropTo: b.cropTo, resolution: b.resolution, keyframesSec: b.keyframesSec,
-    uploads, prompt, steps, missing, ready: missing.length === 0,
+    generator: b.generator, tool: o.tool, lengthSec: b.generateSec, aspect: b.aspect, cropTo: b.cropTo, resolution: b.resolution, keyframesSec: b.keyframesSec,
+    uploads, prompt, steps, missing, ready: missing.length === 0, mouth: b.mouth,
   };
 }
 
@@ -282,13 +318,33 @@ export function sortCards(cards: UploadCard[], sceneOrder: string[]): UploadCard
     || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.songStartSec - b.songStartSec || a.shotId.localeCompare(b.shotId));
 }
 
+const BATCH_TEXT: Record<Batch, string> = {
+  now: "generate now",
+  later: "next batch (past the budget)",
+  after_test: "after this set's test clip",
+  covered: "covered: skip it",
+  no_rate: "cost unknown: set its rate first",
+  not_ready: "needs files",
+};
+
+/** "about 30 credits", "covered by #3", "credits unknown". */
+function creditText(c: UploadCard, num: (id: string) => number): string {
+  const n = c.credit;
+  if (!n) return "";
+  if (n.coveredBy) return `covered by #${num(n.coveredBy)}`;
+  if (n.total === null) return n.video === null ? "credits unknown" : `about ${n.video} credits + lip sync (rate unknown)`;
+  return `about ${n.total} credits${n.lipSync !== null ? ` (video ${n.video}, lip sync ${n.lipSync})` : ""}`;
+}
+
 /** Every prompt as plain text, in card order. */
 export function promptsText(title: string, cards: UploadCard[]): string {
+  const num = (id: string) => cards.findIndex((c) => c.shotId === id) + 1;
   return [
     `${title}: Kling prompts, one per shot (${cards.filter((c) => c.ready).length} of ${cards.length} ready)`,
     "",
     ...cards.flatMap((c, i) => [
-      `#${i + 1}  ${c.download}  (${c.kind}, ${c.tool}, ${c.lengthSec} s, ${c.cropTo ? `${c.aspect} cropped to ${c.cropTo}` : c.aspect})${c.ready ? "" : "  NOT READY"}`,
+      `#${i + 1}  ${c.download}  (${c.kind}, ${c.tool}, ${c.credit?.generateSec ?? c.lengthSec} s, ${c.cropTo ? `${c.aspect} cropped to ${c.cropTo}` : c.aspect})${c.ready ? "" : "  NOT READY"}${
+        c.credit ? `  [${c.credit.testFirst ? "TEST FIRST, " : ""}${BATCH_TEXT[c.credit.batch]}; ${creditText(c, num)}]` : ""}`,
       c.prompt,
       "",
     ]),
@@ -307,6 +363,30 @@ export interface PackMeta {
   clipsCommand: string;
   /** A file's path as the page links it (relative to the page). */
   href: (abs: string) => string;
+  /** Credits for the batch (./klingCredits summarize), the budget and where Daniel's rates live. */
+  credits?: { summary: CreditSummary; budget?: number; ratesFile: string };
+}
+
+function creditsHtml(m: NonNullable<PackMeta["credits"]>): string {
+  const s = m.summary;
+  const lines = [
+    `<b>Generate now: ${s.now} shot${s.now === 1 ? "" : "s"}${s.nowKnown ? `, about ${s.nowCredits} credits${s.nowKnown < s.now ? ` for the ${s.nowKnown} with a known rate` : ""}` : ""}</b>${m.budget !== undefined ? ` (budget ${m.budget})` : ""}.`,
+    s.afterTest ? `${s.afterTest} wait for their set's test clip: generate the TEST FIRST card, bring it in with clips, check it, then run kling again.` : "",
+    s.covered ? `${s.covered} b-roll shot${s.covered === 1 ? " is" : "s are"} covered by another card's clip (one approved clip per set and camera covers them${s.savedByCover ? `, saving about ${s.savedByCover} credits` : ""}): skip them.` : "",
+    s.later ? `${s.later} past the budget: next batch.` : "",
+    s.noRate ? `${s.noRate} left out of the budget because their cost is unknown.` : "",
+    s.unknownTools.length || s.lipSyncUnknown
+      ? `Cost unknown for ${esc([...s.unknownTools, ...(s.lipSyncUnknown ? ["lip sync"] : [])].join(", "))}: Kling shows the credits on its Generate button. Divide by the seconds and add it to ${esc(m.ratesFile)}, like {"kling-4.0-flash": 5, "lip-sync": 2}.`
+      : "",
+  ].filter(Boolean);
+  return `<div class="credits">${lines.map((l) => `<p>${l}</p>`).join("")}
+<details><summary>How this pack saves credits</summary><ul>
+<li>Native audio stays off on every shot: the song goes on in the edit, and sound costs half again on Kling 3.0.</li>
+<li>Each length is the shot's own, rounded up to a whole second; nothing longer.</li>
+<li>A set's first shot is a test: if the face, costume or set drifts, fix the reference image or words before spending on the rest.</li>
+<li>One b-roll clip per set and camera: generate the lead card, run clips, approve it, and the shots it covers drop out.</li>
+<li>Only ready cards: a card missing a reference is never worth generating.</li>
+</ul></details></div>`;
 }
 
 /**
@@ -317,6 +397,7 @@ export interface PackMeta {
 export function packHtml(cards: UploadCard[], m: PackMeta): string {
   const ready = cards.filter((c) => c.ready).length;
   const kinds = (["lip_sync", "broll", "dance", "trick"] as const).map((k) => [k, cards.filter((c) => c.kind === k).length] as const).filter(([, n]) => n);
+  const num = (id: string) => cards.findIndex((c) => c.shotId === id) + 1;
   const card = (c: UploadCard, i: number) => {
     const files = c.uploads.map((u) => u.path
       ? `<li><span class="role">${esc(u.role)}</span> <a href="${esc(m.href(u.path))}">${esc(u.path.split("/").pop()!)}</a>${isImage(u.path) ? `<br><img src="${esc(m.href(u.path))}" alt="${esc(u.role)}">` : ""}</li>`
@@ -324,9 +405,12 @@ export function packHtml(cards: UploadCard[], m: PackMeta): string {
         ? `<li class="need"><span class="role">${esc(u.role)}</span> missing (see above)</li>`
         : `<li class="opt"><span class="role">${esc(u.role)}</span> optional: ${esc(u.need)}</li>`).join("");
     const time = c.kind === "trick" ? "any chord change (placed by the edit)" : `song ${sec(c.songStartSec)} to ${sec(c.songEndSec)}`;
-    return `<section class="card ${c.ready ? "ready" : "wait"}" id="${esc(c.shotId)}">
-<header><label><input type="checkbox" data-shot="${esc(c.shotId)}"> <b>#${i + 1} ${esc(c.download)}</b></label><span class="tag ${esc(c.kind)}">${esc(c.kind.replace("_", " "))}</span><span class="state">${c.ready ? "ready" : "needs files"}</span></header>
-<p class="meta">${esc(c.tool)} · ${c.lengthSec} s · ${c.cropTo ? `${esc(c.aspect)} (crop to ${esc(c.cropTo)})` : esc(c.aspect)} · ${esc(c.resolution)} · ${esc(time)} · scene <b>${esc(c.sceneId)}</b> · ${esc(c.camera.replace("_", " "))}${c.voice ? ` · ${esc(c.voice)}` : ""}</p>
+    const n = c.credit;
+    const secs = n && n.generateSec > c.lengthSec ? `${n.generateSec} s (covers ${n.covers.map((x) => `#${num(x)}`).join(", ")})` : `${c.lengthSec} s`;
+    const badge = n ? `${n.testFirst ? '<span class="tag test">test first</span>' : ""}<span class="tag b-${n.batch}">${esc(BATCH_TEXT[n.batch])}</span><span class="cost">${esc(creditText(c, num))}</span>` : "";
+    return `<section class="card ${c.ready ? "ready" : "wait"}${n ? ` b-${n.batch}` : ""}" id="${esc(c.shotId)}">
+<header><label><input type="checkbox" data-shot="${esc(c.shotId)}"> <b>#${i + 1} ${esc(c.download)}</b></label><span class="tag ${esc(c.kind)}">${esc(c.kind.replace("_", " "))}</span>${badge}<span class="state">${c.ready ? "ready" : "needs files"}</span></header>
+<p class="meta">${esc(c.tool)} · ${secs} · ${c.cropTo ? `${esc(c.aspect)} (crop to ${esc(c.cropTo)})` : esc(c.aspect)} · ${esc(c.resolution)} · native audio off · ${esc(time)} · scene <b>${esc(c.sceneId)}</b> · ${esc(c.camera.replace("_", " "))}${c.voice ? ` · ${esc(c.voice)}` : ""}</p>
 ${c.missing.length ? `<ul class="missing">${c.missing.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
 <ul class="files">${files}</ul>
 <div class="prompt"><button type="button" data-copy="p${i}">Copy prompt</button><pre id="p${i}">${esc(c.prompt)}</pre></div>
@@ -350,10 +434,13 @@ main{max-width:980px;margin:0 auto;padding:24px 16px 64px}h1{font-size:22px;marg
 .prompt{position:relative}pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;margin:8px 0;font:13px/1.45 ui-monospace,Menlo,monospace}
 button{font:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--acc);background:transparent;color:var(--acc);cursor:pointer}
 .steps{font-size:13px;padding-left:18px;margin:4px 0}a{color:var(--acc)}.done{opacity:.55}
+.cost{font-size:13px;color:var(--mut)}.tag.test{border-color:var(--acc);color:var(--acc)}.card.b-covered,.card.b-later,.card.b-after_test{opacity:.7}
+.credits{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 16px;margin:0 0 8px}.credits p{margin:6px 0}.credits ul{margin:6px 0;padding-left:18px;font-size:13px}
 .missing li,.files li,.meta,.steps li,header b,code,a{overflow-wrap:anywhere}
 </style></head><body><main>
 <h1>${esc(m.title)}: Kling upload pack</h1>
 <p class="sub">${cards.length} shots, ${ready} ready (${kinds.map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}). Each card: upload its files, paste its prompt, generate, then save the download as <b>${esc(m.downloads)}/&lt;shot&gt;.mp4</b>. When a batch is done: <code>${esc(m.clipsCommand)}</code></p>
+${m.credits ? creditsHtml(m.credits) : ""}
 ${cards.map(card).join("\n")}
 </main>
 <script>
