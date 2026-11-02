@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { MockNotice, MockTag } from '@/components/plate8/MockLabel';
+import AudiobookPlayer from '@/components/plate8/late8/AudiobookPlayer';
 
 export default function Late8Page() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -28,10 +29,15 @@ export default function Late8Page() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* The audiobook is real: it plays what is published to R2 (canon PL8-09). */}
+        <div className="mb-10">
+          <AudiobookPlayer />
+        </div>
+
         <div className="mb-8">
           <MockNotice>
-            Every dispatch, source, topic, number and play button on this page is a placeholder for the Late8 design.
-            None of it is live news, and nothing here plays audio yet.
+            Everything below the audiobook is a placeholder for the Late8 design: every dispatch, source, topic, number
+            and play button. None of it is live news, and those play buttons play nothing.
           </MockNotice>
         </div>
 
