@@ -16,7 +16,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { basename, isAbsolute, join, relative } from "node:path";
 import { loadManifest, type Ctx } from "../stuttr/commands";
 import { voiceKey, type LibraryTrack, type VoiceTake } from "../stuttr/library";
 import { GENERATORS } from "./authoring/generators";
@@ -26,6 +26,7 @@ import {
   type CharacterRefs, type PropRefs, type RefIndex, type SceneRefs, type UploadCard,
 } from "./authoring/klingPack";
 import type { ShotBrief } from "./authoring/shotBriefs";
+import { zipStore, type ZipEntry } from "./authoring/zipStore";
 import type { CueMap, VisualClipLibrary } from "./contracts/scene";
 import { STAND_IN_CLIP_ID } from "./authoring/plan";
 import { songPaths } from "./pipeline";
@@ -198,6 +199,64 @@ export interface KlingOptions {
   budget?: number;
   /** Generate b-roll, lip-sync and trick shots with this generator instead of the planned one (dance keeps Motion Control). */
   model?: string;
+  /** Also write <song>-kling.zip: this batch's cards with every file they upload, to carry to a phone or another computer. */
+  zip?: boolean;
+}
+
+/** Where a file goes inside the zip: the pack's own files as they are, library files by their library path. */
+function zipPathOf(c: Ctx, dir: string, abs: string): string {
+  const inPack = relative(dir, abs);
+  if (!inPack.startsWith("..") && !isAbsolute(inPack)) return inPack.split("\\").join("/");
+  const inLib = relative(c.library, abs);
+  if (!inLib.startsWith("..") && !isAbsolute(inLib)) return inLib.split("\\").join("/");
+  return `other/${basename(abs)}`;
+}
+
+/**
+ * The batch as one zip: index.html, prompts.txt and cards.json for the cards
+ * to generate now, with every image, audio cut and motion video they upload,
+ * linked inside the zip. Cards that wait (a test, the budget, a cover) stay
+ * out, so the zip holds only what is worth paying for now.
+ */
+export function writeKlingZip(
+  c: Ctx, o: { trackId: string; title: string; dir: string; cards: UploadCard[]; rates: Rates; budget?: number; ratesFile: string; downloads: string; clipsCommand: string },
+): { path: string; shots: number; files: number; bytes: number } | null {
+  const batch = o.cards.filter((x) => x.ready && (x.credit?.batch ?? "now") === "now");
+  if (!batch.length) return null;
+  const files = new Map<string, string>(); // zip path -> absolute path
+  const missing: string[] = [];
+  const inZip = (abs: string) => {
+    const z = zipPathOf(c, o.dir, abs);
+    if (!existsSync(abs)) missing.push(abs);
+    else files.set(z, abs);
+    return z;
+  };
+  const cards = batch.map((x) => ({ ...x, uploads: x.uploads.map((u) => (u.path ? { ...u, path: inZip(u.path) } : u)) }));
+  if (missing.length) throw new Error(`can't zip: ${missing.length} file(s) the cards upload are missing, first ${missing[0]}`);
+  const summary = summarize(cards, o.rates);
+  const html = packHtml(cards, { title: o.title, trackId: o.trackId, downloads: o.downloads, clipsCommand: o.clipsCommand, href: (z) => z, credits: { summary, budget: o.budget, ratesFile: o.ratesFile } });
+  const readme = [
+    `${o.title}: Kling batch (${cards.length} shot${cards.length === 1 ? "" : "s"}${summary.nowKnown ? `, about ${summary.nowCredits} credits` : ""})`,
+    "",
+    "1. Unzip it and open index.html (on a phone: in the Files app, then Share > Open in Safari, or on a computer).",
+    "2. Each card lists the files to upload (they are in this zip), the prompt to paste and the settings. Native audio stays off.",
+    `3. Save every download named exactly as its card says (the shot id, .mp4) and bring them back to your Mac in ${o.downloads}.`,
+    `4. Then run: ${o.clipsCommand}`,
+    "5. Approve the clips, run kling again, and the next batch is what's left.",
+    "",
+  ].join("\n");
+  const entries: ZipEntry[] = [
+    { name: "README.txt", data: Buffer.from(readme) },
+    { name: "index.html", data: Buffer.from(html) },
+    { name: "prompts.txt", data: Buffer.from(promptsText(o.title, cards)) },
+    { name: "cards.json", data: Buffer.from(JSON.stringify(cards, null, 2) + "\n") },
+    ...[...files.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, abs]) => ({ name, data: readFileSync(abs) })),
+  ];
+  const now = c.now ? new Date(c.now()) : new Date();
+  const buf = zipStore(entries, now);
+  const path = join(o.dir, `${o.trackId}-kling.zip`);
+  writeFileSync(path, buf);
+  return { path, shots: cards.length, files: files.size, bytes: buf.length };
 }
 
 const hasFfmpeg = () => spawnSync("ffmpeg", ["-version"]).status === 0;
@@ -289,6 +348,14 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   if (summary.noRate) log(`  ${summary.noRate} left out of the budget: cost unknown`);
   if (summary.unknownTools.length || summary.lipSyncUnknown) {
     log(`  cost unknown for ${[...summary.unknownTools, ...(summary.lipSyncUnknown ? ["lip sync"] : [])].join(", ")}: add credits per second to ${ratesFile}`);
+  }
+  if (o.zip) {
+    const z = writeKlingZip(c, { trackId, title: t.title, dir, cards, rates, budget: o.budget, ratesFile, downloads, clipsCommand });
+    if (!z) log("zip: nothing to generate now (every ready card waits for a test clip, the budget or a cover), so no zip");
+    else {
+      log(`zip: ${z.path} (${z.shots} shot(s), ${z.files} file(s) to upload, ${(z.bytes / 1e6).toFixed(1)} MB)`);
+      log(`  show it in Finder (then AirDrop it to your phone): open -R "${z.path}"`);
+    }
   }
   for (const d of made) log(`made ${d} (put its images there and fill in its .txt)`);
   const todo = [...new Set(cards.flatMap((x) => x.missing))];

@@ -13,6 +13,7 @@ import {
   compileCard, isPlaceholderScene, KLING_PROMPT_MAX, packHtml, parseCast, parseFields, parseProps, promptsText, sortCards, type RefIndex, type SceneRefs,
 } from "../../lib/dance8/authoring/klingPack";
 import { mergeRates, parseRates, planCredits, summarize } from "../../lib/dance8/authoring/klingCredits";
+import { crc32, readZip, zipStore } from "../../lib/dance8/authoring/zipStore";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import { klingPack } from "../../lib/dance8/klingPipeline";
 import { saveManifest, type Ctx } from "../../lib/stuttr/commands";
@@ -325,6 +326,80 @@ test("kling options: your rates file, --model for non-dance shots, a budget, pro
     assert.match(again.cards[0].prompt, /In the shot: the Equus-X: a ribbed hover bike\./);
     assert.deepEqual(again.cards.map((x) => x.credit!.batch), ["covered", "later"], "72 credits is past a budget of 50");
     assert.ok(existsSync(join(again.dir, "index.html")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("zip: stored entries round-trip with their CRCs; bad paths are refused", () => {
+  assert.equal(crc32(Buffer.from("123456789")), 0xcbf43926, "the standard CRC-32 check value");
+  const when = new Date(2026, 10, 2, 9, 30, 0);
+  const entries = [{ name: "README.txt", data: Buffer.from("hello") }, { name: "refs/cast/stuttr/face.png", data: Buffer.from([0x89, 0x50, 0x4e, 0x47]) }];
+  const z = zipStore(entries, when);
+  assert.deepEqual(readZip(z).map((e) => [e.name, e.data.toString("hex")]), entries.map((e) => [e.name, e.data.toString("hex")]));
+  assert.ok(zipStore(entries, when).equals(z), "same entries and date, same bytes");
+  assert.throws(() => zipStore([{ name: "../x", data: Buffer.alloc(0) }], when), /bad zip path/);
+  assert.throws(() => zipStore([{ name: "/x", data: Buffer.alloc(0) }], when), /bad zip path/);
+  assert.throws(() => zipStore([entries[0], entries[0]], when), /two zip entries/);
+  if (spawnSync("unzip", ["-v"]).status === 0) {
+    const dir = mkdtempSync(join(tmpdir(), "dance8-zip-"));
+    try {
+      writeFileSync(join(dir, "t.zip"), z);
+      assert.equal(spawnSync("unzip", ["-tq", join(dir, "t.zip")]).status, 0, "a standard unzip accepts it");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("kling --zip: only this batch, every upload inside, links inside the zip", () => {
+  const root = mkdtempSync(join(tmpdir(), "dance8-kling-zip-"));
+  const lines: string[] = [];
+  const c: Ctx = { library: join(root, "library"), now: () => "2026-11-02T17:00:00.000Z", log: (l) => lines.push(l) };
+  try {
+    const m = emptyManifest();
+    m.tracks.push({ trackId: "s3", title: "Synthetic Three", sunoPlan: "Pro", addedAt: "2026-11-02T00:00:00.000Z", files: [], voices: [] });
+    saveManifest(c, m);
+    const d8 = join(c.library, "s3", "dance8");
+    mkdirSync(d8, { recursive: true });
+    writeFileSync(join(d8, "s3.briefs.json"), JSON.stringify([
+      brief({ id: "broll-intro-drone_wide", sceneId: "harbour", camera: "drone_wide", aspect: "16:9", generateSec: 5, songStartSec: 0 }),
+      brief({ id: "broll-verse-1-wide", sceneId: "harbour", camera: "wide", aspect: "16:9", generateSec: 6, songStartSec: 10 }),
+      brief({ id: "broll-bridge-wide", sceneId: "market", camera: "wide", aspect: "16:9", generateSec: 7, songStartSec: 60 }),
+    ]));
+    writeFileSync(join(d8, "s3.cuemap.json"), JSON.stringify({ cues: [{ sceneId: "harbour" }, { sceneId: "market" }] }));
+    for (const [id, place] of [["harbour", "A fictional harbour of coloured houses"], ["market", "A fictional covered market"]]) {
+      const d = join(c.library, "refs", "scenes", id);
+      mkdirSync(d, { recursive: true });
+      writeFileSync(join(d, "scene.txt"), `place: ${place}\nlight: Late sun\n`);
+      writeFileSync(join(d, "master.png"), Buffer.from(`png-${id}`));
+    }
+
+    const r = klingPack(c, "s3", { model: "kling-3.0-720p", zip: true });
+    // Harbour's first card is its test and the other waits; market's only card is its test.
+    assert.deepEqual(r.cards.map((x) => x.credit!.batch), ["now", "after_test", "now"]);
+    const zipFile = join(r.dir, "s3-kling.zip");
+    const entries = readZip(readFileSync(zipFile));
+    assert.deepEqual(entries.map((e) => e.name), [
+      "README.txt", "index.html", "prompts.txt", "cards.json", "refs/scenes/harbour/master.png", "refs/scenes/market/master.png",
+    ]);
+    const get = (n: string) => entries.find((e) => e.name === n)!.data.toString("utf8");
+    assert.equal(get("refs/scenes/market/master.png"), "png-market");
+    const html = get("index.html");
+    assert.ok(html.includes('src="refs/scenes/harbour/master.png"') && !html.includes(c.library), "links stay inside the zip");
+    assert.ok(html.includes("broll-intro-drone_wide.mp4") && !html.includes("broll-verse-1-wide.mp4"), "the waiting card stays out");
+    assert.ok(html.includes("Generate now: 2 shots, about 72 credits"));
+    const cards = JSON.parse(get("cards.json")) as { uploads: { path: string | null }[] }[];
+    assert.deepEqual(cards.flatMap((x) => x.uploads.map((u) => u.path)), ["refs/scenes/harbour/master.png", "refs/scenes/market/master.png"]);
+    assert.match(get("README.txt"), /^Synthetic Three: Kling batch \(2 shots, about 72 credits\)/);
+    assert.match(get("README.txt"), /npm run dance8 -- clips s3 ~\/Downloads\/s3/);
+    assert.ok(lines.some((l) => /^zip: .*s3-kling\.zip \(2 shot\(s\), 2 file\(s\) to upload, 0\.0 MB\)$/.test(l)), lines.join("\n"));
+
+    // Nothing to generate now: no zip, and the old one is left as it was.
+    const before = readFileSync(zipFile);
+    klingPack(c, "s3", { zip: true, budget: 1 });
+    assert.ok(lines.some((l) => l.startsWith("zip: nothing to generate now")));
+    assert.ok(readFileSync(zipFile).equals(before));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
