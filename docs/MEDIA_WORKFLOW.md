@@ -89,6 +89,11 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
      Kling 4.0 Flash isn't on your plan. Dance keeps Motion Control, and a shot
      longer than 15 s keeps the planned model.
    - Native audio is off on every shot: the song goes on in the edit.
+   - `--zip` also writes `<song>/dance8/kling/<song>-kling.zip`: the cards to
+     generate now (index.html, prompts.txt, cards.json, a README) with every
+     image, lip-sync cut and motion video they upload, linked inside the zip.
+     AirDrop it to the phone, open index.html, generate, and bring the
+     downloads back for `clips`. Cards that wait stay out of it.
 
    Rates come from `~/StuttrLibrary/kling-rates.json` when you add one (credits
    per second, as Kling shows on its Generate button), such as

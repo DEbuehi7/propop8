@@ -7,6 +7,7 @@
  *   npm run dance8 -- kling cloyne                            (the upload pack: files and a prompt per shot)
  *   npm run dance8 -- kling cloyne --budget 600               (only what fits 600 credits, most important first)
  *   npm run dance8 -- kling cloyne --model kling-3.0-720p     (b-roll, lip sync and tricks on Kling 3.0 at 720p)
+ *   npm run dance8 -- kling cloyne --zip                      (this batch as one zip, every upload inside, for the phone)
  *   npm run dance8 -- clips cloyne ~/Downloads/cloyne
  *   npm run dance8 -- approve-clip cloyne broll-intro-drone_wide --drift 0.1
  *   npm run dance8 -- retire-clip cloyne broll-intro-drone_wide
@@ -54,7 +55,7 @@ const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
   plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
-  kling <trackId> [--budget <credits>] [--model <generator>]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/)
+  kling <trackId> [--budget <credits>] [--model <generator>] [--zip]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/)
   clips <trackId> <folder>
   approve-clip <trackId> <clipId> --drift <0-1> [--landing <sec>]
   retire-clip <trackId> <clipId>
@@ -120,7 +121,7 @@ async function main() {
     }
     case "kling":
       if (!a1) throw new Error("kling needs a track id");
-      klingPack(ctx, a1, { budget: flag("budget") === undefined ? undefined : Number(flag("budget")), model: flag("model") });
+      klingPack(ctx, a1, { budget: flag("budget") === undefined ? undefined : Number(flag("budget")), model: flag("model"), zip: has("zip") });
       break;
     case "clips":
       if (!a1 || !a2) throw new Error("clips needs a track id and a folder of downloads");
