@@ -122,6 +122,21 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
    open the cut in Resolve or Premiere for hand finishing, `--lyrics` to burn in
    the sung lines, `--seed 2` for another variation of the same edit.
 
+### Choir and ensemble movement (CHOIR8)
+
+`npm run dance8 -- choir <song>` writes `<song>/dance8/choir/count-sheet.html`
+(and `choir-plan.json`): one eight-count movement phrase per cue, on the song's
+own beat grid (the cue map's). The beat says when; the role says how. Each
+count is an intent (load, travel, release, accent, resolve) that a soloist, the
+choir, a breaker and a skater each express their own way. Verses move in
+unison, choruses as a wave through the choir's rows, breaks as call and
+response, and every second phrase is mirrored. Above 130 BPM a count takes two
+beats. Skaters never take a trick from it: their tricks stay one per chord
+change (D8-16). While the cue map is a draft its beat grid is unchecked, so the
+sheet says DEFER: rehearse with it, but don't film to it until the cue map is
+approved. Use the sheet to direct or perform the movement; your filmed take
+then drives the dancers through `moves` (D8-17).
+
 ### Who sings which section (`cast.json`)
 
 To give a section to another singer (Mo on the chorus, M, Ja and Bo shouting
