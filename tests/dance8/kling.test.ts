@@ -10,8 +10,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  compileCard, isPlaceholderScene, KLING_PROMPT_MAX, packHtml, parseCast, parseFields, promptsText, sortCards, type RefIndex, type SceneRefs,
+  compileCard, isPlaceholderScene, KLING_PROMPT_MAX, packHtml, parseCast, parseFields, parseProps, promptsText, sortCards, type RefIndex, type SceneRefs,
 } from "../../lib/dance8/authoring/klingPack";
+import { mergeRates, parseRates, planCredits, summarize } from "../../lib/dance8/authoring/klingCredits";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import { klingPack } from "../../lib/dance8/klingPipeline";
 import { saveManifest, type Ctx } from "../../lib/stuttr/commands";
@@ -196,6 +197,134 @@ test("kling end to end: folders made once, the lip-sync audio cut, ready after t
     assert.ok(html.includes('src="../../../refs/scenes/rooftop/master.png"') && html.includes('href="audio/lip_sync-verse-1-close-Stuttr-b4.wav"'));
     assert.match(readFileSync(join(second.dir, "prompts.txt"), "utf8"), /SUBJECT: Stuttr: silver jacket\. One singer\.\nSETTING: A fictional market street at night/);
     assert.equal((JSON.parse(readFileSync(join(second.dir, "cards.json"), "utf8")) as unknown[]).length, 2);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("credits: published rates, your own rates, lip sync; an unknown rate stays unknown", () => {
+  const { rates: own, issues } = parseRates({ "kling-4.0-flash": 5, "lip-sync": 2, "kling-9": 1, "kling-3.0": -1 });
+  assert.deepEqual(Object.keys(own).sort(), ["kling-4.0-flash", "lip-sync"]);
+  assert.equal(issues.length, 2);
+  assert.match(parseRates([]).issues[0], /must be an object/);
+  const rates = mergeRates(own);
+  assert.equal(rates["kling-3.0-720p"].perSec, 6, "published Kling 3.0 720p rate, native audio off");
+  assert.equal(mergeRates({ "kling-3.0-720p": { perSec: 5, source: "mine" } })["kling-3.0-720p"].perSec, 5, "your plan's rate wins");
+
+  const b720 = compileCard(brief({ generator: "kling-3.0-720p", generateSec: 6 }), refs(), opts);
+  const lip = compileCard(brief({ id: "lip_sync-verse-1-close-Stuttr-b4", kind: "lip_sync", camera: "close", voice: "Stuttr", mouth: "lip_sync", songStartSec: 12.5, songEndSec: 17.7 }), refs(), { ...opts, audio: { path: "/a.wav", problem: null } });
+  const finals = compileCard(brief({ id: "broll-x", sceneId: "street", generator: "kling-4.0" }), refs(), opts);
+  const [a, l, f] = planCredits([b720, lip, finals], rates);
+  assert.deepEqual([a.credit!.video, a.credit!.total], [36, 36]);
+  assert.deepEqual([l.credit!.video, l.credit!.lipSync, l.credit!.total], [30, 12, 42], "5.2 s of audio is billed as 6");
+  assert.deepEqual([f.credit!.video, f.credit!.total], [null, null]);
+  const noLipRate = planCredits([lip], mergeRates({ "kling-4.0-flash": { perSec: 5, source: "mine" } }))[0].credit!;
+  assert.deepEqual([noLipRate.video, noLipRate.total], [30, null], "lip sync with no rate leaves the total unknown");
+  const sum = summarize([a, l, f], rates);
+  assert.deepEqual(sum.unknownTools, ["Kling 4.0 Flash (fast drafts)"], "the label of the tool whose rate is unknown");
+});
+
+test("credits: one b-roll clip per set and camera, a test card per new set, then the budget", () => {
+  const rates = mergeRates(parseRates({ "kling-4.0-flash": 5, "lip-sync": 2 }).rates);
+  const set = refs();
+  const street = { ...scene({ id: "street", dir: "/lib/refs/scenes/street", master: "/lib/refs/scenes/street/master.png" }) };
+  const two: RefIndex = { ...set, scenes: { ...set.scenes, street } };
+  const a = compileCard(brief({ id: "broll-verse-1-wide", mouth: "hidden", generateSec: 6 }), two, opts);
+  const b = compileCard(brief({ id: "broll-chorus-1-wide", cueId: "chorus-1", mouth: "any", generateSec: 8, songStartSec: 40 }), two, opts);
+  const l1 = compileCard(brief({ id: "lip_sync-verse-1-close-Stuttr-b4", kind: "lip_sync", camera: "close", voice: "Stuttr", mouth: "lip_sync", songStartSec: 12, songEndSec: 18, generateSec: 6 }), two, { ...opts, audio: { path: "/a.wav", problem: null } });
+  const c = compileCard(brief({ id: "broll-bridge-wide", sceneId: "street", generateSec: 5, songStartSec: 60 }), two, opts);
+  const cards = planCredits([a, b, l1, c], rates);
+  const note = (id: string) => cards.find((x) => x.shotId === id)!.credit!;
+  // The hidden-mouth card leads its group at the group's longest length and covers the other.
+  assert.deepEqual([note("broll-verse-1-wide").generateSec, note("broll-verse-1-wide").covers, note("broll-verse-1-wide").total], [8, ["broll-chorus-1-wide"], 40]);
+  assert.deepEqual([note("broll-chorus-1-wide").batch, note("broll-chorus-1-wide").coveredBy, note("broll-chorus-1-wide").total], ["covered", "broll-verse-1-wide", 0]);
+  // Each new set's first own card is its test; the set's other cards wait for it.
+  assert.deepEqual(cards.map((x) => [x.shotId, x.credit!.testFirst, x.credit!.batch]), [
+    ["broll-verse-1-wide", true, "now"], ["broll-chorus-1-wide", false, "covered"], ["lip_sync-verse-1-close-Stuttr-b4", false, "after_test"], ["broll-bridge-wide", true, "now"],
+  ]);
+  const s = summarize(cards, rates);
+  assert.deepEqual([s.now, s.nowCredits, s.covered, s.savedByCover, s.afterTest], [2, 65, 1, 40, 1]);
+  // A budget of 50: the rooftop test (40) fits, the street test (25) waits.
+  const tight = planCredits([a, b, l1, c], rates, { budget: 50 });
+  assert.deepEqual(tight.map((x) => x.credit!.batch), ["now", "covered", "after_test", "later"]);
+  // Once the rooftop set has a clip, nothing there is a test: the street test goes first, then lip sync before b-roll.
+  const tested = planCredits([a, b, l1, c], rates, { budget: 70, testedScenes: new Set(["rooftop"]) });
+  assert.deepEqual(tested.map((x) => [x.credit!.testFirst, x.credit!.batch]), [[false, "later"], [false, "covered"], [false, "now"], [true, "now"]]);
+  const unknown = planCredits([compileCard(brief({ generator: "kling-4.0" }), two, opts)], rates, { budget: 500 });
+  assert.equal(unknown[0].credit!.batch, "no_rate", "a budget never counts a card whose cost is unknown");
+  const missing = planCredits([compileCard(brief({}), refs({ master: null }), opts)], rates);
+  assert.equal(missing[0].credit!.batch, "not_ready");
+
+  const html = packHtml(cards, {
+    title: "S", trackId: "s1", downloads: "~/Downloads/s1", clipsCommand: "x", href: (p) => p, credits: { summary: s, ratesFile: "/lib/kling-rates.json" },
+  });
+  for (const want of ["covered by #1", "test first", "about 40 credits", "8 s (covers #2)", "native audio off", "Generate now: 2 shots, about 65 credits", "saving about 40 credits"]) {
+    assert.ok(html.includes(want), want);
+  }
+  assert.match(promptsText("S", cards), /#1  broll-verse-1-wide\.mp4  \(broll, Kling 4\.0 Flash \(fast drafts\), 8 s, 9:16\)  \[TEST FIRST, generate now; about 40 credits\]/);
+  assert.match(promptsText("S", cards), /#2  broll-chorus-1-wide\.mp4 .*\[covered: skip it; covered by #1\]/);
+});
+
+test("props: a vehicle's image and words go on b-roll and trick cards, never on lip sync", () => {
+  assert.deepEqual(parseProps("Equus-X, tri mop, equus-x,"), ["equus-x", "tri-mop"]);
+  const withBike: RefIndex = {
+    ...refs({ props: ["equus-x"], hidden: "A rider seen from behind on a hover bike" }),
+    props: { "equus-x": { id: "equus-x", name: "the Equus-X", look: "a ribbed black-and-gold hover bike shaped like a running horse", image: "/lib/refs/props/equus-x/prop.png", dir: "/lib/refs/props/equus-x" } },
+  };
+  const b = compileCard(brief({}), withBike, opts);
+  assert.equal(b.prompt.split("\n")[0], "SUBJECT: A rider seen from behind on a hover bike. No face or mouth is visible at any moment. In the shot: the Equus-X: a ribbed black-and-gold hover bike shaped like a running horse.");
+  assert.match(b.prompt, /CONTINUITY: Keep the set's architecture, materials and light from the start frame, and the look of the prop\./);
+  assert.deepEqual(b.uploads.map((u) => [u.role, u.required]), [["Start frame", true], ["Prop (reference): the Equus-X", false]]);
+  assert.equal(b.ready, true);
+  const noImage = compileCard(brief({}), { ...withBike, props: {} }, opts);
+  assert.match(noImage.uploads[1].need, /add refs\/props\/equus-x\/prop\.png/);
+  const lip = compileCard(brief({ kind: "lip_sync", camera: "close", voice: "Stuttr", mouth: "lip_sync" }), withBike, { ...opts, audio: { path: "/a.wav", problem: null } });
+  assert.ok(!lip.prompt.includes("Equus") && !lip.uploads.some((u) => u.role.startsWith("Prop")));
+});
+
+test("kling options: your rates file, --model for non-dance shots, a budget, prop folders made once", () => {
+  const root = mkdtempSync(join(tmpdir(), "dance8-kling-credits-"));
+  const lines: string[] = [];
+  const c: Ctx = { library: join(root, "library"), now: () => "2026-11-02T00:00:00.000Z", log: (l) => lines.push(l) };
+  try {
+    const m = emptyManifest();
+    m.tracks.push({ trackId: "s2", title: "Synthetic Two", sunoPlan: "Pro", addedAt: "2026-11-02T00:00:00.000Z", files: [], voices: [] });
+    saveManifest(c, m);
+    const d8 = join(c.library, "s2", "dance8");
+    mkdirSync(d8, { recursive: true });
+    writeFileSync(join(d8, "s2.briefs.json"), JSON.stringify([
+      brief({ id: "broll-intro-wide", sceneId: "boulevard", aspect: "16:9", generateSec: 5 }),
+      brief({ id: "broll-outro-wide", cueId: "outro", sceneId: "boulevard", aspect: "16:9", generateSec: 18, songStartSec: 90 }),
+    ]));
+    writeFileSync(join(d8, "s2.cuemap.json"), JSON.stringify({ cues: [{ sceneId: "boulevard" }] }));
+    const sceneDir = join(c.library, "refs", "scenes", "boulevard");
+    mkdirSync(sceneDir, { recursive: true });
+    writeFileSync(join(sceneDir, "scene.txt"), "place: A fictional palm boulevard at dusk\nlight: Pink sky, wet road\nprops: equus-x\n");
+    writeFileSync(join(sceneDir, "master.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    writeFileSync(join(c.library, "kling-rates.json"), JSON.stringify({ "kling-4.0-flash": 4 }));
+
+    assert.throws(() => klingPack(c, "s2", { budget: 0 }), /--budget takes a number/);
+    assert.throws(() => klingPack(c, "s2", { model: "kling-9" }), /no generator "kling-9"/);
+    assert.throws(() => klingPack(c, "s2", { model: "kling-3.0-motion-control-720p" }), /follows a motion video/);
+
+    const r = klingPack(c, "s2", { model: "kling-3.0-720p", budget: 100 });
+    const propTxt = join(c.library, "refs", "props", "equus-x", "prop.txt");
+    assert.match(readFileSync(propTxt, "utf8"), /^name: the equus x$/m);
+    // The 18 s shot is too long for Kling 3.0 (15 s), so it keeps Flash. Both are b-roll of one set and camera,
+    // so one clip covers both: the one that can be 18 s leads, and the 5 s shot is skipped (72 credits, not 30 + 72).
+    assert.deepEqual(r.cards.map((x) => [x.shotId, x.generator, x.credit!.batch]), [["broll-intro-wide", "kling-3.0-720p", "covered"], ["broll-outro-wide", "kling-4.0-flash", "now"]]);
+    assert.deepEqual(r.cards.map((x) => x.credit!.total), [0, 72]);
+    assert.ok(r.cards[1].credit!.testFirst);
+    assert.ok(lines.some((l) => /kept the planned generator for 1 shot\(s\) .*broll-outro-wide/.test(l)));
+    assert.ok(lines.includes("generate now: 1 shot(s), about 72 credits (budget 100)"), lines.join("\n"));
+    assert.ok(lines.some((l) => /1 b-roll shot\(s\) covered by another card's clip: skip them \(saves about 30 credits\)/.test(l)));
+
+    writeFileSync(propTxt, "name: the Equus-X\nlook: a ribbed hover bike\n");
+    const again = klingPack(c, "s2", { budget: 50 });
+    assert.equal(readFileSync(propTxt, "utf8"), "name: the Equus-X\nlook: a ribbed hover bike\n", "never overwritten");
+    assert.match(again.cards[0].prompt, /In the shot: the Equus-X: a ribbed hover bike\./);
+    assert.deepEqual(again.cards.map((x) => x.credit!.batch), ["covered", "later"], "72 credits is past a budget of 50");
+    assert.ok(existsSync(join(again.dir, "index.html")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
