@@ -1,8 +1,8 @@
-# AIM canon register (v1.4.0)
+# AIM canon register (v1.5.0)
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
-186 entries from 20 studies: CONFLICT 0 · OPEN 8 · LOCKED 121 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
+188 entries from 20 studies: CONFLICT 0 · OPEN 8 · LOCKED 123 · SPEC 22 · PROPOSED 14 · RESEARCH 13 · CONCEPT 8.
 
 ## Coverage by study
 
@@ -10,13 +10,13 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 |---|---|---|---|
 | Suno Stems, Stuttr, State8 and Dance8 Integration (`suno-stems`) | 1f816758 | 5 | GOV-26, STU-01, STU-02, STU-03, STU-05 |
 | Rosslyn Adaptive Reuse, Robotic Ecology, EON + LUMEN Labs (`rosslyn-eon-lumen`) | 246c5b4f | 13 | B5R-33, B5R-35, ROB-01, ROB-03, ROB-05, LET-03, LET-04, VIS-05 |
-| EDO Genome, Intelligent Surface System & Applications (`edo-surface`) | 4f9dfb28 | 13 | GOV-21, EDO-01, EDO-02, EDO-03, EDO-04, EDO-05, EDO-06, EDO-07, EDO-08, EDO-09, EDO-10, EDO-11, EDO-12, EDO-13 |
+| EDO Genome, Intelligent Surface System & Applications (`edo-surface`) | 4f9dfb28 | 13 | GOV-21, EDO-01, EDO-02, EDO-03, EDO-04, EDO-05, EDO-06, EDO-07, EDO-08, EDO-09, EDO-10, EDO-11, EDO-12, EDO-13, VIS-11 |
 | Triadic Geometry, EDO Genome and Adaptive Pavilion (`triadic-pavilion`) | 50549a6f | 12 | GOV-21, EDO-02, EDO-05, TRI-01, TRI-07, TRI-08 |
 | Adaptive Reuse, EDO-Triadic Urbanism, Stuttr Murals & Walkable Transit (`mural-transit`) | 5996497e | 10 | B5R-33, B5R-36, STU-05 |
 | Eon Labs BloomWing: Autonomous Mobility and Engineering Feasibility (`bloomwing`) | 5e70b0a2 | 16 | ROB-04, MOB-01, MOB-02, MOB-03, MOB-04, MOB-05, MOB-06, MOB-07, MOB-08, LET-03 |
 | System Architecture, Autonomy, EDO Design and Integration (`system-architecture`) | 5fb005b7 | 11 | GOV-15, GOV-16, GOV-17, GOV-24, B5R-05, B5R-31, INF-04, EDO-14, LET-01, LET-02, D8-13, D8-14, VIS-02, VIS-03, PUR-01, PUR-02, PUR-03 |
 | PropOps8 Reliability, EDO Visual System, Security & Compliance (`propops8-reliability`) | 805bb03f | 10 | GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06, GOV-07, GOV-08, GOV-09, GOV-10, GOV-11, GOV-12, GOV-13, GOV-18, GOV-19, GOV-20, GOV-21, GOV-25, GOV-28, P8O-01, P8O-02, P8O-03, P8O-04, P8O-08, P8O-09, B5R-04, B5R-31, EDO-01, EDO-05, EDO-09, STU-04, PL8-06, PL8-08, PL8-07, VIS-02, VIS-03 |
-| EDO Triadic Genome, L.E.T. Homes, Seamless Threads and Research (`let-homes-threads`) | 98b5b03a | 13 | EDO-10, TRI-02, TRI-04, TRI-05, TRI-06, TRI-10, TRI-11, LET-01, LET-02, LET-05, LET-07, D8-01, D8-04, D8-11, VIS-09, WAR-01, WLD-01, WLD-02, WLD-03 |
+| EDO Triadic Genome, L.E.T. Homes, Seamless Threads and Research (`let-homes-threads`) | 98b5b03a | 13 | EDO-10, TRI-02, TRI-04, TRI-05, TRI-06, TRI-10, TRI-11, TRI-13, LET-01, LET-02, LET-05, LET-07, D8-01, D8-04, D8-11, VIS-09, VIS-11, WAR-01, WLD-01, WLD-02, WLD-03 |
 | Kern/Fresno Property Intelligence, Claude Handoff and Visual QA (`kern-fresno-phase1`) | 9ee156f8 | 4 | GOV-17, B5R-02, B5R-06, B5R-07, B5R-08, VIS-04, VIS-08 |
 | ChronoLayer, EDO-Triadic Visual System, Digital Twins, Dance8-STUTTR (`chronolayer`) | a2b98a0a | 16 | GOV-22, GOV-23, GOV-27, B5R-01, B5R-02, B5R-03, TRI-03, D8-01, D8-02, D8-04, D8-05, D8-11, D8-14, D8-15, ST8-01, VIS-01, VIS-06, VIS-07, VIS-10 |
 | Design Identity, Development Engine, Stage 1 MVP, Digital Twin and UI System (`design-engine`) | b3e496aa | 12 | GOV-14, GOV-16, GOV-17, GOV-20, GOV-26, GOV-27, B5R-04, B5R-17, B5R-18, B5R-19, B5R-20, B5R-21, B5R-22, B5R-23, B5R-24, B5R-25, B5R-26, B5R-27 |
@@ -39,7 +39,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | STU-04 | STUTTR | Where Stuttr assets are stored, and the track-by-track rights and provenance chain. | n/a |  | propops8-reliability p9 |
 | PL8-07 | PLATE8 | Whether Plate8 stays admin-only or gets a public route. | n/a |  | propops8-reliability p9 |
 | VIS-03 | VISUAL | Amber (maintenance) and green (verified/complete) have no canonical hex value yet. | n/a |  | propops8-reliability p6; system-architecture p9 |
-| VIS-09 | VISUAL | Authoritative vector logos and palettes for AIM, Eon, Lumen, Transect, PropOps8 and AIM-B5R; rendered logos are approximations until then. | n/a |  | let-homes-threads p12 |
+| VIS-09 | VISUAL | Authoritative vector logos and palettes for AIM, Eon, Lumen, Transect, PropOps8 and AIM-B5R; rendered logos are approximations until then. *AIM's design was chosen by the owner 2026-11-01 (VIS-11). Its vector master, and the other five marks, are still to make.* | n/a |  | let-homes-threads p12 |
 | PUR-02 | PURE | Which Pure actions are read-only, propose-only, or write with explicit approval. | n/a |  | system-architecture p10 |
 
 ## LOCKED
@@ -123,6 +123,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | TRI-06 | TRIADIC | Every triadic claim carries CONCEPTUAL, SIMULATED, EXPERIMENTALLY TESTED or INDEPENDENTLY VALIDATED. A feature advances only when it improves a stated objective, meets constraints, has credible cost and records unknowns. | built | lib/canon/vocab.ts#EVIDENCE_AXES.proofTag | let-homes-threads p11 |
 | TRI-07 | TRIADIC | Colour is a material triad (anchor, structure, emphasis), not hues 120 degrees apart. Node triads: Origin, Edo Earth, Eon Desert, Lumen Alpine, Transect, AIM OS, Pulse8, Stuttr Spies. | built | lib/canon/vocab.ts#NODE_COLOR_TRIADS | triadic-pavilion p7 |
 | TRI-09 | TRIADIC | Environmental response is not a musical command. A climate controller decides whether a mechanism may safely move; Dance8 may only visualize the permitted movement. | n/a |  | triadic-dance8 p5 |
+| TRI-13 | TRIADIC | G.A.T.E.S. stands for Genome, AIM, Triadic, EDO, System. No other expansion is used, and 'Genome' keeps its TRI-04 meaning: a design grammar, not biology. *Decided by the owner 2026-11-01. The acronym appears in session documents made after the twenty studies; the pages cited define the genome (p4) and Seamless Threads (p8). Boards that spell it 'Generative, Architectural, Temporal, Experiential, Systems' are out of date.* | n/a |  | let-homes-threads p4; let-homes-threads p8 |
 | ROB-01 | ROBOTICS | A robot-ready building ecosystem, not one machine: a shared digital core, specialized bodies, approved mission modules, a habitat profile and a safety case per phenotype. Shared formats do not make motors, batteries or structures interchangeable. | n/a |  | robotic-ecology p2; robotic-ecology p4; rosslyn-eon-lumen p5 |
 | ROB-02 | ROBOTICS | Agreed robot IDs: EDO-M0, EDO-MI, EDO-MO, EDO-X, EDO-DI, EDO-DX and EDO-I. Older names stay as aliases (EDO-M is EDO-MI). | built | lib/canon/vocab.ts#ROBOT_IDS; lib/canon/vocab.ts#ROBOT_ALIASES | five-market-vault p11; five-market-vault p13; robotic-ecology p3 |
 | ROB-03 | ROBOTICS | EDO-I (integrated building robot: rails, gantries, docks) joins the agreed IDs and EDO-M becomes an alias of EDO-MI. EDO-H, EDO-C, EDO-W and EDO-S stay research names. *Decided by the owner 2026-10-18.* | built | lib/canon/vocab.ts#ROBOT_RESEARCH_CLASSES | robotic-ecology p3; rosslyn-eon-lumen p4; five-market-vault p13 |
@@ -165,6 +166,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | VIS-05 | VISUAL | No-drift rules for site imagery: preserve source identity; label original, interpretation and insertion separately; fewer, larger views; respect climate logic; keep the AIM visual language; no invented efficiencies, costs, robot specs, approvals or 'existing' features. | n/a |  | rosslyn-eon-lumen p9 |
 | VIS-06 | VISUAL | PosterStack layers L1 source evidence to L7 editorial labels, in Architectural, Intelligence and Cinematic modes. Safety indicators and evidence warnings override cosmetic order; LOUD and QUIET treatments never blur. | n/a | lib/canon/vocab.ts#PRESENTATION_MODES | chronolayer p3 |
 | VIS-08 | VISUAL | Visual concept archive: every generated image matched to a real file and a register row with provenance, version, application, evidence status, corrections and publication approval. Design intent stays separate from deployed capability. | built | docs/aim-b5r/visual-archive/image_register.csv; docs/aim-b5r/visual-archive/README.md | kern-fresno-phase1 p3 |
+| VIS-11 | VISUAL | The official AIM logo is the design built from Voronoi triangular tessellations. It stays invariant (EDO-08); renders that show any other AIM mark are approximations to replace. *Chosen by the owner 2026-11-01. The authoritative vector file is still to make (VIS-09).* | n/a |  | let-homes-threads p12; edo-surface p7 |
 | PUR-01 | PURE | Pure sits at the governed interface between observation, rules, actions and human approval. It reads evidence and queues bounded actions; it never silently gains broad access to property records, publishes financial decisions, changes authentication or releases funds. | n/a |  | system-architecture p9 |
 | WLD-02 | WORLD | Story canon: the six native species keep distinct body plans (Tri-Kin Glider, Meshback Grazer, Lattice Sentinel, Reef Weaver, Swarm Pearl, Symbiotic Builder). Inhabitants (Solari, Aerin, Lystri, Brax, Nereid, Shade, Pix), fauna (Vylo, Terran Beast) and visitors (Human Prime, AIM Synth) never silently replace them. | n/a |  | let-homes-threads p5 |
 
@@ -206,7 +208,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | D8-04 | DANCE8 | 1D-8D tiers (pulse, pattern, space, time, branching narrative, multisensory coupling, semantics, adaptive orchestration) as an interface taxonomy, not physical dimensions. | n/a | lib/canon/vocab.ts#DANCE8_TIERS | chronolayer p11; let-homes-threads p9 |
 | D8-15 | DANCE8 | BeatLens music-video UI (audio segments, pattern library, performers, camera and stage controls, budget-aware export) with an editable style recipe: pattern family, layer, location, performer count, intensity, camera grammar, lighting, palette, timing, aspect ratio, quality. | n/a |  | chronolayer p12; chronolayer p15 |
 | STU-03 | STUTTR | Store WAV stems, align time zero, annotate BPM, tempo changes and cue points; separate musical source assets from show-control commands. | unchecked |  | suno-stems p4 |
-| ST8-01 | STATE8 | State8 STUTTR Spies audiobook information architecture: missions and episodes, characters and voices, locations and vehicles, sound cues and decision traces, timeline and evidence clips. Fictional labels are never operational records. | n/a | lib/canon/vocab.ts#STATE8_STUTTR_CATEGORIES | chronolayer p10 |
+| ST8-01 | STATE8 | State8 STUTTR Spies audiobook information architecture: missions and episodes, characters and voices, locations and vehicles, sound cues and decision traces, timeline and evidence clips. Fictional labels are never operational records. *Owner 2026-11-01: the audiobook lives wherever costs least. Recommended: play it on the existing Late8 page and serve the audio from a Cloudflare R2 bucket (10 GB a month free and no egress fees when checked 2026-11-01), never from git. Awaits the owner's yes on that recommendation.* | n/a | lib/canon/vocab.ts#STATE8_STUTTR_CATEGORIES | chronolayer p10 |
 | VIS-10 | VISUAL | ChronoLens transitions (ChronoWipe, ChronoGhost, ChronoStack, ChronoPulse, ChronoCompare) work only on date-registered, spatially registered sources; a gradient is not a time measurement. | n/a |  | chronolayer p4 |
 | PUR-03 | PURE | Minimum autonomy stack: Spatial Assessor, Logic Router (n8n), Execution Engine, Truth Ledger (append-only event history), Conflict Node (pause with reason codes), Anomaly Delta. | n/a |  | system-architecture p5 |
 | PUR-04 | PURE | Revenue-gated hardware, cloud-first: laptop baseline; an always-on mini PC and UPS at the first revenue gate; storage and a lab display kit at the data gate; a GPU only if measured local inference beats cloud cost, latency or privacy. | n/a |  | fast-slow-portfolio p6 |

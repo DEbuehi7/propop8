@@ -281,6 +281,9 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
     statement: "Six typologies (tri-lattice tower, porous shell, root-column forest, self-assembling bridge, adaptive canopy, cellular reef) are analogies; the adaptive canopy is the near-term demonstrator." },
   { id: "TRI-12", domain: "TRIADIC", status: "SPEC", impl: "not_built", sources: s("triadic-dance8", 13),
     statement: "First two prototypes: the three-strand topology rig and the environment-responsive canopy state model, through gates G0 source lock to G5 field tests." },
+  { id: "TRI-13", domain: "TRIADIC", status: "LOCKED", impl: "n/a", sources: s("let-homes-threads", 4, 8),
+    statement: "G.A.T.E.S. stands for Genome, AIM, Triadic, EDO, System. No other expansion is used, and 'Genome' keeps its TRI-04 meaning: a design grammar, not biology.",
+    note: "Decided by the owner 2026-11-01. The acronym appears in session documents made after the twenty studies; the pages cited define the genome (p4) and Seamless Threads (p8). Boards that spell it 'Generative, Architectural, Temporal, Experiential, Systems' are out of date." },
 
   // ---------------------------------------------------------------- ROBOTICS
   { id: "ROB-01", domain: "ROBOTICS", status: "LOCKED", impl: "n/a", sources: [...s("robotic-ecology", 2, 4), ...s("rosslyn-eon-lumen", 5)],
@@ -399,7 +402,8 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
   { id: "STU-05", domain: "STUTTR", status: "LOCKED", impl: "n/a", sources: [...s("sears-la", 10), ...s("mural-transit", 5), ...s("suno-stems", 5)],
     statement: "Stuttr is content, culture and marketing, never building control or life-safety AI. Media on a facade is an overlay that respects historic geometry and keeps windows, sightlines, balconies and egress clear." },
   { id: "ST8-01", domain: "STATE8", status: "PROPOSED", impl: "n/a", sources: s("chronolayer", 10), where: ["lib/canon/vocab.ts#STATE8_STUTTR_CATEGORIES"],
-    statement: "State8 STUTTR Spies audiobook information architecture: missions and episodes, characters and voices, locations and vehicles, sound cues and decision traces, timeline and evidence clips. Fictional labels are never operational records." },
+    statement: "State8 STUTTR Spies audiobook information architecture: missions and episodes, characters and voices, locations and vehicles, sound cues and decision traces, timeline and evidence clips. Fictional labels are never operational records.",
+    note: "Owner 2026-11-01: the audiobook lives wherever costs least. Recommended: play it on the existing Late8 page and serve the audio from a Cloudflare R2 bucket (10 GB a month free and no egress fees when checked 2026-11-01), never from git. Awaits the owner's yes on that recommendation." },
   { id: "ST8-02", domain: "STATE8", status: "SPEC", impl: "unchecked", sources: s("plate8-suite", 4, 8),
     statement: "State8's hero is audio-reactive pattern animation driven by real analysis values, kept distinct from analysis output. Primary controls: Record, Upload, Play, Repeat." },
 
@@ -441,9 +445,13 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
   { id: "VIS-08", domain: "VISUAL", status: "LOCKED", impl: "built", sources: s("kern-fresno-phase1", 3), where: ["docs/aim-b5r/visual-archive/image_register.csv", "docs/aim-b5r/visual-archive/README.md"],
     statement: "Visual concept archive: every generated image matched to a real file and a register row with provenance, version, application, evidence status, corrections and publication approval. Design intent stays separate from deployed capability." },
   { id: "VIS-09", domain: "VISUAL", status: "OPEN", impl: "n/a", sources: s("let-homes-threads", 12),
-    statement: "Authoritative vector logos and palettes for AIM, Eon, Lumen, Transect, PropOps8 and AIM-B5R; rendered logos are approximations until then." },
+    statement: "Authoritative vector logos and palettes for AIM, Eon, Lumen, Transect, PropOps8 and AIM-B5R; rendered logos are approximations until then.",
+    note: "AIM's design was chosen by the owner 2026-11-01 (VIS-11). Its vector master, and the other five marks, are still to make." },
   { id: "VIS-10", domain: "VISUAL", status: "PROPOSED", impl: "n/a", sources: s("chronolayer", 4),
     statement: "ChronoLens transitions (ChronoWipe, ChronoGhost, ChronoStack, ChronoPulse, ChronoCompare) work only on date-registered, spatially registered sources; a gradient is not a time measurement." },
+  { id: "VIS-11", domain: "VISUAL", status: "LOCKED", impl: "n/a", sources: [...s("let-homes-threads", 12), ...s("edo-surface", 7)],
+    statement: "The official AIM logo is the design built from Voronoi triangular tessellations. It stays invariant (EDO-08); renders that show any other AIM mark are approximations to replace.",
+    note: "Chosen by the owner 2026-11-01. The authoritative vector file is still to make (VIS-09)." },
 
   // ---------------------------------------------------------------- PURE
   { id: "PUR-01", domain: "PURE", status: "LOCKED", impl: "n/a", sources: s("system-architecture", 9),
