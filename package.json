@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "npx --yes tsx --test tests/*.test.ts tests/dance8/*.test.ts",
     "b5r:phase1": "npx --yes tsx scripts/b5r/phase1.ts",
+    "b5r": "npx --yes tsx scripts/b5r/cli.ts",
     "stuttr": "npx --yes tsx scripts/stuttr/cli.ts",
     "dance8": "npx --yes tsx scripts/dance8/cli.ts",
     "helpers": "npx --yes tsx scripts/media/helpers.ts",
@@ -38,6 +39,7 @@
     "eslint-config-next": "16.4.3",
     "jsdom": "^30.1.1",
     "netlify-cli": "^27.4.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
