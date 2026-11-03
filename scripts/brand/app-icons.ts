@@ -3,11 +3,12 @@
  *
  *   npx --yes tsx scripts/brand/app-icons.ts
  *
- * Writes the SVG sources and 1024 px masters to brand/icons/, and the 180 px
+ * Writes the SVG sources and 1024 px masters to brand/icons/, the 180 px
  * icons the site serves: app/apple-icon.png (the public site) and
- * public/po8-admin-icon.png (the admin back end; it lives outside /admin
- * because everything under /admin needs a login, and an iPhone fetches the
- * icon without one). Dance8 deploys on its own
+ * public/po8-admin-icon.png (PropOps8 Ops, the admin back end; it lives
+ * outside /admin because everything under /admin needs a login, and an
+ * iPhone fetches the icon without one), and the 192 and 512 px icons the two
+ * web-app manifests list, in public/icons/. Dance8 deploys on its own
  * account (canon D8-13), so its icon stays in brand/icons/ until then.
  * Colours are canon (lib/canon/vocab.ts CANON_COLORS); the 8 is Inter Bold's
  * outline (SIL Open Font License), so nothing depends on an installed font.
@@ -96,7 +97,15 @@ async function main() {
   }
   await sharp(join(OUT, "propops8-frontend-180.png")).toFile(join(ROOT, "app", "apple-icon.png"));
   await sharp(join(OUT, "propops8-admin-180.png")).toFile(join(ROOT, "public", "po8-admin-icon.png"));
-  console.log("icons written to brand/icons/, app/apple-icon.png and public/po8-admin-icon.png");
+  // Manifest icons (app/manifest.ts and public/propops8-ops.webmanifest).
+  const icons = join(ROOT, "public", "icons");
+  mkdirSync(icons, { recursive: true });
+  for (const [name, out] of [["propops8-frontend", "propops8"], ["propops8-admin", "propops8-ops"]] as const) {
+    for (const size of [192, 512]) {
+      await sharp(Buffer.from(ICONS[name])).resize(size, size).flatten({ background: INK }).png({ compressionLevel: 9 }).toFile(join(icons, `${out}-${size}.png`));
+    }
+  }
+  console.log("icons written to brand/icons/, app/apple-icon.png, public/po8-admin-icon.png and public/icons/");
 }
 
 main().catch((e) => {
