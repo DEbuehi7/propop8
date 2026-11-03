@@ -30,6 +30,7 @@ be logged and how long it is kept. Classes come from the canon
 | Admin password, session secret, API keys | Secret | Netlify, owner's Mac | `tests/secretScan.test.ts` blocks them from the repo |
 | Login throttle records | Internal | Supabase `admin_login_attempts` | IP addresses stored only as an HMAC |
 | B5R deals and runs | Internal | Supabase `b5r_*` tables | Owner's research; no tenant data (canon GOV-15) |
+| B5R photo screens (photos, report) | Internal | `~/AIMScenes/` on the owner's Mac only; sent once to the Anthropic API | Never in the repo (the tool refuses); location data removed before sending; no employer sites (GOV-16) |
 | Kern/Fresno parcel evidence | Public | Repo `data/aim-b5r/` | Public records only |
 | Plate8 sessions | Internal | Supabase (Plate8 project once configured) | Personal rig |
 | Stuttr and Dance8 media | Internal | Local library, Dance8's own account | Never mixed with property data (GOV-15) |
