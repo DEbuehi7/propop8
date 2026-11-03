@@ -73,6 +73,7 @@ import {
 import { describeTrack } from "../../lib/stuttr/library";
 import { albumAdd, albumCommand, albumOrder, albumRemove, albumsCommand, albumVoices, voicesCommand } from "../../lib/stuttr/albumCommands";
 import { mediaVaultCommand } from "../../lib/stuttr/mediaVault";
+import { audiobookCommand } from "../../lib/stuttr/audiobookCommands";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -80,7 +81,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -111,6 +112,7 @@ const usage = `Stuttr song library (${ctx.library})
   album-remove <album> <trackId> [more ids]
   albums
   media-vault                                   (read-only index of every song's records, in media-vault.json)
+  audiobook <book> [--upload <bucket>]          (Late8 audiobook: approved chapters to a publish folder, then to Cloudflare R2)
   voices <trackId> [--preset solo|crew|cast] [--lead Stuttr] [--lang en] [--redo] [--go] [--max-credits N]
   album-voices <album> [--preset solo|crew] [--redo] [--go --max-credits N]`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
@@ -195,6 +197,10 @@ async function main(): Promise<void> {
       break;
     case "media-vault":
       mediaVaultCommand(ctx);
+      break;
+    case "audiobook":
+      if (!a1) throw new Error("audiobook needs a book id, like stuttr-spies-1");
+      audiobookCommand(ctx, a1, { upload: flag("upload") });
       break;
     case "album-add":
       if (!a1 || !a2) throw new Error("album-add needs an album and at least one song id");

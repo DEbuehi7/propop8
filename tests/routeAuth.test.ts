@@ -27,6 +27,7 @@ const PUBLIC: Record<string, string> = {
   "app/api/upload/[token]/route.ts": "Client upload; scoped by an expiring, revocable token",
   "app/api/rss/route.ts": "Feed proxy for the Plate rig; every hop SSRF-checked by lib/safeFetch.ts",
   "app/api/yt/route.ts": "OPEN FINDING L2: public, spends the YouTube quota. Gate once Slate8 handles sign-in",
+  "app/api/late8/audiobook/route.ts": "No input; returns the published audiobook manifest from one fixed URL in the environment (already public on R2)",
 };
 
 function routes(dir: string, out: string[] = []): string[] {

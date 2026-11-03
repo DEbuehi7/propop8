@@ -88,6 +88,10 @@ All seven v1.0.0 conflicts are settled:
 - **VIS-11**: the official AIM logo is the design built from Voronoi triangular tessellations. Its vector file is still to make (VIS-09).
 - **ST8-01** (still proposed): the audiobook lives wherever costs least. The recommendation in its note (the Late8 page, audio from a Cloudflare R2 bucket, never from git) awaits the owner's yes.
 
+## Decided by the owner (v1.6.0, 2 Nov 2026)
+
+- **PL8-09**: the Stuttr Spies audiobook plays on Late8, with its audio and manifest in Cloudflare R2, never in git. Only chapters marked approved with cleared rights are published (STU-02).
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
@@ -112,3 +116,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.3.1, 2026-10-19: D8-18 built in `lib/dance8/moves/skaters.ts` (no change to what the entry says).
 - 1.4.0, 2026-10-20: D8-09 settled by the owner (five music tracks plus a light-cue track; DASH names FREEZE); `KIRTLED_MIDI_EXPORT` added and FREEZE given its name in `KIRTLED_MOVES`.
 - 1.5.0, 2026-11-01: TRI-13 (G.A.T.E.S. expansion) and VIS-11 (official AIM logo) added, both decided by the owner; notes added to VIS-09 and ST8-01 (audiobook on the lowest-cost location, recommendation pending).
+- 1.6.0, 2026-11-02: PL8-09 added (the audiobook on Late8 with audio in R2), decided by the owner and built; ST8-01's note updated.

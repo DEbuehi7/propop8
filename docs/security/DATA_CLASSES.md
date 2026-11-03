@@ -34,6 +34,7 @@ be logged and how long it is kept. Classes come from the canon
 | Kern/Fresno parcel evidence | Public | Repo `data/aim-b5r/` | Public records only |
 | Plate8 sessions | Internal | Supabase (Plate8 project once configured) | Personal rig |
 | Stuttr and Dance8 media | Internal | Local library, Dance8's own account | Never mixed with property data (GOV-15) |
+| Published audiobook (audio, covers, manifest) | Public | Cloudflare R2 (Dance8's account), played on /plate8/late8 | Only chapters marked approved with cleared rights (STU-02, PL8-09); never in git |
 | Employer or worksite material | Not allowed | Nowhere | Written clearance required first (GOV-16) |
 
 ## Rules that follow from this

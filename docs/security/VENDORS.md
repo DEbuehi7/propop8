@@ -25,6 +25,7 @@ what it holds. Data classes are defined in [DATA_CLASSES.md](DATA_CLASSES.md).
 | AI services (Anthropic Claude, claude.ai Pure project; research tools) | Development, documentation, research | Code, docs, synthetic data. Never tenant documents or client files (canon GOV-13) | Internal | Per tool | No |
 | n8n | Named in the privacy policy for workflow automation | **Not used by this repo's code.** Confirm whether any n8n workflow touches intake data | Unknown | n/a | Yes (check) |
 | Domain registrar / DNS (propops8.com) | Domain and DNS | DNS records | Internal | Registrar account | No |
+| Cloudflare R2 (Late8 audiobook) | On Dance8's own Cloudflare account (D8-13): holds the published Late8 audiobook (PL8-09), uploaded with `npm run stuttr -- audiobook <book> --upload <bucket>` through Wrangler's own sign-in | Approved audiobook audio, covers and its manifest, public read. Never property or tenant data (GOV-15) | Public (published) | Wrangler login on the owner's Mac; `LATE8_AUDIOBOOK_URL` in Netlify is the manifest's public URL, not a secret | No |
 
 ## Gaps to close
 

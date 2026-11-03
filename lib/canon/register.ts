@@ -403,7 +403,7 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
     statement: "Stuttr is content, culture and marketing, never building control or life-safety AI. Media on a facade is an overlay that respects historic geometry and keeps windows, sightlines, balconies and egress clear." },
   { id: "ST8-01", domain: "STATE8", status: "PROPOSED", impl: "n/a", sources: s("chronolayer", 10), where: ["lib/canon/vocab.ts#STATE8_STUTTR_CATEGORIES"],
     statement: "State8 STUTTR Spies audiobook information architecture: missions and episodes, characters and voices, locations and vehicles, sound cues and decision traces, timeline and evidence clips. Fictional labels are never operational records.",
-    note: "Owner 2026-11-01: the audiobook lives wherever costs least. Recommended: play it on the existing Late8 page and serve the audio from a Cloudflare R2 bucket (10 GB a month free and no egress fees when checked 2026-11-01), never from git. Awaits the owner's yes on that recommendation." },
+    note: "Owner 2026-11-01: the audiobook lives wherever costs least. The owner chose the recommendation on 2026-11-02: it plays on Late8, with its audio in Cloudflare R2 (PL8-09). These categories stay the proposed information architecture." },
   { id: "ST8-02", domain: "STATE8", status: "SPEC", impl: "unchecked", sources: s("plate8-suite", 4, 8),
     statement: "State8's hero is audio-reactive pattern animation driven by real analysis values, kept distinct from analysis output. Primary controls: Record, Upload, Play, Repeat." },
 
@@ -426,6 +426,10 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
     note: "Chosen by the owner 2026-10-18 from three options (platinum, vermilion, lime)." },
   { id: "PL8-07", domain: "PLATE8", status: "OPEN", impl: "n/a", sources: s("propops8-reliability", 9),
     statement: "Whether Plate8 stays admin-only or gets a public route." },
+  { id: "PL8-09", domain: "PLATE8", status: "LOCKED", impl: "built", sources: [...s("chronolayer", 10), ...s("suno-stems", 3)],
+    where: ["lib/late8/audiobook.ts", "lib/stuttr/audiobookCommands.ts", "components/plate8/late8/AudiobookPlayer.tsx", "app/api/late8/audiobook/route.ts"],
+    statement: "The Stuttr Spies audiobook plays on Late8. Its audio and manifest live in Cloudflare R2, never in git; only chapters marked approved with cleared rights are published (STU-02), and the read-along follows the narration's own timing, never a model's.",
+    note: "Decided by the owner 2026-11-02 on the lowest-cost recommendation in ST8-01's note. Listen and read-along are built; Mission Lens (spoiler-safe visuals) is not." },
 
   // ---------------------------------------------------------------- VISUAL
   { id: "VIS-01", domain: "VISUAL", status: "LOCKED", impl: "built", sources: s("chronolayer", 7), where: ["lib/canon/vocab.ts#CANON_COLORS", "docs/aim-b5r/visual-archive/README.md", "components/admin/LetNode.module.css"],
