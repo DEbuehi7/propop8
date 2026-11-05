@@ -1,4 +1,4 @@
-# AIM canon register (v1.7.0)
+# AIM canon register (v1.7.1)
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
@@ -185,8 +185,8 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | ID | Domain | Statement | Built | Where | Sources |
 |---|---|---|---|---|---|
 | GOV-10 | GOVERNANCE | Phase 0D Defensibility Gate: secret scanning, credential-rotation confirmation, identity/role model, privacy classes, source/version registry, incident runbook, vendor register and a restore test. | partial | docs/security/README.md; lib/canon/vocab.ts#BUILD_PHASES | propops8-reliability p8; propops8-reliability p10 |
-| GOV-18 | GOVERNANCE | A machine-derived PROJECT_STATE artifact reports framework version, branch conventions, migration level, required env var names, major routes, deploy targets and verification status, so agents never act on stale prompt text. | not_built |  | propops8-reliability p9 |
-| GOV-19 | GOVERNANCE | Repository enforcement: CLAUDE.md stop rules; a preflight that proves repo root, branch, framework, env names, routes and migrations before mutation; verify with route smoke tests, secret checks and build; contract fixtures; visual regression; EDO pattern provenance. | partial | scripts/preflight.sh; package.json#verify; CLAUDE.md | propops8-reliability p9; propops8-reliability p10 |
+| GOV-18 | GOVERNANCE | A machine-derived PROJECT_STATE artifact reports framework version, branch conventions, migration level, required env var names, major routes, deploy targets and verification status, so agents never act on stale prompt text. | built | lib/state/projectState.ts; docs/PROJECT_STATE.md; tests/projectState.test.ts | propops8-reliability p9 |
+| GOV-19 | GOVERNANCE | Repository enforcement: CLAUDE.md stop rules; a preflight that proves repo root, branch, framework, env names, routes and migrations before mutation; verify with route smoke tests, secret checks and build; contract fixtures; visual regression; EDO pattern provenance. | partial | scripts/preflight.sh; package.json#verify; CLAUDE.md; .github/workflows/verify.yml | propops8-reliability p9; propops8-reliability p10 |
 | P8O-02 | PROPOPS8 | Build sequence 0A Housekeeping, 0D Defensibility, 1 Revenue path, 2 Recert, 3 Visual kernel + admin, 4 Plate8/Dance8, 5 AIM-B5R gate. Each phase passes its gate before the next. | partial | lib/canon/vocab.ts#BUILD_PHASES | propops8-reliability p8 |
 | P8O-03 | PROPOPS8 | EDO visual kernel: a tiny deterministic, seeded SVG/CSS renderer with typed genome metadata, three families (Guild Mesh, Uzama Network, Earthwork Boundary), semantic state tokens and one PatternSurface component. WebGL waits until a use case proves it. | not_built | lib/canon/vocab.ts#EDO_KERNEL_FIRST_FAMILIES | propops8-reliability p5; propops8-reliability p10 |
 | P8O-04 | PROPOPS8 | The first EDO refactor is the Phase 2C monitoring page: quiet numbers, cyan for Supabase-first success, amber for meaningful fallback, magenta for real errors, a faint Guild Mesh field only around the read-distribution region. | not_built | app/plate8/monitoring/page.tsx | propops8-reliability p6 |

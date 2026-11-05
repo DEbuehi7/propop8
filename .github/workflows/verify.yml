@@ -1,0 +1,25 @@
+# Runs the same check as `npm run verify` on every pull request and on main,
+# so a red check shows up on the PR before anyone merges (canon GOV-19).
+# No secrets are used: the tests run on synthetic data only.
+name: verify
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
