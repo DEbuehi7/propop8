@@ -14,8 +14,9 @@
  *   - FAIL needs a named reviewer, otherwise it is held as UNKNOWN
  *     (dataset contract: missing evidence is HOLD, never FAIL);
  *   - NOT_APPLICABLE needs a written reason and a reviewer, is never allowed
- *     on FG1 or FG7, never on a gate a module in this option triggers, and
- *     never on FG5 where the elevation has historic fabric.
+ *     on FG1 or FG7, never on a gate a module in this option triggers, never
+ *     on FG5 where the elevation has historic fabric, and never on the gate
+ *     of a protected area that a finish, panel or sign sits beside.
  * In canon terms (EVIDENCE_AXES.gateOutcome) UNKNOWN is HOLD.
  */
 import type { CapitalSummary } from "./capital";
@@ -24,7 +25,7 @@ import {
   ALWAYS_APPLIES, CONCEPT_SOURCE_TYPES, FACADE_GATES,
   type FacadeGateId, type FacadeOption, type FacadeProject, type GateRecord, type GateState, type ModuleId,
 } from "./contracts";
-import { moduleAt, type Conflict } from "./masks";
+import { MASK_NOUN, besideGates, moduleAt, type Conflict } from "./masks";
 
 export interface GateResult {
   gate: FacadeGateId;
@@ -85,10 +86,18 @@ export function evaluateGates(p: FacadeProject, option: FacadeOption, conflicts:
     .map((c) => c.id);
 
   const historic = p.masks.some((m) => m.kind === "historic");
+  // A finish, panel or sign beside a protected area brings in that area's gate (masks.ts BESIDE rules).
+  const beside = new Map<FacadeGateId, string[]>();
+  for (const c of p.cells) {
+    const m = moduleAt(option, c.id);
+    for (const b of besideGates(p, c, m)) {
+      for (const g of b.gates) beside.set(g, [...(beside.get(g) ?? []), `${m} beside the ${MASK_NOUN[b.kind]} on ${c.id}`]);
+    }
+  }
 
   return FACADE_GATES.map((g) => {
     const triggeredBy = used.filter((m) => moduleOf(m).triggers.includes(g.id));
-    const appliesBecause = g.id === "FG5" && historic ? ["historic fabric on this elevation"] : [];
+    const appliesBecause = [...(g.id === "FG5" && historic ? ["historic fabric on this elevation"] : []), ...(beside.get(g.id) ?? [])];
     const rec = recordFor(p, g.id, option.id);
     const base = fromRecord(p, g.id, rec, [...triggeredBy.map((m) => `${m} in this option`), ...appliesBecause]);
     let state = base.state;

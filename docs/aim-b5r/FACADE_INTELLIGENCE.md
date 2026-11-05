@@ -1,10 +1,14 @@
-# AIM-B5R Façade Intelligence System: FIS-Flat v0.1
+# AIM-B5R Façade Intelligence System: FIS-Flat v0.2
 
-Status: **built on a feature branch, synthetic data only, not deployed.**
+Status: **canon (1.7.0, B5R-38 to B5R-45), built, synthetic data only.** v0.1
+merged in PR #59; v0.2 holds the owner's revisions of 4 Nov 2026:
+- the pilot is in Fresno;
+- the mask rules are loosened;
+- the default weights are the Fresno set;
+- the system is canon.
 
 Source: *AIM-B5R Façade Intelligence System Complete Study v1.0* (3 Nov
-2026). The study calls itself a research draft, and it is not one of the 20
-canon studies, so this work adds no canon entry and changes no LOCKED rule.
+2026), a research draft that the owner made the 21st canon study.
 
 Governing rule: **Program → Constraints → Performance → Geometry → Material
 → Expression.** Masks and seven hard gates run first. Preference scores run
@@ -14,9 +18,10 @@ after them and never change a call.
 |---|---|
 | Code | `lib/b5r/facade/` (pure, deterministic, no I/O, no AI) |
 | Page | `/admin/b5r/facade`, behind the admin login (`proxy.ts`) |
-| Tests | `tests/b5rFacade.test.ts` (15 tests) |
-| Versions | engine `aim-fis-flat-0.1.0`, project schema `aim-fis-project-1`, decision contract `aim-fis-decision-1`, catalogue `fis-flat-catalogue-0.1` |
-| Audited at | `main` @ `e8a43a9` (merge of PR #58), branch `feat/b5r-facade-fis` |
+| Tests | `tests/b5rFacade.test.ts` (16 tests) and the canon lock |
+| Canon | B5R-38 to B5R-45; names and fixed values in `lib/canon/vocab.ts` (`FIS_*`) |
+| Versions | engine `aim-fis-flat-0.2.0`, project schema `aim-fis-project-1`, decision contract `aim-fis-decision-1`, catalogue `fis-flat-catalogue-0.1` |
+| Audited at | `main` @ `e8a43a9` (v0.1); revised from `cf30adb` (merge of PR #59) |
 
 The build covers the study's own recommendation (section 20): P0 (audit)
 and P1 (types, mask and gate rules, schematic grid, module catalogue) only,
@@ -69,9 +74,9 @@ repo. UNKNOWN = cannot tell from the repo.
    itself shows (a panel over a window, a screen over a fire escape) is a
    FAIL for that option.
 3. **Pilot site.** The study puts "an actual DTLA façade" first. Canon B5R-22
-   makes Kern/Fresno Stage 1 and DTLA a reference district. **Owner
-   decision.** Whatever is chosen, the pilot cannot be a current or former
-   employer's building without written clearance (GOV-16).
+   makes Kern/Fresno Stage 1 and DTLA a reference district. **Settled by the
+   owner on 4 Nov 2026: Fresno (B5R-45).** The pilot cannot be a current or
+   former employer's building without written clearance (GOV-16).
 4. **Room uses.** The study lists retail; B5R-33 keeps AIM-B5R residential
    only. Retail is not a room use here.
 5. **Tiers.** The study's L0–L4 are not the canon `INTERVENTION_LADDER`.
@@ -90,33 +95,49 @@ repo. UNKNOWN = cannot tell from the repo.
    depth (digital-screen multifamily, Three.js-heavy views) behind revenue
    and ROI gates. This build stays inside them: 2D, admin-only, file-based,
    synthetic, F7 disabled, and no screens or lighting.
-8. **Not canon.** The study is not a canon source, so B5R-19 and B5R-18 keep
-   their `impl` status. Pointing them at this code needs a `CANON_VERSION`
-   bump with the owner's approval.
+8. **Canon.** The study was not a canon source. **Settled by the owner on 4
+   Nov 2026:** it is now the 21st, with B5R-38 to B5R-45 (canon 1.7.0).
+   B5R-18 and B5R-19 are left as they were.
 9. **FacadeGate scope.** The study's FacadeGate has no option field. Here a
    record can cover every option, or one option, which overrides it.
 
 ## 3. The rules as built
 
-**Masks** (a cell is one bay on one floor):
+**Masks** (a cell is one bay on one floor). Since v0.2 a module either
+**covers** the cell or sits **beside** what is protected in it:
+- screens, fins and advanced modules (F3, F6, F7) sit in front of the whole
+  cell, so they cover every mask in it;
+- finishes, panels, signs and service doors (F1, F2, F4, F5) sit on the
+  opaque wall and never cross a mask.
 
-| Mask | Allowed | Allowed only with a written justification and a source | Fails |
-|---|---|---|---|
-| window | F0 | F3 | FG4 |
-| egress (exit doors, fire escapes) | F0 | none | FG1 |
-| utility | F0, F5 | none | FG6 |
-| maintenance access | F0, F5 | none | FG6 |
-| historic fabric | F0 | none | FG5 |
+| Mask | May cover it | Covers only with a justification and a source | May sit beside it (it stays clear) | Gate that fails, and reviews |
+|---|---|---|---|---|
+| window | F0 | F3, on a resident-room or stair window; any other common-area window takes F3 without one | F1, F2, F4, F5 | FG4 (and FG3 for a panel) |
+| egress (exit doors, fire escapes) | F0 | none | F1, F4 | FG1 |
+| utility | F0, F5 | none | F1, F2, F4 | FG6 |
+| maintenance access | F0, F5 | none | F1, F2, F4 | FG6 |
+| historic fabric | F0 | none | F1, F4 | FG5 |
 
 On top of the masks:
+- a module beside a mask needs at least **30% of the cell left as opaque
+  wall** (the exact union of the mask rectangles);
+- that mask's gate must then review it, so the gate cannot be marked not
+  applicable;
 - an unmeasured cell takes F0 only (NEEDS SURVEY);
 - F6 needs a survey-verified cell;
 - F7 is disabled;
 - F4 goes at street level or on an entry or service route;
 - F5 goes only where there is a utility or inspection point to protect.
 
-These rules are deliberately conservative; for example, F1 paint never
-goes on a window cell. That is one of the owner decisions below.
+What v0.2 loosened, with the owner's approval of 4 Nov 2026:
+- paint, panels and signs around windows, utilities and access points;
+- paint and an address sign beside an exit door or below historic fabric;
+- F3 on common-area windows without a justification.
+
+What stays strict, because canon says so:
+- nothing covers an exit (INF-08, GOV-26);
+- nothing covers historic fabric;
+- no panel crowds an exit or a fire escape's anchors.
 
 **Gates.** Each gate's final state is the worse of the recorded review and
 what the data shows. The order is FAIL > UNKNOWN > PASS or N/A.
@@ -155,18 +176,20 @@ what the data shows. The order is FAIL > UNKNOWN > PASS or N/A.
 
 | Item | Evidence | State | Confidence |
 |---|---|---|---|
-| Rule engine behaviour | 15 tests; `npm run verify` | IMPLEMENTED on the branch, not merged | High for the rules as written |
+| Rule engine behaviour | 16 tests, the canon lock and `npm run verify` | IMPLEMENTED (v0.1 merged in #59; v0.2 on its branch) | High for the rules as written |
 | Page behaviour | Local `next dev`, 1366 px and iPhone 13: no horizontal scroll, no page errors; place, refuse, keyboard, views, gate record and contract download all exercised | IMPLEMENTED, not deployed | Medium (one browser engine) |
 | Fixture building | Made up in `fixture.ts` | SYNTHETIC | n/a: it shows the software works, not how any building performs |
 | Fixture prices and benefits | All `null` | UNPRICED | n/a |
 | Fixture preference scores | Made-up values that exercise the scorer | SYNTHETIC | n/a |
-| Mask and module rules | Study sections 3, 5 and 7; canon STU-05, INF-08, GOV-26 | PROVISIONAL (conservative) | Medium; needs owner and architect review |
-| Default weights 25/25/20/15/10/5 | Study 11.1 | PROVISIONAL, "chosen by: study defaults" | Owner to confirm |
+| Mask and module rules (v0.2) | Study sections 3, 5 and 7; canon STU-05, INF-08, GOV-26; owner decision 4 Nov | CANON (B5R-39), loosened by the owner | Medium; an architect still checks them before the pilot |
+| Default weights 25/20/25/15/10/5 | Owner's Fresno set, 4 Nov | CANON (B5R-43) | Owner-chosen; a design preference, not a measurement |
+| Pilot geography | Owner decision, 4 Nov | CANON (B5R-45): Fresno | Decided; the building is not chosen |
 | The study's design logic | The study's own summary | PROVISIONAL | Medium |
 | Site-specific assembly compatibility | None | UNKNOWN | Low |
 | California and LA code references (S1–S12) | Cited by the study, not rechecked here | SOURCE-CITED | Not verified in this work |
 | Earlier board $/SF and % savings | Concept art | UNVERIFIED_VISUAL_PLACEHOLDER, excluded | Low |
 | Implementation state in code | This audit | IMPLEMENTED for P0 and P1; P2–P5 ABSENT | High |
+| Live deploy of #59 | Not visible from the build sandbox (no Netlify access) | UNKNOWN until the owner checks Netlify Deploys | n/a |
 
 ## 5. What needs a qualified professional (nothing here replaces them)
 
@@ -181,8 +204,8 @@ what the data shows. The order is FAIL > UNKNOWN > PASS or N/A.
 - **Energy compliance:** only the CEC-approved software counts; nothing here
   models energy.
 - **Costs:** quantity takeoff and written bids.
-- **The mask rules themselves:** an architect should confirm them before a
-  real pilot.
+- **The v0.2 mask rules:** they are canon and loosened, but an architect
+  should still confirm them on the pilot building.
 
 ## 6. Still proposed (not built)
 
@@ -200,31 +223,30 @@ what the data shows. The order is FAIL > UNKNOWN > PASS or N/A.
   model.
 - Feeding photo-screen opportunities (`lib/b5r/screen`) into a façade
   project.
-- Canon entries for the FIS. These need the study added as a canon source,
-  owner approval and a version bump.
+- The G.A.T.E.S. reading in section 2, point 6. It is still only a
+  proposal, not canon.
 
 ## 7. Recommended next Decision Contract
 
-**FIS-P2-01: pick the pilot façade.** Call today: **DEFER** (there is no
-site).
+**FIS-P2-01: pick the Fresno pilot façade.** Call today: **DEFER** (no
+building yet). The geography is settled (B5R-45).
 
-Decide:
-1. Where the pilot goes:
-   - a building in the Stage 1 geography (Kern/Fresno, B5R-22); or
-   - DTLA, with a recorded owner exception to B5R-22.
-2. Which building: one the owner controls or has written clearance for,
-   and never a Hart District Management or SRO Housing building (GOV-16).
+Decide which building:
+- a residential building in Fresno that the owner controls or has written
+  clearance for;
+- never a Hart District Management or SRO Housing building (GOV-16);
+- preferably one of the Phase 1 Fresno leads (F1–F5), so the project links
+  to a Phase 1 `property_uuid` that already exists.
 
 Evidence needed before the next call:
-- The property identity: a Phase 1 `property_uuid`, or a new identity
-  record.
-- Written permission for every photo and drawing.
-- Hashed field photos.
-- A geometry state for every cell.
-- Occupancy.
-- A condition survey that prices the required repairs.
-- An approved budget with an approver.
-- Named FG1–FG3 reviewers.
+- the Phase 1 identity (G0 PASS or CONDITIONAL);
+- written permission for every photo and drawing;
+- hashed field photos;
+- a geometry state for every cell;
+- occupancy;
+- a condition survey that prices the required repairs;
+- an approved budget with an approver;
+- named FG1–FG3 reviewers.
 
 Exit: the study's P2 deliverables:
 - a verified survey;
@@ -232,12 +254,10 @@ Exit: the study's P2 deliverables:
 - three comparable options;
 - preliminary estimates, each either answered or explicitly escalated.
 
-Owner decisions that ride with it:
-1. Confirm or loosen the conservative mask rules (for example, paint
-   around a window).
-2. Confirm the default weights.
-3. Whether the FIS becomes canon (a version bump).
-4. When façade projects need a database.
+Still open for the owner:
+- when façade projects need a database (a migration with RLS, decided on
+  its own);
+- whether the G.A.T.E.S. reading in section 2 becomes canon.
 
 ## 8. Using it
 

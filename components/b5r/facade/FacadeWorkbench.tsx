@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AIM-B5R Façade Intelligence workbench (FIS-Flat v0.1).
+ * AIM-B5R Façade Intelligence workbench (FIS-Flat v0.2).
  *
  * Everything shown is computed by lib/b5r/facade from the project file in
  * memory: the page places modules only where canPlace() allows, records
@@ -27,7 +27,7 @@ const VIEWS: { id: View; label: string; caption: string }[] = [
   { id: "sidewalk", label: "Sidewalk 45°", caption: "The same elevation turned as if approaching along the sidewalk: a projection of the schematic, not a render." },
   { id: "street", label: "Street, eye level", caption: "Looking up from across the street: a projection of the schematic, not a render." },
   { id: "resident", label: "Resident window", caption: "The view out of one window, seated or standing. Pick a window cell on the elevation below." },
-  { id: "night", label: "Night", caption: "Lit windows only: FIS-Flat v0.1 has no façade lighting or displays (F7 is disabled), so nothing shines into bedrooms." },
+  { id: "night", label: "Night", caption: "Lit windows only: FIS-Flat has no façade lighting or displays (F7 is disabled), so nothing shines into bedrooms." },
   { id: "section", label: "Wall section", caption: "How a planar screen relates to the existing wall. Illustrative only." },
 ];
 const TRANSFORM: Partial<Record<View, string>> = {
@@ -196,7 +196,7 @@ export default function FacadeWorkbench() {
   return (
     <main className={s.page}>
       <div className={s.wrap}>
-        <p className={s.kicker}>AIM-B5R · Façade Intelligence · FIS-Flat v0.1</p>
+        <p className={s.kicker}>AIM-B5R · Façade Intelligence · FIS-Flat v0.2</p>
         <h1 className={s.h1}>Façade <span>Intelligence</span></h1>
         <p className={s.sub}>Every cell of the wall is checked against windows, exits, utilities, historic fabric and maintenance access, then seven hard gates. Preference scores come after and never change a call.</p>
         <p className={s.rule}>Program → Constraints → Performance → Geometry → Material → Expression</p>
@@ -260,7 +260,7 @@ export default function FacadeWorkbench() {
                     {CATALOGUE.map((m) => (
                       <button key={m.id} className={s.tool} aria-pressed={tool === m.id} aria-disabled={m.status === "disabled"}
                         title={`${m.purpose}. Eligible: ${m.eligible}. ${m.procurement}.`}
-                        onClick={() => (m.status === "disabled" ? setMsg({ ok: false, text: `${m.id} ${m.name} is disabled in v0.1: ${m.procurement}.` }) : setTool(m.id))}>
+                        onClick={() => (m.status === "disabled" ? setMsg({ ok: false, text: `${m.id} ${m.name} is disabled: ${m.procurement}.` }) : setTool(m.id))}>
                         <span className={s.swatch} style={{ background: MODULE_SWATCH[m.id] }} />{m.id} {m.name}{m.status !== "available" ? ` (${m.status})` : ""}
                       </button>
                     ))}

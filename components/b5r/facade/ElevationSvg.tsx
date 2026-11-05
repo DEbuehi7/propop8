@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Schematic elevation for FIS-Flat v0.1: one SVG, drawn only from the
+ * Schematic elevation for FIS-Flat: one SVG, drawn only from the
  * project data (GOV-01: visuals render state, never create it). Cells are
  * buttons; masks, room use, survey state and maintenance access are
  * switchable overlays, each with a letter or label as well as a colour.
@@ -55,6 +55,17 @@ export function layoutOf(p: FacadeProject, elevationId: string) {
   return { e, measured, bw, bx, fh, fy, height, H: TOP + height + GROUND };
 }
 
+type Rel = FacadeMask["rect"];
+const overlaps = (a: Rel, b: Rel) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+/** Where an address sign fits on the opaque wall: the first spot that touches no protected area. */
+const SIGN_SPOTS: Rel[] = [
+  { x: 0.15, y: 0.3, w: 0.7, h: 0.2 }, { x: 0.1, y: 0.04, w: 0.8, h: 0.15 },
+  { x: 0.02, y: 0.3, w: 0.18, h: 0.22 }, { x: 0.8, y: 0.3, w: 0.18, h: 0.22 },
+];
+export function signSpot(masks: Rel[]): Rel {
+  return SIGN_SPOTS.find((s) => !masks.some((m) => overlaps(s, m))) ?? SIGN_SPOTS[1];
+}
+
 function rectOf(cell: { x: number; y: number; w: number; h: number }, r: FacadeMask["rect"]) {
   return { x: cell.x + r.x * cell.w, y: cell.y + r.y * cell.h, w: r.w * cell.w, h: r.h * cell.h };
 }
@@ -99,7 +110,10 @@ export default function ElevationSvg({ project, elevationId, option, conflictCel
         })}
         {mod === "F3" && <rect x={box.x + 2} y={box.y + 2} width={box.w - 4} height={box.h - 4} fill={`url(#${id("perf")})`} stroke="#d9dee8" strokeWidth={1.5} />}
         {mod === "F6" && Array.from({ length: 4 }, (_, i) => <rect key={i} x={box.x + ((i + 0.5) * box.w) / 4 - 2} y={box.y + 3} width={4} height={box.h - 6} fill="#b8c2d4" />)}
-        {mod === "F4" && <g><rect x={box.x + box.w * 0.15} y={box.y + box.h * 0.3} width={box.w * 0.7} height={box.h * 0.22} rx={3} fill="#0f1626" stroke="#3DDCE8" strokeWidth={1.5} /><text x={box.x + box.w / 2} y={box.y + box.h * 0.3 + box.h * 0.15} textAnchor="middle" fontSize={11} fill="#3DDCE8" fontFamily="ui-monospace,Menlo,monospace">ADDR</text></g>}
+        {mod === "F4" && (() => {
+          const r = rectOf(box, signSpot(masks.map((m) => m.rect)));
+          return <g><rect x={r.x} y={r.y} width={r.w} height={r.h} rx={3} fill="#0f1626" stroke="#3DDCE8" strokeWidth={1.5} /><text x={r.x + r.w / 2} y={r.y + r.h / 2 + 4} textAnchor="middle" fontSize={Math.min(11, r.h * 0.7)} fill="#3DDCE8" fontFamily="ui-monospace,Menlo,monospace">ADDR</text></g>;
+        })()}
         {mod === "F5" && masks.filter((m) => m.kind === "utility" || m.kind === "maintenance_access").map((m) => {
           const r = rectOf(box, m.rect);
           return <rect key={`f5-${m.id}`} x={r.x - 3} y={r.y - 3} width={r.w + 6} height={r.h + 6} fill="none" stroke="#F2A33A" strokeWidth={2.5} strokeDasharray="6 3" />;

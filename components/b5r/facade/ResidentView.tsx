@@ -40,12 +40,16 @@ export default function ResidentView({ project, cell, option, posture, night }: 
   const sky = night ? "#0b1020" : "#9cc9e6";
   const street = night ? "#1a1d24" : "#59606c";
   const across = night ? "#262b36" : "#8a7b6c";
-  const blocked = mod !== "F0" && mod !== "F3";
+  // Finishes, panels and signs sit on the wall around the window (v0.2 "beside"); screens, fins and advanced modules sit in front of it.
+  const inFront = m.placement === "cell";
+  const blocked = inFront && mod !== "F3";
   const verdict: [string, string] = mod === "F0"
     ? ["Clear: this option leaves the window as it is.", ""]
-    : mod === "F3"
-      ? ["F3 screen in front: open area unknown (no product chosen).", "View, daylight and air loss must be tested (FG4)."]
-      : [`${mod} ${m.name} over a window breaks a protected mask.`, "The option fails FG4."];
+    : !inFront
+      ? [`Clear: ${mod} ${m.name} sits on the wall around this window, not over it.`, mod === "F2" ? "The window frame and flashing must be reviewed (FG3, FG4)." : "FG4 still reviews it."]
+      : mod === "F3"
+        ? ["F3 screen in front: open area unknown (no product chosen).", "View, daylight and air loss must be tested (FG4)."]
+        : [`${mod} ${m.name} over a window breaks a protected mask.`, "The option fails FG4."];
   return (
     <svg viewBox="0 0 600 380" role="img" aria-label={`View from inside ${cell.id}, ${posture}: ${verdict.join(" ")}`}>
       <defs>

@@ -1,7 +1,7 @@
 // lib/canon/register.ts
 //
 // The canon register: every decision, rule, spec, research item, concept,
-// conflict and open question from the twenty AIM-B5R studies (studies.ts),
+// conflict and open question from the AIM-B5R studies (studies.ts),
 // with the study and page it came from and where it lives in this repo.
 //
 // Status meanings
@@ -206,6 +206,34 @@ export const CANON_REGISTER: readonly CanonEntry[] = [
     statement: "Mural-fronted adaptive-reuse node: existing mural as a conservation constraint, Stuttr chapters mapped around windows, green street, robot service lane and transit threshold. The building's identity is unverified; the poster label 'Rosslyn Hotel Apartments' is not established." },
   { id: "B5R-37", domain: "AIM_B5R", status: "LOCKED", impl: "n/a", sources: s("sears-la", 13, 14),
     statement: "For any landmark reuse, first establish identity and authority, historic and code status, measured existing conditions, program feasibility, energy and life cycle, and market and finance. Only then decide atriums, conversion, additions or towers." },
+  // Façade Intelligence System (FIS-Flat): made canon by the owner on 2026-11-04 after the v0.2 revisions.
+  { id: "B5R-38", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 1, 3, 4, 10),
+    where: ["lib/canon/vocab.ts#FIS_DESIGN_RULE", "lib/b5r/facade/contracts.ts", "docs/aim-b5r/FACADE_INTELLIGENCE.md"],
+    statement: "Façade design runs Program, Constraints, Performance, Geometry, Material, Expression. Each elevation is cut into cells (one bay on one floor) that carry their room use, survey state (UNMEASURED, FIELD_OBSERVED, SURVEY_VERIFIED), sources and the twelve design drivers. An unmeasured cell takes only retain-and-repair (F0) until it is surveyed." },
+  { id: "B5R-39", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 3, 4, 5, 12),
+    where: ["lib/canon/vocab.ts#FIS_MASK_KINDS", "lib/b5r/facade/masks.ts"],
+    statement: "Windows, egress, utilities, historic fabric and maintenance access are protected masks. Nothing covers egress or historic fabric. Only an F3 screen covers a window, with a written justification and a source on a resident-room or stair window. Only a removable F5 door covers a utility or access point. Finishes, panels and signs may sit on the opaque wall beside a mask when at least 30% of the cell stays opaque wall (paint and signs beside exits and historic fabric; panels too beside windows, utilities and access points), and the gate for that mask reviews them. An obstruction fails its gate; it is never a low score.",
+    note: "Loosened by the owner 2026-11-04: FIS-Flat v0.1 allowed nothing but F0 on a cell with any mask." },
+  { id: "B5R-40", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 6, 10, 13),
+    where: ["lib/canon/vocab.ts#FIS_GATES", "lib/b5r/facade/gates.ts"],
+    statement: "Seven hard façade gates: FG1 fire / life safety, FG2 structure, FG3 envelope, FG4 habitability, FG5 regulatory / context, FG6 operations, FG7 capital (FG, because G0-G6 are the dataset gates). Each is PASS, FAIL, UNKNOWN or NOT_APPLICABLE with a reason, date, source and reviewer. No review is UNKNOWN, which is HOLD and blocks EXECUTE. PASS and FAIL need a named reviewer, and PASS a source that is not a concept image. NOT_APPLICABLE needs a reason and is never allowed on FG1, FG7 or a gate the option brings in. Attached modules need survey-verified cells (FG2)." },
+  { id: "B5R-41", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 4, 5, 11, 12),
+    where: ["lib/canon/vocab.ts#FIS_MODULES", "lib/b5r/facade/catalogue.ts"],
+    statement: "Façade modules are flat first: F0 retain / repair, F1 flat finish / graphic, F2 flat opaque panel, F3 perforated planar screen, F4 wayfinding, F5 service access, F6 planar fins / folds (a later pilot) and F7 curved, LED, kinetic or planted (disabled until it has its own decision contract). A module's specification and price stay unknown until a product is chosen, and unknown is never zero." },
+  { id: "B5R-42", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 1, 9),
+    where: ["lib/b5r/facade/capital.ts"],
+    statement: "Façade capital uses C_total, B_optional = max(0, B_approved - required work - contingency), a verified-only annual net benefit and NPV. One unpriced line leaves C_total unknown, never zero. Figures from concept boards are UNVERIFIED_VISUAL_PLACEHOLDER and never enter a sum. There is no rent, cap-rate or value line, and decoration that would displace required repair fails FG7." },
+  { id: "B5R-43", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 9),
+    where: ["lib/canon/vocab.ts#FIS_WEIGHTS", "lib/b5r/facade/score.ts"],
+    statement: "Façade options are scored only after the gates, and a score never changes a call. Default weights: resident comfort, views and privacy 25; evidence-backed lifecycle value 20; environmental / energy 25; constructability and maintenance 15; context, history and wayfinding 10; future adaptability 5. A project may change them, naming who chose them. Lifecycle value counts 0 until a benefit is verified, and each weight is moved 5 points either way to test the leader.",
+    note: "The owner's Fresno set, 2026-11-04 (the study's default was 25/25/20/15/10/5)." },
+  { id: "B5R-44", domain: "AIM_B5R", status: "LOCKED", impl: "built", sources: s("facade-fis", 9, 10, 12, 13),
+    where: ["lib/b5r/facade/decision.ts"],
+    statement: "Every façade decision is a versioned, SHA-256-sealed contract with a required, named human review recorded beside the calls. A gate FAIL is KILL; an unknown FG1-FG3 is ESCALATE; any other unknown is DEFER; synthetic data never gives EXECUTE; EXECUTE means licensed design next, never construction approval. The façade system never adjusts underwriting, refinance or value." },
+  { id: "B5R-45", domain: "AIM_B5R", status: "LOCKED", impl: "partial", sources: s("facade-fis", 2, 10),
+    where: ["lib/b5r/facade/fixture.ts"],
+    statement: "The first façade pilot is in Fresno (Stage 1, B5R-22), on a residential building the owner controls or has written clearance for, never a current or former employer's building (GOV-16). Until that building is chosen, the façade system runs on a labelled synthetic fixture.",
+    note: "Decided by the owner 2026-11-04 (the study had put DTLA first). The fixture is built; the pilot building is not chosen." },
 
   // ---------------------------------------------------------------- INFRA
   { id: "INF-01", domain: "INFRA", status: "LOCKED", impl: "n/a", sources: s("ca-infrastructure", 2, 7), where: ["lib/canon/vocab.ts#INFRA_PRIORITY"],

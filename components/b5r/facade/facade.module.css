@@ -1,4 +1,4 @@
-/* AIM-B5R Façade Intelligence (FIS-Flat v0.1). Admin palette as on the LET
+/* AIM-B5R Façade Intelligence (FIS-Flat). Admin palette as on the LET
    page; AIM cyan / magenta / gold only as small functional accents. */
 .page{--navy:#1B243D;--navy2:#222c48;--navy3:#2a3554;--slate:#5C6478;--gray:#E9EBEF;--muted:#A3A9B8;--cyan:#3DDCE8;--magenta:#E92AD6;--amber:#F2A33A;--green:#4FD69C;--gold:#D9B35B;--line:rgba(233,235,239,.12);
   background:var(--navy);color:var(--gray);min-height:100vh;font:15px/1.55 Inter,system-ui,sans-serif}

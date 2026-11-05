@@ -1,7 +1,7 @@
 /**
  * FIS-Flat module catalogue F0-F7 (study section 5), flat first.
  *
- * Status: "available" modules can be planned in v0.1; F6 fins are a later
+ * Status: "available" modules can be planned now; F6 fins are a later
  * selective pilot (P2+), so an option using them is held at DEFER; F7
  * (curved, LED, kinetic, planted) is disabled and cannot be placed at all.
  * Specification fields stay null until a manufacturer or tested assembly is
