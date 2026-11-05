@@ -5,7 +5,8 @@
  * ----------------------------------------------------------------
  * One bar under the site header on every /admin page (login excepted),
  * so no admin screen is a dead end: Review, LET, Plate8, Recert,
- * BRRRR, Infographics and the public site are all one tap away, and
+ * BRRRR, the B5R pipeline and façade workbench, Infographics and the
+ * public site are all one tap away, and
  * "Admin" always goes back to the launchpad.
  */
 
@@ -20,7 +21,8 @@ const LINKS = [
   { href: "/plate", label: "Plate8" },
   { href: "/tools/recert", label: "Recert" },
   { href: "/brrrr", label: "BRRRR" },
-  { href: "/admin/b5r", label: "B5R pipeline" },
+  { href: "/admin/b5r", label: "B5R pipeline", exact: true },
+  { href: "/admin/b5r/facade", label: "Façade" },
   { href: "/infographics", label: "Infographics" },
   { href: "/", label: "Public site", exact: true },
 ];

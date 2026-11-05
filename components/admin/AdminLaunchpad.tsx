@@ -10,6 +10,7 @@ const TILES = [
   { href: "/admin/let", title: "LET Network", sub: "Eon · Lumen · Node 03", accent: "#4FD69C" },
   { href: "/brrrr", title: "BRRRR / AIM-B5R", sub: "Screen · Monte Carlo simulate", accent: "#F2A33A" },
   { href: "/admin/b5r", title: "B5R Pipeline", sub: "Saved deals · actuals · calibration", accent: "#F2A33A" },
+  { href: "/admin/b5r/facade", title: "Façade Intelligence", sub: "Masks · seven gates · decision contract", accent: "#F2A33A" },
   { href: "/infographics", title: "Infographics", sub: "Boards + visuals", accent: "#8B7CF6" },
   { href: "/audit", title: "Audit (public)", sub: "What clients see", accent: "#A3A9B8" },
   { href: "/ingest", title: "Ledger Screening (public)", sub: "Free CSV check", accent: "#A3A9B8" },
