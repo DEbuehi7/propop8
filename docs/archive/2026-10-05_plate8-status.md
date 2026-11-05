@@ -63,7 +63,7 @@
    - Check Supabase Logs for SQL issues
    - Run verification queries
 
-**See `PLATE8_PHASE2_SETUP.md` for detailed step-by-step guide**
+**See `2026-10-05_plate8-phase2-setup.md` for detailed step-by-step guide**
 
 ---
 
@@ -165,7 +165,7 @@ propop8/
 │   └── supabaseMigration.ts            (Migration utilities)
 ├── migrations/
 │   └── 001_init_schema.sql             (PostgreSQL schema)
-├── PLATE8_PHASE2_SETUP.md              (Setup guide)
+├── 2026-10-05_plate8-phase2-setup.md              (Setup guide)
 ├── PLATE8_STATUS.md                    (This file)
 └── .env.local.example                  (Config template)
 ```
@@ -198,7 +198,7 @@ propop8/
 ## 💡 Quick Links
 
 - **Architecture Doc**: Check the Docs artifact linked in previous conversation
-- **Setup Guide**: `PLATE8_PHASE2_SETUP.md`
+- **Setup Guide**: `2026-10-05_plate8-phase2-setup.md`
 - **Supabase Dashboard**: https://app.supabase.com
 - **Next.js Docs**: https://nextjs.org/docs
 - **Supabase Docs**: https://supabase.com/docs

@@ -17,3 +17,5 @@ mount-time reads of browser storage or the page URL, fetch-on-mount loaders, and
 `Date.now()` that the compiler flags in error (brrrr/page.jsx). Search for `eslint-disable-next-line react-hooks`.
 
 Still open: none.
+
+Not tracked here: other warnings (`<img>` elements, unused names). `npm run lint` lists them; none are errors.

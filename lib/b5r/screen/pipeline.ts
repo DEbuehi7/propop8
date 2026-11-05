@@ -86,7 +86,8 @@ export function fitSize(w: number, h: number): { width: number; height: number }
   return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)) };
 }
 
-async function loadSharp(): Promise<typeof import("sharp")> {
+/** sharp 0.35 ships ES-module types: the callable is the default export. */
+async function loadSharp(): Promise<(typeof import("sharp"))["default"]> {
   try {
     return (await import("sharp")).default;
   } catch {

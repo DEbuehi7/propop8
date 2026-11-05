@@ -1,6 +1,6 @@
 {
-  "version": "1.7.0",
-  "sha256": "f61e478a20718106d4f67ff940c5155f74f40529ed4cb13deae53d9aaa61c54c",
+  "version": "1.7.1",
+  "sha256": "c00d48a2b97957238f85c63073fe2880cf069793ec48e81b6a30a04cc8264410",
   "entries": 197,
   "byStatus": {
     "LOCKED": 132,
