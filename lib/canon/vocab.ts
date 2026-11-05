@@ -290,6 +290,57 @@ export const DIGITAL_SURFACE_TIERS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// Façade Intelligence System, FIS-Flat (façade study, canon since 1.7.0 by the
+// owner, 2026-11-04). lib/b5r/facade builds on these names and values.
+// ---------------------------------------------------------------------------
+
+/** The governing rule for façade design (B5R-38). */
+export const FIS_DESIGN_RULE = ["Program", "Constraints", "Performance", "Geometry", "Material", "Expression"] as const;
+
+/** The twelve design drivers every façade cell can carry (B5R-38). */
+export const FIS_DRIVERS = [
+  "location_context", "view_outward", "view_inward", "daylight_lighting", "architecture", "wayfinding",
+  "utilities", "space_function", "thermal_envelope", "history_identity", "maintenance", "budget_financing",
+] as const;
+
+/** Protected masks (B5R-39). */
+export const FIS_MASK_KINDS = ["window", "egress", "utility", "historic", "maintenance_access"] as const;
+
+/** The seven hard façade gates (B5R-40). FG, not G: G0-G6 are the dataset-contract gates. */
+export const FIS_GATES = [
+  { id: "FG1", name: "Fire / life safety", professional: true },
+  { id: "FG2", name: "Structure", professional: true },
+  { id: "FG3", name: "Envelope", professional: true },
+  { id: "FG4", name: "Habitability", professional: false },
+  { id: "FG5", name: "Regulatory / context", professional: false },
+  { id: "FG6", name: "Operations", professional: false },
+  { id: "FG7", name: "Capital", professional: false },
+] as const;
+export const FIS_GATE_STATES = ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"] as const;
+
+/** The flat-first module catalogue (B5R-41). */
+export const FIS_MODULES = [
+  { id: "F0", name: "Retain / repair", status: "available" },
+  { id: "F1", name: "Flat finish / graphic", status: "available" },
+  { id: "F2", name: "Flat opaque panel", status: "available" },
+  { id: "F3", name: "Perforated planar screen", status: "available" },
+  { id: "F4", name: "Wayfinding", status: "available" },
+  { id: "F5", name: "Service access", status: "available" },
+  { id: "F6", name: "Planar fins / folds", status: "pilot" },
+  { id: "F7", name: "Specialized advanced", status: "disabled" },
+] as const;
+
+/** Default preference weights, applied only after the gates (B5R-43): the owner's Fresno set. */
+export const FIS_WEIGHTS = [
+  { id: "resident_comfort", label: "Resident comfort, views and privacy", weight: 25 },
+  { id: "lifecycle_value", label: "Evidence-backed lifecycle value", weight: 20 },
+  { id: "environmental", label: "Environmental / energy performance", weight: 25 },
+  { id: "constructability", label: "Constructability and maintenance", weight: 15 },
+  { id: "context", label: "Context, history and wayfinding", weight: 10 },
+  { id: "adaptability", label: "Future adaptability", weight: 5 },
+] as const;
+
+// ---------------------------------------------------------------------------
 // Infrastructure (California multifamily study).
 // ---------------------------------------------------------------------------
 

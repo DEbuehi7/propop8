@@ -1,5 +1,5 @@
 /**
- * SYNTHETIC fixture for FIS-Flat v0.1 (study section 13: "if a real property
+ * SYNTHETIC fixture for FIS-Flat (study section 13: "if a real property
  * is not available, begin with a clearly labeled synthetic geometry fixture
  * to validate software, not performance").
  *
@@ -94,7 +94,8 @@ const SYNTHETIC_SCORES = (v: Record<CriterionId, number>) => ({
 });
 
 const { cells, masks } = buildCells();
-const minimal = { [cellId(0, 0)]: "F4", [cellId(0, 2)]: "F5", [cellId(0, 4)]: "F1" } as const;
+// The address sign sits on the wall beside the lobby door (a v0.2 "beside" placement; FG1 reviews it).
+const minimal = { [cellId(0, 1)]: "F4", [cellId(0, 2)]: "F5", [cellId(0, 4)]: "F1" } as const;
 const screened = [1, 2, 3].map((f) => cellId(f, 3));
 
 export const SYNTHETIC_PROJECT: FacadeProject = {
@@ -131,8 +132,8 @@ export const SYNTHETIC_PROJECT: FacadeProject = {
   finance: { discountRate: null, horizonYears: null, endOfLifeUsd: null, sourceIds: [] },
   weights: {
     values: Object.fromEntries(CRITERIA.map((c) => [c.id, c.weight])) as Record<CriterionId, number>,
-    chosenBy: "Study defaults (AIM-FIS v1.0, section 11.1)",
-    date: "2026-11-03",
+    chosenBy: "Owner's Fresno default set (canon B5R-43)",
+    date: "2026-11-04",
   },
   options: [
     {
@@ -147,7 +148,7 @@ export const SYNTHETIC_PROJECT: FacadeProject = {
     },
     {
       id: "opt-b", name: "B · Minimal selective flat",
-      intent: "Repair baseline plus an address sign, a mural on one blank wall and a protected meter door (L1).",
+      intent: "Repair baseline plus an address sign beside the lobby door, a mural on one blank wall and a protected meter door (L1).",
       assignments: { ...minimal }, justifications: [],
       costLines: [
         unpriced("b-design", "design_permits", "Design, sign and mural permits"), unpriced("b-access", "access", "Lift access"),

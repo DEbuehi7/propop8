@@ -5,7 +5,8 @@ we have integrated all of this information into the PropOps8 and/or Dance8
 system: hard coded, locked in and canonical").
 
 The canon is the doctrine taken from the twenty AIM-B5R session studies the
-owner uploaded on 18 Oct 2026, held as typed data in `lib/canon/` and locked by
+owner uploaded on 18 Oct 2026, plus the Façade Intelligence System study he
+made canon on 4 Nov 2026, held as typed data in `lib/canon/` and locked by
 `tests/canon.test.ts`. Every entry names the study and page it came from, its
 status and where it lives in this repo. The full table is
 [`REGISTER.md`](REGISTER.md) (generated; do not edit by hand).
@@ -14,7 +15,7 @@ status and where it lives in this repo. The full table is
 
 | File | Holds |
 |---|---|
-| `lib/canon/studies.ts` | The 20 studies: id, upload file key, title, dates, page count, the study's own status line |
+| `lib/canon/studies.ts` | The 21 studies: id, upload file key, title, dates, page count, the study's own status line |
 | `lib/canon/register.ts` | 180-plus entries: rules, specs, research, concepts, conflicts and open questions, each with sources |
 | `lib/canon/vocab.ts` | Canonical names and fixed values: EDO genes, families, scales and densities; triadic seed; namespaces; palette and semantic states; evidence axes; build phases; B5R cycle, decision contract and software gates; infrastructure systems; L.E.T. nodes; robot IDs; Plate8 shell; clocks; Kirtled vocabulary |
 | `lib/canon/rules.ts` | The checks the studies asked to be executable: triadic seed test, EDO genome record check, music-to-frame sync grid |
@@ -28,6 +29,7 @@ than copying it:
 
 - AIM-B5R gates, markets, namespaces, evidence rules, HOLD_SRO: `docs/aim-dataset/CONTRACT.md`
 - R&D lanes, stages and register: `docs/aim-b5r/RESEARCH.md`
+- Façade Intelligence System audit, rules and what is still proposed: `docs/aim-b5r/FACADE_INTELLIGENCE.md`
 - Phase 1 identity gate and the ten-property pilot: `lib/b5r/phase1/`, `data/aim-b5r/phase1/`
 - Visual archive and colour rule: `docs/aim-b5r/visual-archive/`
 - Kirtled song-following solver: `lib/dance8/harmony/`, `lib/dance8/contracts/harmony.ts`
@@ -92,6 +94,15 @@ All seven v1.0.0 conflicts are settled:
 
 - **PL8-09**: the Stuttr Spies audiobook plays on Late8, with its audio and manifest in Cloudflare R2, never in git. Only chapters marked approved with cleared rights are published (STU-02).
 
+## Decided by the owner (v1.7.0, 4 Nov 2026)
+
+The Façade Intelligence System study became canon after three revisions the owner asked for (B5R-38 to B5R-45, vocab `FIS_*`):
+
+- **B5R-45**: the first façade pilot is in Fresno (Stage 1), on a residential building the owner controls or has written clearance for; never an employer's building.
+- **B5R-39**: the mask rules are loosened. Finishes, panels and signs may sit beside a window, utility or access point (paint and signs beside exits and historic fabric) when 30% of the cell stays opaque wall. Nothing ever covers an exit or historic fabric.
+- **B5R-43**: default weights are the owner's Fresno set: resident comfort 25, lifecycle value 20, energy 25, upkeep 15, context 10, adaptability 5.
+- **B5R-38, -40, -41, -42, -44**: the governing rule and cells, the seven gates FG1-FG7, the flat-first catalogue F0-F7, the capital rules and the sealed decision contract, as built in `lib/b5r/facade/`.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
@@ -117,3 +128,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.4.0, 2026-10-20: D8-09 settled by the owner (five music tracks plus a light-cue track; DASH names FREEZE); `KIRTLED_MIDI_EXPORT` added and FREEZE given its name in `KIRTLED_MOVES`.
 - 1.5.0, 2026-11-01: TRI-13 (G.A.T.E.S. expansion) and VIS-11 (official AIM logo) added, both decided by the owner; notes added to VIS-09 and ST8-01 (audiobook on the lowest-cost location, recommendation pending).
 - 1.6.0, 2026-11-02: PL8-09 added (the audiobook on Late8 with audio in R2), decided by the owner and built; ST8-01's note updated.
+- 1.7.0, 2026-11-04: the Façade Intelligence System study added as the 21st source; B5R-38 to B5R-45 and the `FIS_*` vocabulary added, decided by the owner (Fresno pilot, loosened masks, Fresno weights) and built in `lib/b5r/facade/` (engine aim-fis-flat-0.2.0).

@@ -1,10 +1,11 @@
 /**
- * AIM-B5R Façade Intelligence System (FIS-Flat v0.1): data contracts.
+ * AIM-B5R Façade Intelligence System (FIS-Flat): data contracts.
  *
  * Source: "AIM-B5R Façade Intelligence System Complete Study v1.0" (3 Nov
- * 2026), sections 3-6, 11 and 12.1. That study is a research draft, not a
- * canon study, so nothing here changes the canon register; the names below
- * are the study's contracts reconciled to the code that already exists:
+ * 2026), sections 3-6, 11 and 12.1, made canon by the owner on 4 Nov 2026
+ * (canon 1.7.0, B5R-38 to B5R-45). The names and fixed values (rule, drivers,
+ * masks, gates, modules, weights) come from lib/canon/vocab.ts; the study's
+ * contracts are reconciled to the code that already exists:
  *
  *   - decision calls reuse the engine's CallName (EXECUTE/DEFER/ESCALATE/KILL);
  *   - fact states reuse Phase 1's EvidenceState and SourceTier;
@@ -18,16 +19,17 @@
  */
 import type { CallName, Confidence } from "../engine";
 import type { EvidenceState, SourceTier } from "../phase1/contracts";
-import { EVIDENCE_AXES } from "../../canon/vocab";
+import { EVIDENCE_AXES, FIS_DESIGN_RULE, FIS_DRIVERS, FIS_GATES, FIS_GATE_STATES, FIS_MASK_KINDS, FIS_MODULES, FIS_WEIGHTS } from "../../canon/vocab";
 
 export type { CallName, EvidenceState, SourceTier };
 
 export const FIS_SCHEMA_VERSION = "aim-fis-project-1";
-export const FIS_ENGINE_VERSION = "aim-fis-flat-0.1.0";
+/** 0.2.0: masks loosened (beside placements), Fresno default weights, canon names (owner, 2026-11-04). */
+export const FIS_ENGINE_VERSION = "aim-fis-flat-0.2.0";
 export const FIS_CONTRACT_VERSION = "aim-fis-decision-1";
 export const FIS_CATALOGUE_VERSION = "fis-flat-catalogue-0.1";
 
-export const DESIGN_RULE = ["Program", "Constraints", "Performance", "Geometry", "Material", "Expression"] as const;
+export const DESIGN_RULE = FIS_DESIGN_RULE;
 
 export type DataStatus = (typeof EVIDENCE_AXES.dataStatus)[number];
 export type DrawingStatus = (typeof EVIDENCE_AXES.drawingStatus)[number];
@@ -37,21 +39,22 @@ export type DrawingStatus = (typeof EVIDENCE_AXES.drawingStatus)[number];
 // with its own evidence state; a driver nobody has recorded is "missing".
 // ---------------------------------------------------------------------------
 
-export const DRIVERS = [
-  { id: "location_context", label: "Location / context", needs: "Parcel, orientation, climate, adjacency, hazards, community context", gives: "Exposure profile, cultural sensitivity, review paths" },
-  { id: "view_outward", label: "View outward", needs: "Seated and standing sightlines at real unit windows", gives: "Window-preservation and targeted-screen masks" },
-  { id: "view_inward", label: "View inward", needs: "Public sidewalk and neighbouring sightlines", gives: "Privacy zones and visual identity" },
-  { id: "daylight_lighting", label: "Daylight + lighting", needs: "Orientation, shading, glazing, room use, night exposure", gives: "Screen depth and no-glare limits" },
-  { id: "architecture", label: "Architecture", needs: "Existing wall grid, columns, entrances, balconies, materials", gives: "Module alignment; elements to keep" },
-  { id: "wayfinding", label: "Wayfinding", needs: "Entries, deliveries, accessible routes, parking", gives: "Legible signs at the right priority" },
-  { id: "utilities", label: "Utilities", needs: "Risers, vents, exhaust, meters, drainage, telecom", gives: "Do-not-cover masks; removable service access" },
-  { id: "space_function", label: "Space function", needs: "Bedroom, living room, SRO room, corridor, amenity, garage", gives: "Function-specific transparency and privacy" },
-  { id: "thermal_envelope", label: "Thermal + envelope", needs: "Air/water barrier, insulation, solar heat, thermal bridging", gives: "Assembly review and energy options" },
-  { id: "history_identity", label: "History + identity", needs: "Historic resource record, arts programmes, community feedback", gives: "Site-specific motif and artwork provenance" },
-  { id: "maintenance", label: "Maintenance", needs: "Access equipment, cleaning, corrosion, service intervals", gives: "Repair strategy and lifecycle costs" },
-  { id: "budget_financing", label: "Budget + financing", needs: "Available capital, required work, contingency, priced options", gives: "Intervention tier and deferred options" },
-] as const;
-export type DriverId = (typeof DRIVERS)[number]["id"];
+export type DriverId = (typeof FIS_DRIVERS)[number];
+const DRIVER_TEXT: Record<DriverId, { label: string; needs: string; gives: string }> = {
+  location_context: { label: "Location / context", needs: "Parcel, orientation, climate, adjacency, hazards, community context", gives: "Exposure profile, cultural sensitivity, review paths" },
+  view_outward: { label: "View outward", needs: "Seated and standing sightlines at real unit windows", gives: "Window-preservation and targeted-screen masks" },
+  view_inward: { label: "View inward", needs: "Public sidewalk and neighbouring sightlines", gives: "Privacy zones and visual identity" },
+  daylight_lighting: { label: "Daylight + lighting", needs: "Orientation, shading, glazing, room use, night exposure", gives: "Screen depth and no-glare limits" },
+  architecture: { label: "Architecture", needs: "Existing wall grid, columns, entrances, balconies, materials", gives: "Module alignment; elements to keep" },
+  wayfinding: { label: "Wayfinding", needs: "Entries, deliveries, accessible routes, parking", gives: "Legible signs at the right priority" },
+  utilities: { label: "Utilities", needs: "Risers, vents, exhaust, meters, drainage, telecom", gives: "Do-not-cover masks; removable service access" },
+  space_function: { label: "Space function", needs: "Bedroom, living room, SRO room, corridor, amenity, garage", gives: "Function-specific transparency and privacy" },
+  thermal_envelope: { label: "Thermal + envelope", needs: "Air/water barrier, insulation, solar heat, thermal bridging", gives: "Assembly review and energy options" },
+  history_identity: { label: "History + identity", needs: "Historic resource record, arts programmes, community feedback", gives: "Site-specific motif and artwork provenance" },
+  maintenance: { label: "Maintenance", needs: "Access equipment, cleaning, corrosion, service intervals", gives: "Repair strategy and lifecycle costs" },
+  budget_financing: { label: "Budget + financing", needs: "Available capital, required work, contingency, priced options", gives: "Intervention tier and deferred options" },
+};
+export const DRIVERS = FIS_DRIVERS.map((id) => ({ id, ...DRIVER_TEXT[id] }));
 
 export interface DriverInput {
   value: string;
@@ -63,22 +66,23 @@ export interface DriverInput {
 // The seven hard feasibility gates (study section 6), as FG1-FG7.
 // ---------------------------------------------------------------------------
 
-export const FACADE_GATES = [
-  { id: "FG1", name: "Fire / life safety", check: "Construction type, flame propagation, approved materials, egress and smoke", stop: "Unreviewed combustible layer or an obstructed emergency opening", professional: true },
-  { id: "FG2", name: "Structure", check: "Wind and seismic loads, substrate capacity, anchors, projections, falling hazards", stop: "No tested or engineered attachment path", professional: true },
-  { id: "FG3", name: "Envelope", check: "Drainage, flashing, air barrier, thermal and moisture behaviour, penetrations", stop: "A screen traps water or hides a known leak", professional: true },
-  { id: "FG4", name: "Habitability", check: "View, daylight, ventilation, window operation, accessible features, visual comfort", stop: "A pattern badly obstructs a bedroom window or its light", professional: false },
-  { id: "FG5", name: "Regulatory / context", check: "Historic and HPOZ review, sign and mural rules, setbacks and projections, permits, art rights", stop: "A mural exemption assumed without checking", professional: false },
-  { id: "FG6", name: "Operations", check: "Cleaning access, repair parts, equipment and duct access, corrosion, inspections", stop: "The façade prevents inspection or safe repair", professional: false },
-  { id: "FG7", name: "Capital", check: "Required work, approved budget, contingency, procurement evidence", stop: "Decorative scope displaces required safety repair", professional: false },
-] as const;
-export type FacadeGateId = (typeof FACADE_GATES)[number]["id"];
-export const GATE_STATES = ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"] as const;
+export type FacadeGateId = (typeof FIS_GATES)[number]["id"];
+const GATE_TEXT: Record<FacadeGateId, { check: string; stop: string }> = {
+  FG1: { check: "Construction type, flame propagation, approved materials, egress and smoke", stop: "Unreviewed combustible layer or an obstructed emergency opening" },
+  FG2: { check: "Wind and seismic loads, substrate capacity, anchors, projections, falling hazards", stop: "No tested or engineered attachment path" },
+  FG3: { check: "Drainage, flashing, air barrier, thermal and moisture behaviour, penetrations", stop: "A screen traps water or hides a known leak" },
+  FG4: { check: "View, daylight, ventilation, window operation, accessible features, visual comfort", stop: "A pattern badly obstructs a bedroom window or its light" },
+  FG5: { check: "Historic and HPOZ review, sign and mural rules, setbacks and projections, permits, art rights", stop: "A mural exemption assumed without checking" },
+  FG6: { check: "Cleaning access, repair parts, equipment and duct access, corrosion, inspections", stop: "The façade prevents inspection or safe repair" },
+  FG7: { check: "Required work, approved budget, contingency, procurement evidence", stop: "Decorative scope displaces required safety repair" },
+};
+export const FACADE_GATES = FIS_GATES.map((x) => ({ ...x, ...GATE_TEXT[x.id] }));
+export const GATE_STATES = FIS_GATE_STATES;
 export type GateState = (typeof GATE_STATES)[number];
 /** Gates an option can never declare not applicable. */
 export const ALWAYS_APPLIES: readonly FacadeGateId[] = ["FG1", "FG7"];
 /** An UNKNOWN here needs a licensed professional, so the call is ESCALATE rather than DEFER. */
-export const PROFESSIONAL_GATES: readonly FacadeGateId[] = FACADE_GATES.filter((g) => g.professional).map((g) => g.id);
+export const PROFESSIONAL_GATES: readonly FacadeGateId[] = FIS_GATES.filter((x) => x.professional).map((x) => x.id);
 
 /** A gate review. Without optionId it covers every option in the project. */
 export interface GateRecord {
@@ -103,7 +107,7 @@ export type GeometryState = (typeof GEOMETRY_STATES)[number];
 export const MATURITY = ["CONCEPT", "FIELD OBSERVED", "SURVEY VERIFIED", "ENGINEER REVIEWED", "INSTALLED"] as const;
 export type Maturity = (typeof MATURITY)[number];
 
-export const MASK_KINDS = ["window", "egress", "utility", "historic", "maintenance_access"] as const;
+export const MASK_KINDS = FIS_MASK_KINDS;
 export type MaskKind = (typeof MASK_KINDS)[number];
 
 /** What is behind the wall. Residential only (B5R-33): no retail or office uses. */
@@ -247,14 +251,8 @@ export interface FinanceInputs {
 // Preference scoring (study section 11.1): after the gates, never instead.
 // ---------------------------------------------------------------------------
 
-export const CRITERIA = [
-  { id: "resident_comfort", label: "Resident comfort, views and privacy", weight: 25 },
-  { id: "lifecycle_value", label: "Evidence-backed lifecycle value", weight: 25 },
-  { id: "environmental", label: "Environmental / energy performance", weight: 20 },
-  { id: "constructability", label: "Constructability and maintenance", weight: 15 },
-  { id: "context", label: "Context, history and wayfinding", weight: 10 },
-  { id: "adaptability", label: "Future adaptability", weight: 5 },
-] as const;
+/** The default weights are the owner's Fresno set (canon B5R-43); the study's were 25/25/20/15/10/5. */
+export const CRITERIA = FIS_WEIGHTS;
 export type CriterionId = (typeof CRITERIA)[number]["id"];
 export const SCORE_MAX = 5;
 
@@ -276,8 +274,8 @@ export interface ScoreInput {
 // Options and the project.
 // ---------------------------------------------------------------------------
 
-export const MODULE_IDS = ["F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7"] as const;
-export type ModuleId = (typeof MODULE_IDS)[number];
+export type ModuleId = (typeof FIS_MODULES)[number]["id"];
+export const MODULE_IDS: readonly ModuleId[] = FIS_MODULES.map((m) => m.id);
 
 /** A resident window screened on purpose (F3 only), with its reason and source. */
 export interface MaskJustification {

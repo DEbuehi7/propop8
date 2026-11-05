@@ -8,10 +8,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { INTERVENTION_LADDER } from "../lib/canon/vocab";
+import { FIS_GATES, FIS_MODULES, INTERVENTION_LADDER } from "../lib/canon/vocab";
 import {
   CATALOGUE, CRITERIA, FACADE_GATES, MODULE_IDS,
-  buildContract, canPlace, capitalFor, cellById, checkOption, contractIntact, evaluateProject, scoreOption, sensitivity, shiftWeights,
+  buildContract, canPlace, capitalFor, cellById, checkOption, clearWallFraction, contractIntact, evaluateProject, scoreOption, sensitivity, shiftWeights,
   validateProject,
   type CostLine, type FacadeOption, type FacadeProject, type GateRecord, type ModuleId,
 } from "../lib/b5r/facade";
@@ -106,6 +106,9 @@ test("facade fixture: no option obstructs a window, exit, utility, historic or a
 
 test("facade catalogue: F0-F7 in order, flat first, every module on the canon ladder", () => {
   assert.deepEqual(CATALOGUE.map((m) => m.id), [...MODULE_IDS]);
+  assert.deepEqual(CATALOGUE.map((m) => ({ id: m.id, name: m.name, status: m.status })), FIS_MODULES.map((m) => ({ ...m })), "catalogue matches canon (B5R-41)");
+  assert.deepEqual(FACADE_GATES.map((g) => [g.id, g.name]), FIS_GATES.map((g) => [g.id, g.name]), "gates match canon (B5R-40)");
+  assert.deepEqual(CRITERIA.map((c) => c.weight), [25, 20, 25, 15, 10, 5], "the owner's Fresno weights (B5R-43)");
   const by = Object.fromEntries(CATALOGUE.map((m) => [m.id, m]));
   assert.equal(by.F7.status, "disabled");
   assert.equal(by.F6.status, "pilot");
@@ -116,7 +119,7 @@ test("facade catalogue: F0-F7 in order, flat first, every module on the canon la
   }
 });
 
-test("facade masks: protected windows, exits, utilities, historic fabric and access are refused with a reason", () => {
+test("facade masks: nothing covers an exit or historic fabric; refusals give the reason", () => {
   const p = SYNTHETIC_PROJECT;
   const o = clone(p.options[0]);
   const at = (f: number, b: number) => cellById(p, cellId(f, b))!;
@@ -129,33 +132,89 @@ test("facade masks: protected windows, exits, utilities, historic fabric and acc
       assert.ok(r.reason.length > 20);
     }
   };
-  for (const m of ["F1", "F2", "F4"] as ModuleId[]) refuse(1, 1, m, "mask", "FG4"); // bedroom window
-  refuse(1, 1, "F3", "mask", "FG4"); // a screen needs a justification
+  refuse(1, 1, "F3", "mask", "FG4"); // a screen over a bedroom window needs a justification
   refuse(1, 5, "F3", "mask", "FG1"); // studio window under the fire escape: the hard block is named first...
   o.justifications.push({ cellId: cellId(1, 5), maskKind: "window", reason: "test", sourceIds: ["syn-sun-note"] });
   refuse(1, 5, "F3", "mask", "FG1"); // ...and a justified window still cannot cover the exit
-  refuse(0, 1, "F1", "mask", "FG1"); // lobby exit door
-  refuse(1, 2, "F2", "mask", "FG6"); // downspout
-  assert.equal(canPlace(p, at(0, 2), "F5", o).ok, true, "F5 protects the meters");
+  refuse(0, 6, "F3", "mask", "FG1"); // stair exit door
+  refuse(0, 1, "F2", "mask", "FG1"); // no panel beside an exit
+  refuse(1, 5, "F2", "mask", "FG1"); // nor beside a fire escape
+  refuse(1, 2, "F3", "mask", "FG6"); // a screen would cover the downspout
+  refuse(1, 6, "F3", "mask", "FG6"); // or the bathroom vent
+  assert.equal(canPlace(p, at(0, 2), "F5", o).ok, true, "F5 covers the meters as a removable door");
   refuse(1, 0, "F5", "catalogue", null); // no utility to protect
   refuse(2, 0, "F4", "catalogue", null); // wayfinding above street level
+  refuse(1, 1, "F4", "catalogue", null);
   refuse(4, 0, "F1", "survey", null); // unmeasured top floor: NEEDS SURVEY
   refuse(1, 0, "F7", "catalogue", null); // disabled
   refuse(1, 0, "F6", "survey", null); // pilot module needs a survey-verified cell
   assert.equal(canPlace(p, at(4, 1), "F0", o).ok, true, "F0 is always allowed");
   assert.equal(canPlace(p, at(1, 0), "F1", o).ok, true, "a solid pier can take a finish");
+
+  // Historic fabric: measured here so the rule itself is tested.
+  const h = clone(p);
+  h.cells.find((c) => c.id === cellId(4, 0))!.geometryState = "FIELD_OBSERVED";
+  const hc = cellById(h, cellId(4, 0))!;
+  const hr = canPlace(h, hc, "F2", o);
+  assert.ok(!hr.ok && hr.gate === "FG5", "no panel beside historic fabric");
+  assert.ok(canPlace(h, hc, "F1", o).ok, "paint below the cornice, after historic review");
+  const h3 = canPlace(h, hc, "F3", o);
+  assert.ok(!h3.ok && h3.gate === "FG5", "nothing covers historic fabric");
+});
+
+test("facade masks (v0.2, loosened): finishes, panels and signs may sit beside a protected area that stays clear", () => {
+  const p = SYNTHETIC_PROJECT;
+  const o = clone(p.options[0]);
+  const at = (f: number, b: number) => cellById(p, cellId(f, b))!;
+  const ok = (f: number, b: number, m: ModuleId, note: RegExp) => {
+    const r = canPlace(p, at(f, b), m, o);
+    assert.ok(r.ok, `${m} on ${cellId(f, b)}: ${r.ok ? "" : r.reason}`);
+    if (r.ok) assert.match(r.notes.join(" "), note, `${m} on ${cellId(f, b)}`);
+  };
+  ok(1, 1, "F1", /beside the window, which stays clear; FG4/); // paint around a bedroom window
+  ok(1, 1, "F2", /FG4 and FG3/); // a panel around it meets the flashing too
+  ok(0, 1, "F4", /beside the exit, which stays clear; FG1/); // address sign beside the lobby door
+  ok(0, 1, "F1", /FG1/);
+  ok(1, 2, "F2", /beside the utility, which stays clear; FG6/); // panel beside the downspout
+  ok(0, 3, "F3", /common-area window; FG4/); // mail-room window: no justification needed
+
+  // Too little opaque wall left once the window stays clear.
+  const big = clone(p);
+  big.masks.find((m) => m.cellId === cellId(1, 1) && m.kind === "window")!.rect = { x: 0.05, y: 0.05, w: 0.9, h: 0.8 };
+  assert.ok(clearWallFraction(big, cellId(1, 1)) < 0.3);
+  const r = canPlace(big, cellById(big, cellId(1, 1))!, "F1", o);
+  assert.ok(!r.ok && /Too little opaque wall/.test(r.reason));
+
+  // The union of overlapping masks is counted once: studio window + fire escape.
+  const wall = clearWallFraction(p, cellId(1, 5));
+  const win = 0.64 * 0.58;
+  const esc = 1 * 0.28;
+  const overlap = 0.64 * (0.78 - 0.72);
+  assert.ok(Math.abs(wall - (1 - (win + esc - overlap))) < 1e-6);
+
+  // A finish beside a window brings FG4 into the option, so FG4 cannot be "not applicable".
+  const q = clone(p);
+  q.options[0].assignments[cellId(1, 1)] = "F1";
+  q.gateRecords.push({ gate: "FG4", state: "NOT_APPLICABLE", reason: "paint only", sourceIds: ["syn-geometry"], reviewer: "Test reviewer", date: "2026-11-04" });
+  const fg4 = evaluateProject(q).options[0].gates.find((g) => g.gate === "FG4")!;
+  assert.equal(fg4.state, "UNKNOWN");
+  assert.ok(fg4.appliesBecause.some((x) => /F1 beside the window on c-1-1/.test(x)));
+  assert.equal(evaluateProject(q).options[0].windows.clear, evaluateProject(q).options[0].windows.residentWindows, "paint around a window leaves it clear");
 });
 
 test("facade gates: an obstruction in an option file is a FAIL and the option is KILLed, not scored low", () => {
   const p = clone(SYNTHETIC_PROJECT);
   const c = p.options[2];
-  c.assignments[cellId(1, 1)] = "F2"; // panel over a bedroom window
+  c.assignments[cellId(1, 1)] = "F3"; // screen over a bedroom window, no justification
   c.assignments[cellId(2, 5)] = "F3"; // screen over the fire escape
+  c.assignments[cellId(1, 2)] = "F2"; // allowed: a panel beside the downspout
   const ev = evaluateProject(p);
   const o = ev.options.find((x) => x.optionId === c.id)!;
   assert.equal(o.call, "KILL");
   assert.equal(o.gates.find((g) => g.gate === "FG1")?.state, "FAIL");
   assert.equal(o.gates.find((g) => g.gate === "FG4")?.state, "FAIL");
+  assert.notEqual(o.gates.find((g) => g.gate === "FG6")?.state, "FAIL", "beside is not an obstruction");
+  assert.ok(!o.conflicts.some((x) => x.cellId === cellId(1, 2)));
   assert.ok(!ev.ranking.some((r) => r.optionId === c.id), "a killed option is not ranked");
   assert.ok(o.score.total !== null, "its score still exists, and changes nothing");
 });
@@ -346,23 +405,23 @@ test("facade scoring: after the gates, editable weights, lifecycle value needs e
   const life = a.score.parts.find((x) => x.criterion === "lifecycle_value");
   assert.equal(life?.value, 0, "no verified benefit, so lifecycle value counts as 0");
   assert.match(life!.note!, /no verified benefit/);
-  assert.equal(a.score.total, 20 + 0 + 4 + 12 + 6 + 2);
+  assert.equal(a.score.total, 20 + 0 + 5 + 12 + 6 + 2, "Fresno weights: comfort 25, lifecycle 20, energy 25, upkeep 15, context 10, adaptability 5");
   assert.deepEqual(ev.ranking.map((r) => r.optionId), ["opt-b", "opt-a", "opt-c"]);
 
   const shifted = shiftWeights(p.weights, "environmental", 5);
   const sum = Object.values(shifted.values).reduce((t, v) => t + v, 0);
   assert.ok(Math.abs(sum - 100) < 1e-9);
-  assert.equal(shifted.values.environmental, 25);
+  assert.equal(shifted.values.environmental, 30);
 
   // Two options that swap places when the environmental weight moves.
   const o1 = clone(p.options[0]);
   const o2 = clone(p.options[0]);
   o1.id = "x1"; o2.id = "x2";
   o1.scores!.values = { resident_comfort: 5, lifecycle_value: 0, environmental: 0, constructability: 5, context: 5, adaptability: 5 };
-  o2.scores!.values = { resident_comfort: 5, lifecycle_value: 0, environmental: 2, constructability: 4, context: 4, adaptability: 4 };
+  o2.scores!.values = { resident_comfort: 5, lifecycle_value: 0, environmental: 2, constructability: 4, context: 4, adaptability: 1 };
   const caps = { verifiedBenefitCount: 0 };
   assert.equal(scoreOption(o1, p.weights, caps).total, 55);
-  assert.equal(scoreOption(o2, p.weights, caps).total, 25 + 8 + 12 + 8 + 4);
+  assert.equal(scoreOption(o2, p.weights, caps).total, 25 + 10 + 12 + 8 + 1);
   const sens = sensitivity([{ option: o1, capital: caps }, { option: o2, capital: caps }], p.weights);
   assert.equal(sens.leader, "x2");
   assert.equal(sens.stable, false);

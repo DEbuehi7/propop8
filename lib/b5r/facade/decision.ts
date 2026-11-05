@@ -58,7 +58,7 @@ export function maturityOf(p: FacadeProject, option: FacadeOption, gates: GateRe
     const r = gates.find((x) => x.gate === g);
     return r !== undefined && (r.state === "PASS" || r.state === "NOT_APPLICABLE");
   });
-  // INSTALLED needs installed-asset records, which v0.1 does not hold.
+  // INSTALLED needs installed-asset records, which FIS-Flat does not hold yet.
   return engineered ? "ENGINEER REVIEWED" : "SURVEY VERIFIED";
 }
 

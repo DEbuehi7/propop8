@@ -39,9 +39,9 @@ test("canon: every source cites a known study and a page inside it", () => {
   }
 });
 
-test("canon: all twenty studies are integrated (at least three entries each)", () => {
-  assert.equal(STUDIES.length, 20);
-  assert.equal(new Set(STUDIES.map((s) => s.fileKey)).size, 20, "duplicate study file key");
+test("canon: every study is integrated (at least three entries each)", () => {
+  assert.equal(STUDIES.length, 21, "the twenty studies of 18 Oct plus the façade study of 4 Nov (1.7.0)");
+  assert.equal(new Set(STUDIES.map((s) => s.fileKey)).size, 21, "duplicate study file key");
   for (const s of STUDIES) {
     const n = CANON_REGISTER.filter((e) => e.sources.some((x) => x.study === s.id)).length;
     assert.ok(n >= 3, `${s.id} has only ${n} canon entries`);
@@ -82,6 +82,13 @@ test("canon vocab: counts the studies define", () => {
   assert.equal(vocab.LET_NODES.length, 3);
   assert.equal(vocab.KIRTLED_C_MAJOR.length, 6);
   assert.deepEqual(vocab.EDO_KERNEL_FIRST_FAMILIES.filter((f) => !vocab.EDO_FAMILIES.some((x) => x.id === f)), []);
+  assert.equal(vocab.FIS_DESIGN_RULE.length, 6);
+  assert.equal(vocab.FIS_DRIVERS.length, 12);
+  assert.equal(vocab.FIS_MASK_KINDS.length, 5);
+  assert.deepEqual(vocab.FIS_GATES.map((g) => g.id), ["FG1", "FG2", "FG3", "FG4", "FG5", "FG6", "FG7"]);
+  assert.deepEqual(vocab.FIS_MODULES.map((m) => m.id), ["F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7"]);
+  assert.equal(vocab.FIS_MODULES.find((m) => m.id === "F7")?.status, "disabled");
+  assert.equal(vocab.FIS_WEIGHTS.reduce((t, w) => t + w.weight, 0), 100, "façade weights sum to 100");
 });
 
 test("canon vocab: expression densities are ordered and do not overlap; surface mix sums to 1", () => {
