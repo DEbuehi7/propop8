@@ -25,6 +25,7 @@ Status words:
 |---|---|---|
 | [canon/README.md](canon/README.md) | What the canon is, decisions by version, what is still open, change log | Current |
 | [canon/REGISTER.md](canon/REGISTER.md) | Every canon entry with its sources and where it lives | Generated (canon tests) |
+| [canon/CHATGPT_PROMPT.md](canon/CHATGPT_PROMPT.md) | The brief to paste into ChatGPT for studies and canon updates, with the site-fit check | Current (checked by tests/b5rSite.test.ts) |
 
 ## AIM-B5R (real-estate intelligence)
 

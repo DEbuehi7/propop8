@@ -1,8 +1,8 @@
 # AIM-B5R Context & Dignity Engine (study v1.0, 6 Nov 2026)
 
-Status: **research, registered as the 22nd canon study (canon 1.8.0). Its
-entries are proposed and wait for the owner.** Nothing here is built except
-one test that re-runs the study's numbers.
+Status: **the 22nd canon study. Registered in canon 1.8.0; the owner locked
+its rules on 6 Nov 2026 (canon 1.9.0).** Nothing here is built except one test
+that re-runs the study's numbers; the rules are locked, the engine is not built.
 
 The study's rule, in its own words: *design for dignity as a universal
 property; evaluate measurable assets and services rather than profiling
@@ -13,13 +13,13 @@ feels to live there (human experience) and what improves at what cost
 
 | Canon entry | Status | What it says |
 |---|---|---|
-| GOV-29 | PROPOSED (recommended for LOCKED) | Buildings, services and outcomes are evaluated, never people. No protected characteristic or proxy is used in eligibility, tenant scores or ad delivery |
-| B5R-46 | PROPOSED | Three universal spatial rights: Darkness (privacy, control), Light (clarity, legibility), Spectrum (flexible, plural space). They are design metaphors, never racial types |
-| B5R-47 | PROPOSED | The engine is a context layer with eight hard gates and a decision contract; it never replaces engineering, underwriting or human approval |
-| B5R-48 | PROPOSED | Flat-wall expression first; LED and moiré only when power and upkeep justify them; storefront windows show model interiors only |
-| B5R-49 | PROPOSED | Outcomes are measured against a baseline; resident measures are opt-in and kept apart from building and value measures |
-| B5R-50 | PROPOSED | A staged pilot (LOD-0 to LOD-3) with stop conditions |
-| B5R-51 | CONFLICT | The study starts in DTLA; canon starts in Fresno |
+| GOV-29 | LOCKED | Buildings, services and outcomes are evaluated, never people. No protected characteristic or proxy is used in eligibility, tenant scores or ad delivery |
+| B5R-46 | LOCKED | Three universal spatial rights: Darkness (privacy, control), Light (clarity, legibility), Spectrum (flexible, plural space). They are design metaphors, never racial types |
+| B5R-47 | LOCKED | The engine is a context layer with eight hard gates and a decision contract; it never replaces engineering, underwriting or human approval |
+| B5R-48 | LOCKED | Flat-wall expression first; LED and moiré only when power and upkeep justify them; storefront windows show model interiors only |
+| B5R-49 | LOCKED | Outcomes are measured against a baseline; resident measures are opt-in and kept apart from building and value measures |
+| B5R-50 | LOCKED | A staged pilot (LOD-0 to LOD-3) with stop conditions |
+| B5R-51 | LOCKED | The pilot starts in Fresno; DTLA is desk research only (the study had started in DTLA) |
 | B5R-52 | CONCEPT | The four site archetypes |
 | B5R-53 | RESEARCH (built: a test) | The hypothetical underwriting page, re-run |
 | B5R-54 | RESEARCH | The Atlantic Relationship Atlas is context, never an input |
@@ -55,8 +55,8 @@ archive's images. Check a copy against its SHA-256.
 1. **Where the pilot starts.** The study starts with a DTLA evidence inventory
    and a DTLA building or storefront test (p6, p14). Canon starts in Fresno,
    on a building the owner controls or has written clearance for, never an
-   employer's (B5R-45, GOV-16). Recorded as conflict **B5R-51**; until the
-   owner decides, the Fresno rule stands and DTLA is desk research at most.
+   employer's (B5R-45, GOV-16). The owner settled it on 6 Nov 2026
+   (**B5R-51**): Fresno first; DTLA is desk research only.
 2. **"Automate building decisions" (p11).** Canon GOV-14 says calculations are
    deterministic and AI explains, never decides. B5R-47 is written that way:
    deterministic rules compute, software explains and escalates, a named
@@ -120,14 +120,12 @@ resident record. It is not committed to this public repo.
 
 - No context-engine code: no new gates, no resident feedback collection, no
   sensors, no DTLA work.
-- Nothing is locked. All ten entries are proposed, conflict, concept or
-  research.
+- No context-engine code. The six locked rules (GOV-29, B5R-46 to B5R-51)
+  guide what gets built; B5R-52 to B5R-54 stay concept and research.
 - The atlas and the study PDF stay out of the repo.
 
-## The owner's decisions
+## The owner's decisions (6 Nov 2026, canon 1.9.0)
 
-1. **GOV-29**: lock it. Recommended: fair-housing law already requires it.
-2. **B5R-51**: keep Fresno first (recommended) and treat DTLA as desk research,
-   or name a DTLA building you control or have written clearance for.
-3. **B5R-46 to B5R-50**: lock them as a set, or keep them proposed until the
-   Fresno pilot needs them.
+1. **GOV-29** locked: no profiling, no protected characteristic or proxy.
+2. **B5R-51**: Fresno first; DTLA is desk research only.
+3. **B5R-46 to B5R-50** locked as a set.
