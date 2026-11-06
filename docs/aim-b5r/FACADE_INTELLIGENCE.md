@@ -9,6 +9,12 @@ merged in PR #59; v0.2 holds the owner's revisions of 4 Nov 2026:
 
 Source: *AIM-B5R Façade Intelligence System Complete Study v1.0* (3 Nov
 2026), a research draft that the owner made the 21st canon study.
+The handoff pack sent again on 6 Nov 2026 (PDF, Word, Markdown manuscript,
+implementation prompt and seven figures) changes nothing: its PDF's text is
+identical to the canon source. The figures are AIMV-091 to 097 in the visual
+archive; two are flagged there (figure 7 says G1-G7 where canon says FG1-FG7,
+and figure 2's legend gives magenta a service meaning). The Context & Dignity
+Engine study builds on this one: see [CONTEXT_DIGNITY.md](CONTEXT_DIGNITY.md).
 
 Governing rule: **Program → Constraints → Performance → Geometry → Material
 → Expression.** Masks and seven hard gates run first. Preference scores run

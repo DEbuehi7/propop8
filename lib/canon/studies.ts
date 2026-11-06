@@ -2,7 +2,8 @@
 //
 // The twenty AIM-B5R session studies the owner uploaded on 18 Oct 2026, plus
 // the Façade Intelligence System study uploaded on 4 Nov 2026 and made canon
-// by the owner that day (1.7.0), as source documents for the canon register. `fileKey` is the first eight
+// by the owner that day (1.7.0), and the Context & Dignity Engine study of
+// 6 Nov 2026 (1.8.0, its entries proposed), as source documents for the canon register. `fileKey` is the first eight
 // characters of the uploaded file name, so a study can be traced back to its
 // PDF. Page counts are the PDFs' own; register entries cite pages inside them.
 //
@@ -43,7 +44,8 @@ export type StudyId =
   | "robotic-ecology"
   | "triadic-dance8"
   | "kirtled"
-  | "facade-fis";
+  | "facade-fis"
+  | "context-dignity";
 
 export const STUDIES: readonly Study[] = [
   { id: "suno-stems", fileKey: "1f816758", title: "Suno Stems, Stuttr, State8 and Dance8 Integration", discussed: "2026-10-17", compiled: "2026-10-17", pages: 5, selfStatus: "Design / workflow summary; no verified cost, performance, regulatory or implementation claims" },
@@ -67,6 +69,7 @@ export const STUDIES: readonly Study[] = [
   { id: "triadic-dance8", fileKey: "f9af927e", title: "Triadic Genome & Responsive Architecture: Dance8 + Skate-Dance Fusion", discussed: "2026-10-10", compiled: "2026-10-17", pages: 14, selfStatus: "Design concept; not engineering validation" },
   { id: "kirtled", fileKey: "fece7f38", title: "Kirtled and Dance8 Spatial Music Integration", discussed: "2026-10-17", compiled: "2026-10-17", pages: 6, selfStatus: "Synthetic concept; architectural use is a proposed translation" },
   { id: "facade-fis", fileKey: "6837f7a2", title: "AIM-B5R Façade Intelligence System Complete Study v1.0", discussed: "2026-11-03", compiled: "2026-11-03", pages: 13, selfStatus: "Research / concept design / software implementation brief; not construction documents or a completed repository audit" },
+  { id: "context-dignity", fileKey: "75bf0861", title: "AIM-B5R Context & Dignity Engine: Locational Intelligence, Sensitive Design & Measurable Outcomes (Design Strategy v1.0)", discussed: "2026-11-06", compiled: "2026-11-06", pages: 15, selfStatus: "Design research v1.0, strategy and concept; concept visualizations, not site surveys; scenario economics hypothetical; OpenAI-assisted" },
 ];
 
 export const studyById = (id: StudyId): Study => {

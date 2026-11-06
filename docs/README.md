@@ -34,6 +34,7 @@ Status words:
 | [../data/aim-b5r/phase1/README.md](../data/aim-b5r/phase1/README.md) | Phase 1 identity kit for the Kern/Fresno pilot (G0) | Current |
 | [aim-b5r/PHOTO_SCREEN.md](aim-b5r/PHOTO_SCREEN.md) | Photo screen: photos in, a first-look report out | Current |
 | [aim-b5r/FACADE_INTELLIGENCE.md](aim-b5r/FACADE_INTELLIGENCE.md) | Façade Intelligence System: audit, rules, E/S/C register, next decision | Current |
+| [aim-b5r/CONTEXT_DIGNITY.md](aim-b5r/CONTEXT_DIGNITY.md) | Context & Dignity Engine study: how it fits canon, conflicts, checked numbers, the Atlantic atlas review | Research (canon 1.8.0, proposed) |
 | [aim-b5r/RESEARCH.md](aim-b5r/RESEARCH.md) | The research and development segment | Reference |
 | [aim-b5r/visual-archive/README.md](aim-b5r/visual-archive/README.md) | Concept image archive (never evidence) | Reference |
 | [../aim-b5r-engine/README.md](../aim-b5r-engine/README.md) | Python reference engine and weekly data job | Reference |

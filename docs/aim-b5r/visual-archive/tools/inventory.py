@@ -5,8 +5,8 @@ things that must be fixed or labelled before external use.
 """
 import csv, hashlib, json, os, struct, sys
 
-UPLOADS = sys.argv[1]
-OUT = sys.argv[2]
+APPEND = "--append" in sys.argv
+UPLOADS, OUT = [a for a in sys.argv[1:] if a != "--append"][:2]
 
 # (upload id, received, concept, cross tags, title, what it shows, evidence/tech state, flags)
 IMAGES = [
@@ -302,6 +302,63 @@ DERIVATIVES = {"55e29b4e": "album screenshot of FUT-01/EDO-01 posters", "debc82a
                "cdb2a12d": "page 4 of the Dance8 + STUTTR poster PDF v1", "76fc717f": "page 5 of the Dance8 + STUTTR poster PDF v1",
                "50904d31": "page 6 of the Dance8 + STUTTR poster PDF v1"}
 
+# Later batches. `src` is the file's path inside the uploads folder; `upload`
+# is the name recorded in the register (for a file from a zip, the zip and the
+# path inside it). Run the whole inventory again with every upload present, or
+# add only these rows to the committed register with
+#   python3 tools/inventory.py --append <uploads folder> <archive folder>
+# (src, upload, received, concept, cross tags, title, what it shows, tech state, flags, derivative note)
+ADDED = [
+    # 2026-11-06: Context & Dignity Engine board, the Façade Intelligence System pack's figures, two Dance8 concepts
+    ("1f78c4ac-image.png", "1f78c4ac-image.png", "2026-11-06", "DES-01", "DES-03;EDO-02",
+     "AIM-B5R Context + Dignity + Performance - four proposed site responses",
+     "Navy board, four renders: DTLA / Adaptive Reuse (brick building with fire escapes, storefront windows showing furnished bedrooms, pierced metal canopy, bus), Huntington Beach / Coastal (white multifamily with timber screens, shade sails, planted court, pier and ocean), Crestline / Lumen (dark timber building in pines, outside stair with a cyan light strip, exit sign), Twentynine Palms / Eon (single-storey desert units, solar canopy, Joshua trees, magenta screens, water tank). Subtitle: conceptual visualizations, not photographs of actual sites.",
+     "CONCEPT", "Storefront windows show bedroom interiors: model or consented interiors only, never live units (canon B5R-48, GOV-29 proposed). Footer typo 'residents needs'. Place names paired with the Lumen and Eon lab names are not verified sites", ""),
+    ("c961aa72/assets/fig_01_pipeline.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_01_pipeline.png", "2026-11-06", "EVID-01", "DES-01",
+     "AIM-FIS evidence-to-installation pipeline (façade study figure 1)",
+     "Five boxes: 01 Survey (geometry + openings, history + constraints), 02 Analyze (view, sun, thermal, utilities + risk), 03 Configure (flat modules + art, material + budget), 04 Verify (hard gates + E/S/C, professional review), 05 Operate (asset IDs + service, measure + learn). Footer: source-backed data, no invented compliance, retrofit and new-build share a module library.",
+     "CONCEPT", "", ""),
+    ("c961aa72/assets/fig_02_functional_zoning.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_02_functional_zoning.png", "2026-11-06", "DES-01", "",
+     "AIM-FIS functional zoning elevation (façade study figure 2)",
+     "Schematic elevation, seven window bays on three floors: gold vertical screens on the end bays, cyan bars over four centre windows, one magenta service panel, 'History / Art' and 'Utility Access' panels at street level. Legend: cyan protected resident outlook, gold targeted privacy / shading, magenta service-access mask. Labelled schematic only.",
+     "CONCEPT", "Legend gives magenta a service meaning; the AIM diagnostic colour contract keeps magenta for loss / exposure (design rules below)", ""),
+    ("c961aa72/assets/fig_03_wall_assembly.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_03_wall_assembly.png", "2026-11-06", "DES-01", "",
+     "AIM-FIS flat-first wall assembly (façade study figure 3)",
+     "Exploded diagram of six layers: host wall (retain / repair), WRB / flashing (verify assembly), subframe (loads / anchors), service gap (access / drainage), flat panel (material + art), screen (optional shade). Warning line: do not equate a decorative screen with a tested, code-compliant exterior wall assembly.",
+     "CONCEPT", "", ""),
+    ("c961aa72/assets/fig_04_view_diagram.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_04_view_diagram.png", "2026-11-06", "DES-01", "",
+     "AIM-FIS two-sided experience, street versus apartment (façade study figure 4)",
+     "Wall section with one window: a standing figure on the street side (context, wayfinding, privacy) and a seated resident inside (daylight, sightlines, comfort), with sight lines through the window. Note: optimize both sides; refuse a spectacular treatment that degrades habitability.",
+     "CONCEPT", "", ""),
+    ("c961aa72/assets/fig_05_reference_mosaic.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_05_reference_mosaic.png", "2026-11-06", "DES-01", "EDO-02",
+     "User-supplied façade reference sheets 1-5 (façade study figure 5)",
+     "Five collage sheets of façade photographs and renders: perforated and patterned screens, curved and kinetic skins, green walls, murals, coloured glass, folded panels.",
+     "CONCEPT", "Third-party photographs and renders, rights unknown: internal reference only, never published or used as a generation reference. Many show curved, kinetic or planted skins that canon disables (F7)", ""),
+    ("c961aa72/assets/fig_06_four_contexts.jpg", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_06_four_contexts.jpg", "2026-11-06", "DES-01", "DES-02;DES-03",
+     "AIM-B5R Façade Intelligence System - four contexts (façade study figure 6)",
+     "Four renders with AIM signage: DTLA Adaptive Reuse (brick building, large mural of a woman's face, pierced copper screen, sign to Residences, Leasing, Deliveries, Parking), 29 Palms New Construction (vertical timber fins, Joshua trees, AIM B5R wordmark), Huntington Beach Coastal Multifamily (cyan wave-perforated balcony panels, palms, lifeguard tower), Crestline Mountain Multifamily (timber and stone in pines, copper screen, outside stair). Icon strip: location, view, lighting, architecture, wayfinding, utility, space, thermal, history.",
+     "CONCEPT", "The mural face is part of a generated image; a real mural needs the artist's and the owner's consent. 29 Palms is 'new construction' here but a desert test node in the context study (AIMV-090)", ""),
+    ("c961aa72/assets/fig_07_gates.png", "c961aa72-AIM_FIS_Complete_Report_Claude_Handoff_v1.zip: assets/fig_07_gates.png", "2026-11-06", "EVID-01", "DES-01",
+     "Mandatory gates before weighted scoring (façade study figure 7)",
+     "Seven boxes: G1 fire / life (safety), G2 structure (load paths), G3 envelope (water / air), G4 habitability (light / views), G5 legal / hist. (approvals), G6 operations (access), G7 capital (feasibility). Footer: any material failed gate means stop, revise or escalate; no aesthetic score can override it.",
+     "CONCEPT", "G1-G7 clash with the dataset gates G0-G6: canon names them FG1-FG7 (B5R-40). Canon makes a failed gate KILL (B5R-44), not 'stop, revise or escalate'", ""),
+    ("a3e08bc5-image.png", "a3e08bc5-image.png", "2026-11-06", "MED-01", "",
+     "Neon dojo robot with nunchaku (still)",
+     "Armoured humanoid figure in black with magenta light lines, nunchaku crossed at the chest, in a dark training room with pink neon ceiling strips, floor haze, hanging punching bags and two screen consoles.",
+     "CONCEPT", "Not a named character in the Stuttr or Dance8 rosters: the owner says who it is before it becomes a Kling reference. The consoles show decorative charts, not data", ""),
+    ("c3717e52-image.jpg", "c3717e52-image.jpg", "2026-11-06", "MED-01", "",
+     "Neon dojo robot with nunchaku (ten-second clip, contact sheet)",
+     "Ten frames labelled 00s to 09s: wide stance, nunchaku swings with magenta light trails, close-ups of the gloved hand and nunchaku with a ring overlay, holographic chart panels behind.",
+     "CONCEPT", "Same figure as AIMV-098. The charts are decoration, not data", "frames of a 10 s video (the video was not supplied)"),
+    ("19e7df26-image.png", "19e7df26-image.png", "2026-11-06", "MED-01", "EDO-01",
+     "Skate-breakdance crew on a gold plaza",
+     "A dreadlocked breaker in a one-hand freeze, in black, white and gold Voronoi-pattern clothing with straps; behind him breakers in the air and skaters on boards in matching outfits; a skateboard at the top right edge; a glowing gold floor of circles and triangles on a wet plaza; lattice arches, towers and a crowd at dusk.",
+     "CONCEPT", "Lead dancer not matched to a named character (refs/cast). If the floor is meant as the Kirtled lattice, its triangles should follow the canon layout (D8-06); as drawn it is decorative", ""),
+]
+ADDED_DUPLICATES = {  # duplicate upload name -> the upload it duplicates (byte-identical)
+    "89f99d7e-AIM_B5R_Report_and_Designs.zip: AIM_B5R_Design_Concepts.png": "1f78c4ac-image.png",
+}
+
 NEW_CONCEPTS = [
     # same columns as the owner's register
     dict(concept_id="LET-01", concept_title="L.E.T. Homes & Operations", collection="Concept",
@@ -320,9 +377,73 @@ NEW_CONCEPTS = [
 
 
 def dims(path):
+    """Width and height of a PNG or JPEG."""
     with open(path, "rb") as f:
-        head = f.read(24)
-    return struct.unpack(">II", head[16:24])
+        data = f.read()
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return struct.unpack(">II", data[16:24])
+    if data[:2] == b"\xff\xd8":
+        i = 2
+        while i < len(data):
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3):
+                h, w = struct.unpack(">HH", data[i + 5:i + 9])
+                return w, h
+            i += 2 + struct.unpack(">H", data[i + 2:i + 4])[0]
+    raise ValueError(f"{path}: not a PNG or JPEG")
+
+
+def added_row(n, entry, uploads):
+    src, upload, received, concept, cross, title, shows, tech, flags, derivative = entry
+    path = os.path.join(uploads, src)
+    sha = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    w, h = dims(path)
+    aid = f"AIMV-{n:03d}"
+    ext = os.path.splitext(src)[1].lower()
+    return dict(
+        image_id=aid, concept_id=concept, cross_tags=cross, title=title, visible_content=shows,
+        technical_status="REQUIRES_VALIDATION" if tech == "EVIDENCE_SCREENSHOT" else "CONCEPT",
+        evidence_maturity="provisional (official portal screenshot)" if tech == "EVIDENCE_SCREENSHOT" else "concept",
+        release_state="TAGGED", flags=flags, derivative_of=derivative,
+        duplicates=";".join(d for d, o in ADDED_DUPLICATES.items() if o == upload),
+        archive_filename=f"{aid}_{concept}{ext}",
+        upload_filename=upload, sha256=sha, width=w, height=h,
+        bytes=os.path.getsize(path), received_date=received,
+        owner="Daniel Ebuehi", reviewer="", approval_date="",
+    )
+
+
+def append(uploads, out):
+    """Adds the ADDED images not yet in the committed register, keeping every row already there."""
+    reg = os.path.join(out, "image_register.csv")
+    with open(reg, newline="") as f:
+        rows = list(csv.DictReader(f))
+    fields = list(rows[0].keys())
+    have = {r["sha256"] for r in rows}
+    added = 0
+    for entry in ADDED:
+        row = added_row(len(rows) + 1, entry, uploads)
+        if row["sha256"] in have:
+            continue
+        rows.append(row)
+        have.add(row["sha256"])
+        added += 1
+    with open(reg, "w", newline="") as f:
+        wr = csv.DictWriter(f, fieldnames=fields)
+        wr.writeheader()
+        wr.writerows(rows)
+    exc = os.path.join(out, "excluded_uploads.csv")
+    with open(exc, newline="") as f:
+        known = {r[0] for r in csv.reader(f)}
+    with open(exc, "a", newline="") as f:
+        wr = csv.writer(f)
+        for d, o in ADDED_DUPLICATES.items():
+            if d not in known:
+                wr.writerow([d, f"byte-identical duplicate of {o}"])
+    print(added, "images added;", len(rows), "indexed")
 
 
 def main():
@@ -345,6 +466,8 @@ def main():
             bytes=os.path.getsize(src), received_date=received,
             owner="Daniel Ebuehi", reviewer="", approval_date="",
         ))
+    for entry in ADDED:
+        rows.append(added_row(len(rows) + 1, entry, UPLOADS))
     fields = list(rows[0].keys())
     with open(os.path.join(OUT, "image_register.csv"), "w", newline="") as f:
         wr = csv.DictWriter(f, fieldnames=fields)
@@ -357,9 +480,11 @@ def main():
             wr.writerow([f"{uid}-image.png", why])
         for d, o in DUPLICATES.items():
             wr.writerow([f"{d}-image.png", f"byte-identical duplicate of {o}-image.png"])
+        for d, o in ADDED_DUPLICATES.items():
+            wr.writerow([d, f"byte-identical duplicate of {o}"])
     json.dump(dict(images=rows, new_concepts=NEW_CONCEPTS), open(os.path.join(OUT, "inventory.json"), "w"), indent=2)
     print(len(rows), "images indexed")
 
 
 if __name__ == "__main__":
-    main()
+    append(UPLOADS, OUT) if APPEND else main()
