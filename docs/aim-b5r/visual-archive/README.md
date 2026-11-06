@@ -26,7 +26,7 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
-89 images are indexed:
+100 images are indexed:
 
 - AIMV-001 to 046: received 7 to 9 Oct.
 - AIMV-047 to 072: received 11 Oct, daytime. Triadic Planet boards, EDO robots,
@@ -38,12 +38,22 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 - AIMV-084 to 089: received 11 Oct, 18:21 (final revision layer). Three earlier
   AIM-B5R drafts, plus STUTTR sheets 01 to 03, which are pages 4 to 6 of the
   poster PDF v1.
+- AIMV-090 to 100: received 6 Nov. The Context & Dignity Engine's four-site
+  board (AIMV-090, canon B5R-52), the seven figures from the Façade
+  Intelligence System pack (AIMV-091 to 097), and three Dance8 concepts: a
+  neon-dojo robot with nunchaku, still and ten-second contact sheet (AIMV-098,
+  099), and a skate-breakdance crew on a gold plaza (AIMV-100). Added with
+  `python3 tools/inventory.py --append <uploads folder> .`, which keeps every
+  row already here; JPEGs keep their `.jpg` name.
 
 Duplicates and derivatives:
 
 - Re-uploads of AIMV-004 to 006, AIMV-070, 071 and 072 are listed as
   duplicates.
 - AIMV-081 is a phone crop of AIMV-077.
+- The Context & Dignity board in its zip is a byte-identical copy of AIMV-090.
+- AIMV-099 is frames of a ten-second video of the AIMV-098 figure; the video
+  itself was not supplied.
 
 The concept sheets PDF still covers AIMV-001 to 046 only.
 

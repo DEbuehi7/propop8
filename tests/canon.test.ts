@@ -40,8 +40,8 @@ test("canon: every source cites a known study and a page inside it", () => {
 });
 
 test("canon: every study is integrated (at least three entries each)", () => {
-  assert.equal(STUDIES.length, 21, "the twenty studies of 18 Oct plus the façade study of 4 Nov (1.7.0)");
-  assert.equal(new Set(STUDIES.map((s) => s.fileKey)).size, 21, "duplicate study file key");
+  assert.equal(STUDIES.length, 22, "the twenty studies of 18 Oct, the façade study of 4 Nov (1.7.0) and the context study of 6 Nov (1.8.0)");
+  assert.equal(new Set(STUDIES.map((s) => s.fileKey)).size, 22, "duplicate study file key");
   for (const s of STUDIES) {
     const n = CANON_REGISTER.filter((e) => e.sources.some((x) => x.study === s.id)).length;
     assert.ok(n >= 3, `${s.id} has only ${n} canon entries`);

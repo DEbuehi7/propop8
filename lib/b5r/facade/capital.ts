@@ -71,6 +71,17 @@ export function costProblem(p: FacadeProject, l: CostLine): string | null {
   return null;
 }
 
+/**
+ * Net present value of a one-off cost now, an equal net benefit at the end of
+ * each year for `years` years, and an end-of-life cost in the last year, at
+ * `rate` (0.08 for 8%). Unrounded; callers round.
+ */
+export function npvOf(cost: number, annualNet: number, rate: number, years: number, endOfLife = 0): number {
+  let pv = 0;
+  for (let t = 1; t <= years; t++) pv += annualNet / (1 + rate) ** t;
+  return -cost + pv - endOfLife / (1 + rate) ** years;
+}
+
 /** Cost kinds an option must price, given its modules and occupancy. */
 export function requiredCostKinds(p: FacadeProject, option: FacadeOption): CostKind[] {
   const mods = p.cells.map((c) => moduleOf(moduleAt(option, c.id)));
@@ -178,14 +189,9 @@ export function capitalFor(p: FacadeProject, option: FacadeOption): CapitalSumma
   if (f.horizonYears === null || !Number.isInteger(f.horizonYears) || f.horizonYears < 1) npvUnknown.push("no horizon");
   if (f.endOfLifeUsd === null || !Number.isFinite(f.endOfLifeUsd) || f.endOfLifeUsd < 0) npvUnknown.push("no end-of-life cost");
   if (f.sourceIds.length === 0) npvUnknown.push("finance inputs have no source");
-  let npv: number | null = null;
-  if (npvUnknown.length === 0) {
-    const r = f.discountRate as number;
-    const T = f.horizonYears as number;
-    let pv = 0;
-    for (let t = 1; t <= T; t++) pv += (annualNetBenefit as number) / (1 + r) ** t;
-    npv = cents(-(cTotal as number) + pv - (f.endOfLifeUsd as number) / (1 + r) ** T);
-  }
+  const npv = npvUnknown.length === 0
+    ? cents(npvOf(cTotal as number, annualNetBenefit as number, f.discountRate as number, f.horizonYears as number, f.endOfLifeUsd as number))
+    : null;
 
   return {
     cTotal, cRequiredWork, cContingency, bApproved, bOptional, optionalScope, withinBudget, unpriced,

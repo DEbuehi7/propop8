@@ -29,7 +29,7 @@ Every `export const …VERSION… = "…"` in `lib/`.
 | `PHASE1_RULES_VERSION` | phase1-gate-1.0.0 | `lib/b5r/phase1/seed.ts` |
 | `API_VERSION` | 2023-06-01 | `lib/b5r/screen/claude.ts` |
 | `SCREEN_VERSION` | aim-b5r-photo-screen-1 | `lib/b5r/screen/report.ts` |
-| `CANON_VERSION` | 1.7.1 | `lib/canon/index.ts` |
+| `CANON_VERSION` | 1.8.0 | `lib/canon/index.ts` |
 | `ENGINE_VERSION` | 1.1.0 | `lib/engineVersion.ts` |
 
 ## Pages
@@ -147,10 +147,10 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 
 ## Canon
 
-Version 1.7.1: 21 studies, 197 entries.
+Version 1.8.0: 22 studies, 207 entries.
 
-- By status: CONCEPT 8 · LOCKED 132 · OPEN 8 · PROPOSED 14 · RESEARCH 13 · SPEC 22
-- By build state: built 52 · n/a 99 · not_built 24 · partial 16 · unchecked 6
+- By status: CONCEPT 9 · CONFLICT 1 · LOCKED 132 · OPEN 8 · PROPOSED 20 · RESEARCH 15 · SPEC 22
+- By build state: built 53 · n/a 103 · not_built 29 · partial 16 · unchecked 6
 
 Locked or specified, but not fully built (what is still missing):
 
