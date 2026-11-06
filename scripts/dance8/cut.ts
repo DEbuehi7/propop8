@@ -37,8 +37,8 @@ import { toEdl } from "../../lib/dance8/render/edl";
 import { barToSec } from "../../lib/dance8/authoring/validateCueMap";
 import { GENERATORS } from "../../lib/dance8/authoring/generators";
 import { shotBriefs } from "../../lib/dance8/authoring/shotBriefs";
+import { AI_DISCLOSURE as DISCLOSURE } from "../../lib/dance8/render/disclosure";
 
-const DISCLOSURE = "All characters are fictional and AI-generated.";
 const FONT_GUESSES = [
   "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
   "/System/Library/Fonts/Supplemental/Arial.ttf",

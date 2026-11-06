@@ -28,7 +28,7 @@
  * --aspect (9:16, 16:9, 4:5, 1:1, 21:9), --final (size shots for Kling 4.0).
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { Ctx } from "../../lib/stuttr/commands";
@@ -164,14 +164,19 @@ async function main() {
         if (!Number.isFinite(Number(v))) throw new Error(`--${name} must be a number`);
         return Number(v);
       };
-      const { args, out, audio } = renderArgs(ctx, a1, {
+      const { args, out, audio, upload } = renderArgs(ctx, a1, {
         short: flag("short"), seed: num("seed"), approved: has("approved"), punch: num("punch"), lyrics: has("lyrics"), fps: num("fps"), edl: has("edl"),
         master: flag("master"),
       });
       console.log(`audio: ${audio.path} (${audio.status})`);
       mkdirSync(dirname(out), { recursive: true });
       const r = spawnSync("npx", ["--yes", "tsx", join(__dirname, "cut.ts"), ...args], { stdio: "inherit" });
-      if (r.status !== 0) process.exitCode = r.status ?? 1;
+      if (r.status !== 0) { process.exitCode = r.status ?? 1; break; }
+      if (has("approved")) {
+        // The text to paste when uploading: title, the song's description, the disclosure.
+        writeFileSync(`${out}.description.txt`, upload.text);
+        console.log(`upload text: ${out}.description.txt${upload.described ? "" : ` (no song description yet, so only the title and disclosure; write one with npm run stuttr -- describe ${a1} "One line about the song" and render again, or paste it in)`}`);
+      }
       break;
     }
     default:

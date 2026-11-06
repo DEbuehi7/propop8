@@ -331,9 +331,10 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   const summary = summarize(cards, rates);
   const clipsCommand = `npm run dance8 -- clips ${trackId} ${downloads}`;
   writeFileSync(join(dir, "cards.json"), JSON.stringify(cards, null, 2) + "\n");
-  writeFileSync(join(dir, "prompts.txt"), promptsText(t.title, cards));
+  const about = t.about ? { logline: t.about.logline, ...(t.about.description ? { description: t.about.description } : {}) } : undefined;
+  writeFileSync(join(dir, "prompts.txt"), promptsText(t.title, cards, about));
   writeFileSync(join(dir, "index.html"), packHtml(cards, {
-    title: t.title, trackId, downloads, clipsCommand, href: (abs) => relative(dir, abs), credits: { summary, budget: o.budget, ratesFile },
+    title: t.title, trackId, downloads, clipsCommand, href: (abs) => relative(dir, abs), credits: { summary, budget: o.budget, ratesFile }, about,
   }));
 
   const ready = cards.filter((x) => x.ready).length;

@@ -40,6 +40,7 @@ import { loadCapture, loadTakes, movesPaths } from "./moves/files";
 import { kirtledDance } from "./moves/kirtled";
 import { CARVE_LABEL, VERSION_LABEL, styleTricks, type Carve } from "./moves/skaters";
 import { danceRules, type StyleProfile } from "./moves/style";
+import { uploadDescription } from "./render/disclosure";
 
 const logOf = (c: Ctx) => c.log ?? ((l: string) => console.log(l));
 const nowOf = (c: Ctx) => (c.now ? c.now() : new Date().toISOString());
@@ -294,6 +295,9 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   const lyricIdx = briefs.filter((b) => b.kind === "lip_sync").length;
   const readme = [
     `${t.title}: Dance8 files (${map.approvalStatus}; built by plan from ${basename(p.analysis)})`,
+    ...(t.about
+      ? [t.about.logline, ...(t.about.description ? ["", t.about.description] : [])]
+      : [`(no description yet: npm run stuttr -- describe ${trackId} "One line about the song")`]),
     "",
     `${map.tempo[0].bpm} BPM, ${map.tempo[0].beatsPerBar}/4, first downbeat at ${map.firstDownbeatSec ?? 0} s; ${analysis.bars} bars.`,
     `Sections: ${map.cues.map((q) => `${q.id} (bars ${q.startBar}-${q.endBar}, scene ${q.sceneId})`).join(", ")}.`,
@@ -525,7 +529,11 @@ export interface RenderRequest {
  * the final needs an approved one that still matches what it was built from;
  * a draft plays the approved one, else the newest draft, and says so.
  */
-export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { args: string[]; out: string; audio: { key: string; status: string; path: string; sha256: string } } {
+export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): {
+  args: string[]; out: string; audio: { key: string; status: string; path: string; sha256: string };
+  /** The upload description for this render (written beside a final as <video>.description.txt). */
+  upload: { text: string; described: boolean };
+} {
   const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
   if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
   const p = songPaths(c, trackId);
@@ -549,5 +557,6 @@ export function renderArgs(c: Ctx, trackId: string, r: RenderRequest = {}): { ar
   if (r.fps !== undefined) args.push("--fps", String(r.fps));
   if (existsSync(p.tricks)) args.push("--tricks", p.tricks);
   if (r.edl) args.push("--edl", out.replace(/\.mp4$/, ".edl"));
-  return { args, out, audio: { key: master.key, status: master.status, path: master.path, sha256: master.sha256 } };
+  const upload = { text: uploadDescription({ title: t.title, about: t.about, audio: master.kind }), described: !!t.about };
+  return { args, out, audio: { key: master.key, status: master.status, path: master.path, sha256: master.sha256 }, upload };
 }

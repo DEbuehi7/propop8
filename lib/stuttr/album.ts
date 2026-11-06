@@ -112,6 +112,8 @@ export interface SongRow {
   /** The voice master is approved and still matches what it was built from. */
   done: boolean;
   added: boolean;
+  /** The song's one-line description (stuttr describe), or null. */
+  logline: string | null;
   /** What to do next, in order: commands to run or a thing to check. */
   next: string[];
   notes: string[];
@@ -142,7 +144,7 @@ export function songRow(albumId: string, n: number, song: AlbumSong, f: SongFact
     source: "-", stems: "-", lead: "-", backing: "-", mix: "-", master: "-",
     dance8: f.planned ? "planned" : f.analysed ? "analysed" : "-", video: f.video ?? "-",
   };
-  const row: SongRow = { n, trackId: id, title: t?.title ?? song.title ?? id, mode, cells, done: false, added: !!t, next: [], notes: [] };
+  const row: SongRow = { n, trackId: id, title: t?.title ?? song.title ?? id, mode, cells, done: false, added: !!t, logline: t?.about?.logline ?? null, next: [], notes: [] };
   if (!t) {
     cells.source = "not added";
     row.next.push(`add its Suno song folder to the library with ${RUN} add, using --id ${id} so it matches this list`);
@@ -269,6 +271,11 @@ export function albumBoard(album: Album, rows: SongRow[]): string[] {
   const width = head.map((h, i) => Math.max(h.length, ...body.map((b) => b[i].length)));
   const fmt = (cols: string[]) => cols.map((x, i) => (i === 0 ? x.padStart(width[i]) : x.padEnd(width[i]))).join("  ").trimEnd();
   lines.push(fmt(head), ...body.map(fmt));
+  const described = rows.filter((r) => r.logline);
+  const bare = rows.filter((r) => r.added && !r.logline).map((r) => r.trackId);
+  if (described.length || bare.length) lines.push("", "about:");
+  for (const r of described) lines.push(`${String(r.n).padStart(2)}  ${r.logline}`);
+  if (bare.length) lines.push(`    no description yet: ${bare.join(", ")} (start with: ${RUN} describe ${bare[0]} "One line about the song")`);
   const open = rows.filter((r) => !r.done || r.notes.length);
   if (open.length) lines.push("", "next:");
   for (const r of open) {
