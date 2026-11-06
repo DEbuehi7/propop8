@@ -115,6 +115,29 @@ export interface VoiceMaster {
   builtAt: string;
 }
 
+/**
+ * What a song is about, in the owner's own words (set with `stuttr describe`).
+ * Nothing in the library writes or rewrites it: it is shown on the album
+ * board, the Dance8 plan and Kling pack, the Media Vault, and in the upload
+ * text beside a final render. It never goes into a Kling prompt.
+ */
+export interface SongAbout {
+  /** One line: what the song is. */
+  logline: string;
+  /** Longer: story, mood, who sings, how the video should feel. */
+  description?: string;
+  updatedAt: string;
+}
+
+/** A logline fits one line of a board or a phone notification. */
+export const ABOUT_LOGLINE_MAX = 140;
+/**
+ * With a title of up to 100 characters, the logline and the AI disclosure, the
+ * upload text still fits Instagram's 2,200-character caption (TikTok and
+ * YouTube allow more).
+ */
+export const ABOUT_DESCRIPTION_MAX = 1800;
+
 export interface LibraryTrack {
   trackId: string;
   title: string;
@@ -125,6 +148,7 @@ export interface LibraryTrack {
   voices: VoiceTake[];
   preps?: VoicePrep[];
   masters?: VoiceMaster[];
+  about?: SongAbout;
 }
 
 export interface LibraryManifest {
@@ -147,6 +171,38 @@ export function slugify(name: string): string {
 
 /** Voice names become file-safe keys the same way. */
 export const voiceKey = (voice: string): string => slugify(voice);
+
+/**
+ * Tidies a song's description and says what is wrong with it ([] when fine).
+ * The logline becomes one line with single spaces; the description keeps its
+ * paragraphs (at most one blank line between them). Nothing is reworded.
+ */
+export function checkAbout(logline: string, description?: string): { logline: string; description?: string; problems: string[] } {
+  const line = logline.replace(/\s+/g, " ").trim();
+  const text = description
+    ?.replace(/\r\n?/g, "\n")
+    .split("\n").map((l) => l.trimEnd()).join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const problems: string[] = [];
+  if (!line) problems.push("the logline is empty; write one line about the song");
+  if (line.length > ABOUT_LOGLINE_MAX) problems.push(`the logline is ${line.length} characters; keep it to ${ABOUT_LOGLINE_MAX} (put the rest in the description)`);
+  if (text && text.length > ABOUT_DESCRIPTION_MAX) problems.push(`the description is ${text.length} characters; keep it to ${ABOUT_DESCRIPTION_MAX}`);
+  return { logline: line, ...(text ? { description: text } : {}), problems };
+}
+
+/**
+ * A description written in a text or Markdown file: the first line that has
+ * words is the logline (a leading "# " is dropped), everything after it is the
+ * description.
+ */
+export function aboutFromText(text: string): { logline: string; description?: string } {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const first = lines.findIndex((l) => l.trim().length > 0);
+  if (first < 0) return { logline: "" };
+  const rest = lines.slice(first + 1).join("\n").trim();
+  return { logline: lines[first].replace(/^\s*#{1,6}\s+/, ""), ...(rest ? { description: rest } : {}) };
+}
 
 const AUDIO_EXT: Record<string, AudioInfo["format"]> = {
   wav: "wav", wave: "wav", mp3: "mp3", flac: "flac", m4a: "m4a", aac: "m4a", aif: "aiff", aiff: "aiff",
@@ -477,5 +533,6 @@ export function describeTrack(t: LibraryTrack): string {
     `files: ${parts.join(", ")}`,
     `voices: ${voices.length ? voices.join(", ") : "none yet"}`,
     `masters: ${t.masters?.length ? t.masters.map((m) => `${masterLabel(m)} ${m.status}`).join(", ") : "none yet"}`,
+    t.about ? `about: ${t.about.logline}` : "about: none yet",
   ].join(" | ");
 }

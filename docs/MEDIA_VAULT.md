@@ -48,6 +48,7 @@ field was renamed to fit the proposal.
 | --- | --- |
 | `track_id`, `album_id`, `sequence` | `trackId`, `albums[].albumId`, `albums[].sequence` (a song can be on several albums) |
 | `canonical_title` / `display_title` | `title` (one title today) |
+| `description` | `about.logline` and `about.description`, in the owner's words (`stuttr describe`) |
 | `source_type`, `source_path` | `original.fullMix`, `original.stems[]` with path and SHA-256 |
 | `stems_present`, `lyrics_present` | `original.stems[]`, `original.lyrics` |
 | `voice_cast`, `voice_status` | `voice.mode`, `voice.cast`, `voice.takes[]` |

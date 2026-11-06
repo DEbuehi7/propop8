@@ -59,6 +59,7 @@ test("media vault: one record per song from the files that already exist, read-o
       sourceSha256: "sha-vein-0 Lead Vocals.wav", method: "elevenlabs_voice_changer", durationSec: 180, timingDeltaMs: 4, timingOk: true, status: "approved", addedAt: AT,
     };
     vein.voices = [lead];
+    vein.about = { logline: "A nerve that keeps the beat when the city goes quiet.", description: "Stuttr sings to Sonthera's power grid.", updatedAt: AT };
     vein.masters = [{
       key: "en", kind: "voices", path: "vein/masters/vein.en.master.wav", sha256: "sha-master", bytes: 1, durationSec: 180, lengthDeltaMs: 0,
       lead: { path: lead.path, sha256: lead.sha256, voice: "Stuttr" }, backing: [], beds: [{ path: "vein/source/2 Drums.wav", sha256: "sha-vein-2 Drums.wav" }], sunoBacking: [],
@@ -120,15 +121,17 @@ test("media vault: one record per song from the files that already exist, read-o
     assert.deepEqual(t.visual.characters, [{ id: "stuttr", dir: "refs/cast/stuttr", face: true, fullbody: false, text: false }]);
     assert.deepEqual(t.visual.kling, { cards: 2, ready: 1 });
     assert.equal(t.audiobook, null);
+    assert.deepEqual(t.about, { logline: "A nerve that keeps the beat when the city goes quiet.", description: "Stuttr sings to Sonthera's power grid.", updatedAt: AT });
 
     const b = v.tracks.find((x) => x.trackId === "bland")!;
-    assert.deepEqual([b.done, b.dance8.analysis, b.dance8.cueMap, b.dance8.renders, b.visual.kling], [false, null, null, [], null]);
+    assert.deepEqual([b.done, b.dance8.analysis, b.dance8.cueMap, b.dance8.renders, b.visual.kling, b.about], [false, null, null, [], null, null]);
     assert.equal(b.next, "npm run stuttr -- voices bland --preset solo   (shows the credits; add --go to convert)");
     assert.ok(v.absent.some((a) => /audiobook records/.test(a)) && v.absent.some((a) => /artwork records/.test(a)));
 
     assert.deepEqual(vaultSummary(v), [
       "2 tracks on 1 album; 0 on no album",
       "voice masters approved and current: 1; stale: 0",
+      "described (stuttr describe): 1 of 2",
       "Dance8: 1 analysed, 1 planned, 1 with approved clips, 1 with a final video",
       "renders not playing an approved voice master: vein",
     ]);

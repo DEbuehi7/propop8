@@ -120,7 +120,10 @@ badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
    disclosure caption. With two approved masters, `--master en` (or `suno`)
    picks one. Add `--edl` to
    open the cut in Resolve or Premiere for hand finishing, `--lyrics` to burn in
-   the sung lines, `--seed 2` for another variation of the same edit.
+   the sung lines, `--seed 2` for another variation of the same edit. A final
+   also writes `<video>.description.txt`, the text to paste when you upload it:
+   the title, the song's description (below), then the disclosure and how the
+   sound was made.
 
 ### Choir and ensemble movement (CHOIR8)
 
@@ -214,6 +217,43 @@ order, the album's title, and one voice mode per song:
 A rejected whole-song take isn't converted again by accident. Add `--redo` to
 `convert`, `voices` or `album-voices`, and the new take replaces the rejected
 one.
+
+### What each song is about (`describe`)
+
+Each song can carry a description in your own words: a one-line logline and,
+if you want, a longer story (mood, who sings, how the video should feel). It
+is saved in `library.json` with the song. Nothing rewrites it: spacing and
+blank lines are tidied and the length is checked, that is all.
+
+```
+npm run stuttr -- describe kirtled "Stuttr's last song: the instrument spells itself." --more "Mo calls the moves; the crew answers letter by letter."
+npm run stuttr -- describe kirtled --file ~/Desktop/kirtled-about.md
+npm run stuttr -- describe kirtled
+npm run stuttr -- describe kirtled --clear
+```
+
+- The logline is one line of up to 140 characters. The description is up to
+  1,800 characters, so the upload text still fits a 2,200-character Instagram
+  caption.
+- A new logline on its own keeps the description. `--more ""` removes the
+  description.
+- With `--file`, the first line with words is the logline (a leading `# ` is
+  dropped) and the rest is the description. It replaces both.
+- With no text, it prints what is there.
+
+Where it shows:
+
+| Place | What you see |
+|---|---|
+| `stuttr list` | `about: <logline>` at the end of the song's line |
+| The album board | An `about:` block under the table, plus the songs that have no description yet |
+| `media-vault.json` | `about` on each track (`null` when not written) and a "described" count |
+| `dance8 plan` | The logline and description at the top of `dance8/README.txt` |
+| `dance8 kling` | The logline at the top of the pack page (the story folds out) and of `prompts.txt` |
+| `dance8 render --approved` | `<video>.description.txt`, ready to paste as the upload description |
+
+It is never put into a Kling prompt. The prompts describe what the camera sees,
+from each scene's own words.
 
 ## Helper clips: from recording to page
 

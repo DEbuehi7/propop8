@@ -148,7 +148,12 @@ test("board: a table in running order, then the next steps", () => {
   assert.equal(lines[1], "#  song   mode  source     stems  lead      backing  mix  master    dance8  video");
   assert.equal(lines[2], "1  s      solo  ok         ok     approved  suno     -    approved  -       -");
   assert.equal(lines[3], "2  later  crew  not added  -      -         -        -    -         -       -");
-  assert.deepEqual(lines.slice(4), ["", "next:", " 2  Later Song", "      add its Suno song folder to the library with npm run stuttr -- add, using --id later so it matches this list"]);
+  assert.deepEqual(lines.slice(4), [
+    "", "about:", '    no description yet: s (start with: npm run stuttr -- describe s "One line about the song")',
+    "", "next:", " 2  Later Song", "      add its Suno song folder to the library with npm run stuttr -- add, using --id later so it matches this list",
+  ]);
+  const described = songRow("a", 1, a.songs[0], facts(song({ voices: [ok], masters: [master(ok, "approved")], about: { logline: "Five cities, one accent.", updatedAt: "2026-11-06T00:00:00.000Z" } })));
+  assert.deepEqual(albumBoard(a, [described, rows[1]]).slice(4, 7), ["", "about:", " 1  Five cities, one accent."], "a song not added yet is not asked for a description");
   assert.match(albumBoard({ ...a, songs: [] }, [])[1], /album-add a, followed by their library ids/);
 });
 

@@ -337,10 +337,17 @@ function creditText(c: UploadCard, num: (id: string) => number): string {
 }
 
 /** Every prompt as plain text, in card order. */
-export function promptsText(title: string, cards: UploadCard[]): string {
+/** The song's own words, shown at the top of the pack for whoever generates (never put into a prompt). */
+export interface PackAbout {
+  logline: string;
+  description?: string;
+}
+
+export function promptsText(title: string, cards: UploadCard[], about?: PackAbout): string {
   const num = (id: string) => cards.findIndex((c) => c.shotId === id) + 1;
   return [
     `${title}: Kling prompts, one per shot (${cards.filter((c) => c.ready).length} of ${cards.length} ready)`,
+    ...(about ? [`About the song: ${about.logline}`] : []),
     "",
     ...cards.flatMap((c, i) => [
       `#${i + 1}  ${c.download}  (${c.kind}, ${c.tool}, ${c.credit?.generateSec ?? c.lengthSec} s, ${c.cropTo ? `${c.aspect} cropped to ${c.cropTo}` : c.aspect})${c.ready ? "" : "  NOT READY"}${
@@ -365,6 +372,13 @@ export interface PackMeta {
   href: (abs: string) => string;
   /** Credits for the batch (./klingCredits summarize), the budget and where Daniel's rates live. */
   credits?: { summary: CreditSummary; budget?: number; ratesFile: string };
+  /** The song's description, if written (stuttr describe). */
+  about?: PackAbout;
+}
+
+function aboutHtml(a: PackAbout): string {
+  const paras = (a.description ?? "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
+  return `<p class="about">${esc(a.logline)}</p>${paras.length ? `<details class="story"><summary>About the song</summary>${paras.map((x) => `<p>${esc(x)}</p>`).join("")}</details>` : ""}`;
 }
 
 function creditsHtml(m: NonNullable<PackMeta["credits"]>): string {
@@ -437,8 +451,10 @@ button{font:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px
 .cost{font-size:13px;color:var(--mut)}.tag.test{border-color:var(--acc);color:var(--acc)}.card.b-covered,.card.b-later,.card.b-after_test{opacity:.7}
 .credits{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 16px;margin:0 0 8px}.credits p{margin:6px 0}.credits ul{margin:6px 0;padding-left:18px;font-size:13px}
 .missing li,.files li,.meta,.steps li,header b,code,a{overflow-wrap:anywhere}
+.about{font-size:17px;margin:2px 0 6px}.story{margin:0 0 14px;color:var(--mut)}.story p{white-space:pre-line;margin:6px 0;max-width:70ch}
 </style></head><body><main>
 <h1>${esc(m.title)}: Kling upload pack</h1>
+${m.about ? aboutHtml(m.about) : ""}
 <p class="sub">${cards.length} shots, ${ready} ready (${kinds.map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}). Each card: upload its files, paste its prompt, generate, then save the download as <b>${esc(m.downloads)}/&lt;shot&gt;.mp4</b>. When a batch is done: <code>${esc(m.clipsCommand)}</code></p>
 ${m.credits ? creditsHtml(m.credits) : ""}
 ${cards.map(card).join("\n")}

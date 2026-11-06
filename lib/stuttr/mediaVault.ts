@@ -77,6 +77,8 @@ export interface VaultRender {
 export interface VaultTrack {
   trackId: string;
   title: string;
+  /** What the song is about, in the owner's words (stuttr describe); null when not written yet. */
+  about: { logline: string; description: string | null; updatedAt: string } | null;
   /** Every album the song is on, with its track number there. */
   albums: { albumId: string; sequence: number }[];
   /** The album board's status per stage, and whether the voice master is approved and current. */
@@ -177,7 +179,9 @@ function trackRecord(c: Ctx, t: LibraryTrack, row: SongRow, albums: VaultTrack["
 
   const kinds: ShotBrief["kind"][] = ["lip_sync", "broll", "dance", "trick"];
   return {
-    trackId: t.trackId, title: t.title, albums, status: row.cells, done: row.done, next: row.done ? null : row.next[0] ?? null,
+    trackId: t.trackId, title: t.title,
+    about: t.about ? { logline: t.about.logline, description: t.about.description ?? null, updatedAt: t.about.updatedAt } : null,
+    albums, status: row.cells, done: row.done, next: row.done ? null : row.next[0] ?? null,
     original: {
       sunoPlan: t.sunoPlan, addedAt: t.addedAt,
       fullMix: full ? { path: full.path, sha256: full.sha256, durationSec: full.audio?.durationSec ?? null } : null,
@@ -252,6 +256,7 @@ export function vaultSummary(v: MediaVault): string[] {
   const lines = [
     `${v.tracks.length} track${v.tracks.length === 1 ? "" : "s"} on ${v.albums.length} album${v.albums.length === 1 ? "" : "s"}; ${n((t) => t.albums.length === 0)} on no album`,
     `voice masters approved and current: ${n((t) => t.done)}; stale: ${n((t) => t.voice.masters.some((m) => m.status !== "rejected" && !m.current))}`,
+    `described (stuttr describe): ${n((t) => !!t.about)} of ${v.tracks.length}`,
     `Dance8: ${n((t) => !!t.dance8.analysis)} analysed, ${n((t) => !!t.dance8.cueMap)} planned, ${n((t) => (t.dance8.clips?.approved ?? 0) > 0)} with approved clips, ${n((t) => t.dance8.renders.some((r) => r.final))} with a final video`,
   ];
   const off = v.tracks.filter((t) => t.dance8.renders.some((r) => r.approvedMaster === false));

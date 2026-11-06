@@ -17,7 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import {
-  activeSpan, audioFormatOf, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
+  aboutFromText, activeSpan, audioFormatOf, checkAbout, classifyFolder, emptyManifest, extOf, findTrack, isLossy, LIBRARY_SCHEMA, lengthWarnings, MANIFEST_NAME, parseWav,
   ACTIVE_WINDOW_SEC, MASTER_LENGTH_TOLERANCE_MS, masterProblem, slugify, timingCheck, VOICE_CHANGER_CREDITS_PER_MIN, VOICE_CHANGER_MAX_SEC, voiceKey,
   type AudioInfo, type LibraryFile, type LibraryManifest, type LibraryTrack, type MasterSource, type VoiceMaster, type VoicePrep, type VoiceTake,
 } from "./library";
@@ -618,6 +618,61 @@ export function setMasterStatus(c: Ctx, trackId: string, key: string, status: Vo
   saveManifest(c, m);
   logOf(c)(`the ${key === "suno" ? "Suno vocals" : key} master for "${trackId}" is now ${status}`);
   return master;
+}
+
+// ---------------------------------------------------------------- describe (what the song is about)
+
+export interface DescribeOptions {
+  /** The one-line logline. Given alone, the description already there is kept. */
+  logline?: string;
+  /** The longer description; "" removes it. */
+  description?: string;
+  /** A .txt or .md file: its first line is the logline, the rest the description. Replaces both. */
+  file?: string;
+  /** Remove the song's description. */
+  clear?: boolean;
+}
+
+/**
+ * describe: sets, shows or clears what a song is about. The words are the
+ * owner's: they are tidied (spacing, blank lines) and length-checked, never
+ * rewritten. With no text, prints what is there.
+ */
+export function describeSong(c: Ctx, trackId: string, o: DescribeOptions = {}): LibraryTrack["about"] | null {
+  const log = logOf(c);
+  const m = loadManifest(c);
+  const t = trackOrThrow(m, trackId);
+  const show = (a: LibraryTrack["about"]) => {
+    if (!a) { log(`"${trackId}" has no description yet. Add one: npm run stuttr -- describe ${trackId} "One line about the song" --more "The longer story"`); return; }
+    log(`${t.title}: ${a.logline}`);
+    if (a.description) for (const l of a.description.split("\n")) log(`  ${l}`);
+    log(`(set ${a.updatedAt})`);
+  };
+  if (o.clear) {
+    if (o.logline !== undefined || o.description !== undefined || o.file) throw new Error("--clear takes no text or --file");
+    delete t.about;
+    saveManifest(c, m);
+    log(`"${trackId}" has no description now`);
+    return null;
+  }
+  if (o.file && (o.logline !== undefined || o.description !== undefined)) throw new Error("give the text or --file, not both");
+  if (o.file === undefined && o.logline === undefined && o.description === undefined) { show(t.about); return t.about ?? null; }
+  let logline: string;
+  let description: string | undefined;
+  if (o.file !== undefined) {
+    if (!existsSync(o.file)) throw new Error(`no file ${o.file}`);
+    ({ logline, description } = aboutFromText(readFileSync(o.file, "utf8")));
+  } else {
+    if (o.logline === undefined && !t.about) throw new Error(`"${trackId}" has no logline yet; give one: npm run stuttr -- describe ${trackId} "One line" --more "..."`);
+    logline = o.logline ?? t.about!.logline;
+    description = o.description !== undefined ? o.description : t.about?.description;
+  }
+  const checked = checkAbout(logline, description);
+  if (checked.problems.length) throw new Error(checked.problems.join("; "));
+  t.about = { logline: checked.logline, ...(checked.description ? { description: checked.description } : {}), updatedAt: nowOf(c) };
+  saveManifest(c, m);
+  show(t.about);
+  return t.about;
 }
 
 // ---------------------------------------------------------------- cast (cast.json)

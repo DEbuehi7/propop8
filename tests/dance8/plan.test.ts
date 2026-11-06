@@ -13,7 +13,7 @@ import { lyricGroups, lyricLines, parseKey, planSong, spreadLines, sungRuns } fr
 import { validateCueMap } from "../../lib/dance8/authoring/validateCueMap";
 import { planCuts } from "../../lib/dance8/runtime/CutPlanner";
 import { aspectOf, briefForFile, ingestClips, planTrack, renderArgs, setClipStatus, songPaths, standInClip } from "../../lib/dance8/pipeline";
-import { addSong, analyzeTrack, buildMaster, setMasterStatus, type Ctx } from "../../lib/stuttr/commands";
+import { addSong, analyzeTrack, buildMaster, describeSong, setMasterStatus, type Ctx } from "../../lib/stuttr/commands";
 import type { ShotBrief } from "../../lib/dance8/authoring/shotBriefs";
 import type { CueMap, VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 
@@ -135,6 +135,7 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     const briefs = JSON.parse(readFileSync(p.briefs, "utf8")) as ShotBrief[];
     assert.ok(briefs.length > 0 && briefs.some((b) => b.kind === "lip_sync") && briefs.some((b) => b.kind === "broll"));
     assert.match(readFileSync(p.readme, "utf8"), /npm run dance8 -- clips synthetic-song ~\/Downloads/);
+    assert.match(readFileSync(p.readme, "utf8"), /^\(no description yet: npm run stuttr -- describe synthetic-song "One line about the song"\)$/m);
 
     // Your edits survive a rerun; --replace rebuilds.
     map.cues[0].sceneId = "harbour";
@@ -215,7 +216,14 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     const rendered = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8")) as { audio: { file: string; sha256: string; source: string } };
     assert.deepEqual(rendered.audio, { file: "synthetic-song.suno.master.wav", sha256: master.sha256, source: "stuttr voice master Suno vocals, draft" });
     setMasterStatus(c, "synthetic-song", "suno", "approved");
-    assert.equal(renderArgs(c, "synthetic-song", { approved: true }).audio.status, "approved");
+    const fin = renderArgs(c, "synthetic-song", { approved: true });
+    assert.equal(fin.audio.status, "approved");
+    assert.deepEqual(fin.upload, { text: "Synthetic Song\n\nAll characters are fictional and AI-generated. Music and vocals made with Suno.\n", described: false });
+    describeSong(c, "synthetic-song", { logline: "A test tone learns to dance.", description: "Two verses and a hook." });
+    assert.equal(renderArgs(c, "synthetic-song", { approved: true }).upload.text,
+      "Synthetic Song\nA test tone learns to dance.\n\nTwo verses and a hook.\n\nAll characters are fictional and AI-generated. Music and vocals made with Suno.\n");
+    planTrack(c, "synthetic-song", { key: "C" });
+    assert.match(readFileSync(p.readme, "utf8"), /^Synthetic Song: Dance8 files .*\nA test tone learns to dance\.\n\nTwo verses and a hook\.\n\n/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

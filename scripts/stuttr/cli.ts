@@ -4,6 +4,8 @@
  *
  *   npm run stuttr -- add ~/StuttrInbox/cloyne --title "C.L.O.Y.N.E." --suno-plan Pro
  *   npm run stuttr -- list
+ *   npm run stuttr -- describe cloyne "One line about the song" --more "The story, the mood, who sings"
+ *   npm run stuttr -- describe cloyne --file ~/Desktop/cloyne-about.md   (first line is the logline)
  *   npm run stuttr -- prep-voice cloyne
  *   npm run stuttr -- add-voice cloyne Stuttr ~/Downloads/cloyne-stuttr.wav
  *   npm run stuttr -- mix cloyne Stuttr
@@ -67,7 +69,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
-  addSong, addVoice, analyzeTrack, buildMaster, castCommand, convertCast, convertVoices, loadManifest, mixCast, mixVoice, mouthTrack, prepVoice,
+  addSong, addVoice, analyzeTrack, buildMaster, castCommand, convertCast, convertVoices, describeSong, loadManifest, mixCast, mixVoice, mouthTrack, prepVoice,
   setMasterStatus, setVoiceStatus, type Ctx,
 } from "../../lib/stuttr/commands";
 import { describeTrack } from "../../lib/stuttr/library";
@@ -81,7 +83,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -92,6 +94,7 @@ const [cmd, a1, a2, a3] = positional;
 const usage = `Stuttr song library (${ctx.library})
   add <song folder> [--title "Name"] [--id slug] [--suno-plan Pro] [--dry]
   list
+  describe <trackId> ["One line about the song"] [--more "The longer story"] | --file about.md | --clear
   prep-voice <trackId> [--from backing_vocals] [--full]
   add-voice <trackId> <voice> <file> [--lang en] [--from backing_vocals]
   mix <trackId> <voice> [--lang en] [--no-backing | --suno-backing]
@@ -136,6 +139,10 @@ async function main(): Promise<void> {
       for (const t of m.tracks) console.log(describeTrack(t));
       break;
     }
+    case "describe":
+      if (!a1) throw new Error("describe needs a track id");
+      describeSong(ctx, a1, { logline: a2, description: flag("more"), file: flag("file") === undefined ? undefined : expand(flag("file")!), clear: has("clear") });
+      break;
     case "prep-voice":
       if (!a1) throw new Error("prep-voice needs a track id");
       prepVoice(ctx, a1, fromFlag(), { full: has("full") });
