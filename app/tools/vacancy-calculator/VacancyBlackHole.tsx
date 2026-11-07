@@ -61,6 +61,8 @@ import {
 } from '@/lib/chaosTokens';
 import { computeVacancy } from '@/lib/calcMath';
 import { buildAuditHref } from '@/lib/calculatorHandoff';
+import { markFromVacancy, markQuery } from '@/lib/brand/markState';
+import { queryOf, usePublishMark } from '@/lib/brand/markStore';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -165,6 +167,10 @@ export default function VacancyBlackHole({
   const [readyDate, setReadyDate] = useState<string>(defaultReadyDate);
   const [leaseDate, setLeaseDate] = useState<string>(defaultLeaseDate);
   const [copied, setCopied] = useState(false);
+  // The header's 8 shows this result only once the visitor has entered their
+  // own dates or rent, or arrived with them in the link; the sample dates
+  // above never light it (lib/brand/markState.ts).
+  const [touched, setTouched] = useState(false);
 
   // Prefill from the query string after mount — no hydration mismatch, and it
   // works without pulling in next/navigation or a Suspense boundary.
@@ -175,11 +181,14 @@ export default function VacancyBlackHole({
     const out = q.get('moveOut');
     const ready = q.get('ready');
     const lease = q.get('lease');
+    let applied = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the page URL once on mount; it does not exist during server render
-    if (rent && Number.isFinite(Number(rent))) setRentInput(rent);
-    if (out && dayNumber(out) !== null) setMoveOutDate(out);
-    if (ready && dayNumber(ready) !== null) setReadyDate(ready);
-    if (lease && dayNumber(lease) !== null) setLeaseDate(lease);
+    if (rent && Number.isFinite(Number(rent))) { setRentInput(rent); applied = true; }
+    if (out && dayNumber(out) !== null) { setMoveOutDate(out); applied = true; }
+    if (ready && dayNumber(ready) !== null) { setReadyDate(ready); applied = true; }
+    if (lease && dayNumber(lease) !== null) { setLeaseDate(lease); applied = true; }
+    // Numbers that arrived in the link are the visitor's own, so they count.
+    if (applied) setTouched(true);
   }, [readUrlParams]);
 
   const monthlyRent = useMemo(() => {
@@ -227,6 +236,8 @@ export default function VacancyBlackHole({
     }
   }, [shareUrl]);
 
+  const mark = markFromVacancy(metrics);
+
   const ctaHref = metrics
     ? buildAuditHref(
         'vacancy-black-hole',
@@ -237,10 +248,13 @@ export default function VacancyBlackHole({
           exposure: metrics.operationalExposure,
           totalDays: metrics.totalDays, // AuditForm reads totalDays and forwards it to Tally as total_days
           total: metrics.totalExposure,
+          ...(touched ? markQuery(mark) : {}),
         },
         intakeHref,
       )
     : intakeHref;
+
+  usePublishMark(mark, metrics ? queryOf(ctaHref) : '', touched);
 
   return (
     <div className="w-full mx-auto overflow-hidden" style={shellStyle}>
@@ -278,7 +292,7 @@ export default function VacancyBlackHole({
                 min={0}
                 step={25}
                 value={rentInput}
-                onChange={(e) => setRentInput(e.target.value)}
+                onChange={(e) => { setTouched(true); setRentInput(e.target.value); }}
                 style={inputStyle}
                 aria-invalid={Boolean(errors.rent)}
               />
@@ -289,7 +303,7 @@ export default function VacancyBlackHole({
                 className="chaos-input"
                 type="date"
                 value={moveOutDate}
-                onChange={(e) => setMoveOutDate(e.target.value)}
+                onChange={(e) => { setTouched(true); setMoveOutDate(e.target.value); }}
                 style={inputStyle}
               />
             </Field>
@@ -299,7 +313,7 @@ export default function VacancyBlackHole({
                 className="chaos-input"
                 type="date"
                 value={readyDate}
-                onChange={(e) => setReadyDate(e.target.value)}
+                onChange={(e) => { setTouched(true); setReadyDate(e.target.value); }}
                 style={inputStyle}
                 aria-invalid={Boolean(errors.ready)}
               />
@@ -310,7 +324,7 @@ export default function VacancyBlackHole({
                 className="chaos-input"
                 type="date"
                 value={leaseDate}
-                onChange={(e) => setLeaseDate(e.target.value)}
+                onChange={(e) => { setTouched(true); setLeaseDate(e.target.value); }}
                 style={inputStyle}
                 aria-invalid={Boolean(errors.lease)}
               />

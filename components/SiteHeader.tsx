@@ -5,25 +5,26 @@
  * ----------------------------------------------------------------------------
  * Sticky nav, rendered from app/layout.tsx so it appears on every route.
  *
- * Client component because it reads usePathname to mark the active link. That
- * is the whole reason — a visitor three pages deep needs to know where they
- * are, not just where they can go.
+ * Client component because it reads usePathname to mark the active link, and
+ * the living 8 to show the visitor's latest calculator result.
  *
  * No hamburger. Four items in compact mono fit inside 375px with room to
  * spare, and a menu that has to be opened to be read is worse navigation than
- * one that is simply visible.
+ * one that is simply visible. The result's status sits beside the wordmark
+ * from 640px up, and drops to its own row below that, so the links never move.
  *
- * THE "8" USED TO JUST AUTO-CYCLE cyan/magenta on a 4s timer, decoration with
- * no meaning behind it. It now reflects revenueTrend (lib/chaosTokens.ts,
- * read server-side in app/layout.tsx and passed down as a prop): cyan when
- * trending up, magenta when down, a dim neutral when there's no signal to
- * report. Still no live feed behind that signal -- see getRevenueTrend's own
- * comment for what flipping it today actually takes.
+ * THE "8" first auto-cycled cyan/magenta on a 4s timer, then followed a
+ * hand-set REVENUE_TREND flag with no feed behind it. It now shows only the
+ * visitor's own calculator result (components/brand/LivingEight.tsx,
+ * lib/brand/markState.ts): pink with its lower bowl filled for a leak, mint
+ * for healthy, a dotted outline when the numbers can't support a result,
+ * and the plain white 8 until then. Always with words beside it.
  */
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PALETTE, MONO, DISPLAY, hexA, textGlow, type RevenueTrend } from '@/lib/chaosTokens';
+import { PALETTE, MONO, DISPLAY, hexA } from '@/lib/chaosTokens';
+import { LIVING_EIGHT_CSS, LivingEight, MarkStatus } from '@/components/brand/LivingEight';
 
 const LINKS = [
   { href: '/tools/vacancy-calculator', label: 'Calculator' },
@@ -32,32 +33,28 @@ const LINKS = [
   { href: '/infographics', label: 'Info' },
 ];
 
-// Colors sampled directly from the approved logo files (Cyan/Magenta
-// exports), not the site's PALETTE tokens -- the brand mark uses its own
-// slightly different cyan/magenta, intentionally kept separate from
-// chaosTokens.ts rather than overwriting those tokens.
-const EIGHT_COLOR: Record<RevenueTrend, string> = {
-  up: '#03edff',
-  down: '#f11aff',
-  flat: hexA('#ffffff', 0.55),
-};
+const NAV_CSS = `
+  .site-nav { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; min-height: 56px; }
+  .site-nav-brand { order: 1; height: 56px; display: flex; align-items: center; }
+  .site-nav-links { order: 2; margin-left: auto; height: 56px; }
+  .site-nav-status { order: 3; flex-basis: 100%; display: flex; }
+  .site-nav-status .living8-chip { margin: -6px 0 10px; }
+  @media (min-width: 640px) {
+    .site-nav-status { order: 2; flex-basis: auto; }
+    .site-nav-status .living8-chip { margin: 0; }
+    .site-nav-links { order: 3; }
+  }
+`;
 
-export default function SiteHeader({
-  revenueTrend = 'flat',
-}: {
-  revenueTrend?: RevenueTrend;
-}) {
+export default function SiteHeader() {
   const pathname = usePathname() ?? '/';
-  const eightColor = EIGHT_COLOR[revenueTrend];
+  // Admin pages keep the plain 8: a visitor's calculator result is not admin
+  // data, and AdminNav is pinned at top: 56, where the status row would sit.
+  const admin = pathname === '/admin' || pathname.startsWith('/admin/');
 
   return (
     <>
-      <style>{`
-        .propops8-eight {
-          color: ${eightColor};
-          ${revenueTrend !== 'flat' ? `text-shadow: ${textGlow(eightColor, 0.5)};` : ''}
-        }
-      `}</style>
+      <style>{NAV_CSS + LIVING_EIGHT_CSS}</style>
 
       {/* Keyboard users land here first. Invisible until focused. */}
       <a
@@ -96,27 +93,27 @@ export default function SiteHeader({
           borderBottom: `1px solid ${hexA('#ffffff', 0.07)}`,
         }}
       >
-        <nav
-          className="mx-auto flex items-center justify-between gap-3 px-4 sm:px-8"
-          style={{ maxWidth: 1120, height: 56 }}
-          aria-label="Primary"
-        >
-          <Link
-            href="/"
-            style={{
-              fontFamily: DISPLAY,
-              fontWeight: 900,
-              fontSize: 15,
-              letterSpacing: '0.04em',
-              color: PALETTE.bright,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            PropOps<span className="propops8-eight">8</span>
-          </Link>
+        <nav className="site-nav mx-auto px-4 sm:px-8" style={{ maxWidth: 1120 }} aria-label="Primary">
+          <div className="site-nav-brand">
+            <Link
+              href="/"
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 900,
+                fontSize: 15,
+                letterSpacing: '0.04em',
+                color: PALETTE.bright,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              PropOps<LivingEight plain={admin} />
+            </Link>
+          </div>
 
-          <div className="flex items-center" style={{ gap: 'clamp(10px, 3vw, 22px)' }}>
+          {!admin && <MarkStatus className="site-nav-status" />}
+
+          <div className="site-nav-links flex items-center" style={{ gap: 'clamp(10px, 3vw, 22px)' }}>
             {LINKS.map((l) => {
               const active = pathname === l.href || pathname.startsWith(l.href + '/');
               return (

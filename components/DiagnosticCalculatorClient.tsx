@@ -27,6 +27,8 @@ import {
 } from "@/lib/chaosTokens";
 import { getCalculator, calculateChecked, type CalcInput } from "@/lib/diagnosticCalculators";
 import { buildAuditHref } from "@/lib/calculatorHandoff";
+import { IDLE, markFromResult, markQuery } from "@/lib/brand/markState";
+import { queryOf, usePublishMark } from "@/lib/brand/markStore";
 import { LINKS } from "@/lib/products";
 import { CALCULATOR_VISUALS } from "./calculatorVisuals";
 
@@ -39,17 +41,27 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
     });
     return initial;
   });
+  // The header's 8 shows this result only once the visitor has typed a
+  // number; the sample values above never light it (lib/brand/markState.ts).
+  const [touched, setTouched] = useState(false);
 
-  if (!calc) return null; // page.tsx already calls notFound() before this renders
+  const checked = calc ? calculateChecked(calc, values) : null;
+  const mark = checked ? markFromResult(slug, checked) : IDLE;
+  const resultQuery = touched ? markQuery(mark) : {};
+  // What /audit receives when the visitor gets there from the header instead.
+  const auditQuery = checked && checked.headline !== "—" ? queryOf(buildAuditHref(slug, checked.headline, resultQuery)) : "";
+  usePublishMark(mark, auditQuery, touched);
 
-  const result = calculateChecked(calc, values);
+  if (!calc || !checked) return null; // page.tsx already calls notFound() before this renders
+  const result = checked;
+
   const resultColor = result.headlineIsCost ? PALETTE.pink : PALETTE.mint;
 
   // Only calculators whose CTA goes to the audit intake carry the handoff;
   // product CTAs (kits) link out unchanged. "—" means no usable number yet.
   const ctaHref =
     calc.ctaHref === LINKS.audit && result.headline !== "—"
-      ? buildAuditHref(calc.slug, result.headline)
+      ? buildAuditHref(calc.slug, result.headline, resultQuery)
       : calc.ctaHref;
 
   function renderVisual() {
@@ -107,9 +119,10 @@ export default function DiagnosticCalculatorClient({ slug }: { slug: string }) {
                 inputMode="decimal"
                 className="chaos-input"
                 value={values[input.key] ?? ""}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, [input.key]: Number(e.target.value) || 0 }))
-                }
+                onChange={(e) => {
+                  setTouched(true);
+                  setValues((prev) => ({ ...prev, [input.key]: Number(e.target.value) || 0 }));
+                }}
                 placeholder="0"
                 style={{
                   flex: 1,
