@@ -119,7 +119,6 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 | `PLATE8_SUPABASE_URL` | `lib/supabaseServer.ts` |
 | `RESEND_API_KEY` | `lib/email.ts`, `lib/sendReport.ts` |
 | `RESEND_FROM` | `lib/email.ts`, `lib/sendReport.ts` |
-| `REVENUE_TREND` | `lib/chaosTokens.ts` |
 | `STATE8_SYSTEM_USER_ID` | `app/api` |
 | `STUTTR_LIBRARY` | `scripts/dance8`, `scripts/stuttr` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `app/api`, `lib/b5r`, `lib/fulfill.ts`, `lib/sendReport.ts`, `lib/supabaseServer.ts`, `lib/uploadTokens.ts`, `scripts/security` |

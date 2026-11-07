@@ -42,6 +42,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { parseHandoff } from '@/lib/calculatorHandoff';
+import { getCalculator } from '@/lib/diagnosticCalculators';
+import { IDLE, MARK_LOOK, VACANCY_SLUG, markFromHandoff, type MarkState } from '@/lib/brand/markState';
+import { getMarkRecord, publishMark } from '@/lib/brand/markStore';
 import {
   PALETTE,
   MONO,
@@ -86,22 +89,32 @@ interface Snapshot {
   exposure?: number;
   totalDays?: number;
   total?: number;
+  /** The visitor's result as the header's 8 shows it (lib/brand/markState.ts). */
+  mark: MarkState;
 }
 
 export default function AuditForm() {
-  const [snapshot, setSnapshot] = useState<Snapshot>({});
+  const [snapshot, setSnapshot] = useState<Snapshot>({ mark: IDLE });
   const [ready, setReady] = useState(false);
 
   // Read after mount — no useSearchParams, so no Suspense boundary and no
   // build failure, and the page stays statically renderable.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const q = new URLSearchParams(window.location.search);
+    // A calculator's audit link carries its result in the query string. A
+    // visitor who came here from the header instead brings the same query in
+    // the 8's in-memory state; both are checked the same way below.
+    const fromUrl = new URLSearchParams(window.location.search);
+    const urlCarries = ['calculator_slug', 'days', 'exposure', 'totalDays', 'total'].some((k) => fromUrl.has(k));
+    const q = urlCarries ? fromUrl : new URLSearchParams(getMarkRecord().auditQuery);
     const n = (k: string) => {
       const v = Number(q.get(k));
       return Number.isFinite(v) && v > 0 ? Math.round(v) : undefined;
     };
     const handoff = parseHandoff(q);
+    const mark = markFromHandoff(q);
+    // A reload or a shared link starts the header's 8 fresh; redraw it from the link.
+    if (mark.kind !== 'idle') publishMark(mark, q.toString());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the page URL once on mount; it does not exist during server render
     setSnapshot({
       calculatorSlug: handoff.slug ?? undefined,
@@ -110,6 +123,7 @@ export default function AuditForm() {
       exposure: n('exposure'),
       totalDays: n('totalDays'),
       total: n('total'),
+      mark,
     });
     setReady(true);
   }, []);
@@ -134,7 +148,12 @@ export default function AuditForm() {
     return `https://tally.so/embed/${TALLY_FORM_ID}?${p.toString()}`;
   }, [snapshot]);
 
-  const hasSnapshot = snapshot.days !== undefined || snapshot.exposure !== undefined;
+  // Vacancy figures have their own rows; any other calculator's result is one line.
+  const otherResult =
+    snapshot.mark.kind !== 'idle' && snapshot.mark.source !== VACANCY_SLUG ? snapshot.mark : null;
+  const hasSnapshot = snapshot.days !== undefined || snapshot.exposure !== undefined || otherResult !== null;
+  // The panel takes the result's colour: mint for a healthy result, pink otherwise.
+  const accent = snapshot.mark.kind === 'healthy' ? PALETTE.mint : PALETTE.pink;
 
   return (
     <main
@@ -176,8 +195,8 @@ export default function AuditForm() {
               className="p-4 sm:p-5"
               style={{
                 ...panelStyle,
-                borderColor: hexA(PALETTE.pink, 0.3),
-                background: `linear-gradient(180deg, ${hexA(PALETTE.pink, 0.08)} 0%, ${PALETTE.panel} 70%)`,
+                borderColor: hexA(accent, 0.3),
+                background: `linear-gradient(180deg, ${hexA(accent, 0.08)} 0%, ${PALETTE.panel} 70%)`,
                 marginBottom: 18,
               }}
             >
@@ -193,6 +212,14 @@ export default function AuditForm() {
                   <span style={{ fontFamily: MONO, fontSize: 13, color: hexA('#ffffff', 0.8) }}>
                     Recoverable exposure:{' '}
                     <strong style={{ color: PALETTE.pink }}>{money(snapshot.exposure)}</strong>
+                  </span>
+                )}
+                {otherResult && (
+                  <span style={{ fontFamily: MONO, fontSize: 13, color: hexA('#ffffff', 0.8) }}>
+                    {getCalculator(otherResult.source ?? '')?.name}:{' '}
+                    <strong style={{ color: MARK_LOOK[otherResult.kind].color }}>
+                      {MARK_LOOK[otherResult.kind].label} {otherResult.figure}
+                    </strong>
                   </span>
                 )}
               </div>

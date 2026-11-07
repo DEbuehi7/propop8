@@ -271,6 +271,25 @@ Saves from the old formats land on a level: classic and short on Level 2, vanity
 
 ---
 
+## 8d. The living 8 (7 November 2026)
+
+**Context.** The owner asked for the logo to connect to how the site is performing, and chose one source for it: the visitor's own calculator result. This replaces 8a's revenue flag, which nothing ever fed.
+
+- **What the 8 shows** (`components/brand/LivingEight.tsx`, `lib/brand/markState.ts`). The 8 is now drawn as two loops, at the weight of the wordmark's Inter Black.
+  - Leak found: pink, with the lower bowl filled.
+  - Healthy: a mint outline.
+  - Not enough data: a grey dotted outline.
+  - No result: the plain white 8.
+  - Every state has its words, an icon and the figure beside the wordmark (canon VIS-02, EDO-09). From 640px up they sit next to the wordmark; below that, on their own row.
+- **When it changes.** Only after the visitor types into a calculator, or arrives with their own numbers in the link, and then only once the inputs have been still for 0.6 seconds. Sample values never light it (GOV-01). The colour always matches the one the calculator drew the number in, and a test holds that for every calculator.
+- **Motion.** One transition, and only on a change: the loops redraw in the new colour, then the bowl fills. Nothing loops. With reduced motion, the new state just appears.
+- **Carried to /audit.** The calculators' audit links add `calculator_result=cost|healthy`, checked like the rest of the handoff. A visitor who reaches /audit from the header brings the same query from memory. The audit panel shows the result in its own colour.
+- **Nothing stored.** The state lives in memory, because the calculators promise that nothing is stored. A reload starts the 8 fresh.
+- **Admin.** Admin pages keep the plain 8.
+- **Removed.** `REVENUE_TREND`, `getRevenueTrend` and the 8a colours (`#03edff` and `#f11aff` as status). An env var still set on the host is now ignored.
+
+---
+
 ## 9. Earlier passes
 
 - Home hub with six live cards and the activity stream. Plate8 identity; the wordmark goes home; diagnostics moved to its own button.
