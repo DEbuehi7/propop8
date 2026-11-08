@@ -10,7 +10,7 @@ architecture underneath it.** The rest of the memo is not yet ruled on. Where
 this file and the memo disagree on the part it does cover, this file wins.
 Change it here first, then build.
 
-Last reconciled: 19 October 2026 (your moves: §6).
+Last reconciled: 7 November 2026 (beat feel and freedom of choice: §7).
 
 ---
 
@@ -282,4 +282,67 @@ of the song and writes:
 
 A video `moves` has already read (same fingerprint) is not tracked again;
 `moves` only notes where it is, so references can be cut from it.
+
+---
+
+## 7. Beat feel and freedom of choice (CHOIR8, 7 November 2026)
+
+**Asked for by the owner (2026-11-07):** when the song's rhythm changes
+slightly, the dancers can choose which beat to land on and still stay within
+the flow. This extends CHOIR8, the shared eight-count grammar
+(`lib/dance8/motion/rhythm.ts`, `npm run dance8 -- choir <song>`). It changes
+when a dancer hits, never what the role does on that count, and never the
+skaters' tricks on chord changes (D8-16).
+
+**What counts as a change** (`lib/dance8/motion/beatFeel.ts`). Each counted
+beat is read from the onset pattern Stuttr saved with the song's analysis
+(Dance8 never reads the masters, D8-14). It is compared with the song's own
+habit at that place in the bar, not with a rule for all music. A whole song
+sitting a little early or late is its habit, not an anomaly.
+
+| Feel | Read when | Tuning (code constants) |
+|---|---|---|
+| steady | the beat lands where the song usually puts it | |
+| push / drag | the hit is early or late against the song's usual timing | 30 ms or more (`SHIFT_MIN_SEC`), searched within 0.2 beat (`FEEL_WINDOW_BEATS`) |
+| syncopated | the "and" is much louder than usual while the beat is softer | "and" at 1.5 times its usual strength or more (`AND_LOUDER`), beat at 0.85 or less (`BEAT_SOFTER`) |
+| dropped | the beat is all but silent | under 0.3 of its usual strength (`DROPPED_BELOW`) |
+| unknown | no onset pattern (analyses before 19 Oct 2026), or outside it | never guessed (EDO-4) |
+
+**What a dancer can choose** (`lib/dance8/motion/landing.ts`). Where the song
+is steady there is nothing to choose: everyone lands on the beat. Where it
+changes, the music offers:
+
+- **on** the grid beat (always)
+- **with** the music's own hit (a push or a drag)
+- **on the and**, where the accent moved (syncopated)
+- **hold** through a dropped beat (no hit; the move carries on)
+
+**The flow rules.** Every choice stays inside these four rules, and each one is
+tested by breaking it:
+
+1. The one is shared: on the first count of every phrase the whole cast lands
+   together, on the beat or with its hit, never on the "and".
+2. A landing leaves at least half a count before the next beat, so no move is
+   squeezed faster than the beat allows (D8-03).
+3. Never two holds in a row.
+4. Everyone landing on the same count lands within half a count of each other.
+
+**How the choice is made.** It is seeded, not random. The same cue map, feel
+and variation number give the same choices every time (D8-01, GOV-14), and
+`--variation N` gives another set under the same rules. Each liberty is
+weighted by how strongly the music offers it: a bigger push pulls harder, and
+a louder "and" pulls harder. The soloist and the breaker take the most
+liberties; for the choir and the skater each liberty weighs half as much. A dancer who just took
+a liberty is half as likely to repeat it straight away, so choices alternate.
+
+**Where it shows.** The count sheet adds a "Beat feel" table per cue. It lists
+every count where the rhythm shifts, what the music did, and where each dancer
+landed. `choir-plan.json` carries each count's feel and each dancer's landing
+and hit time. The command's readout gives the tally per role and the command
+for the next variation. A draft cue map stays DEFER, with or without choices.
+
+**Not yet.** The landings drive the CHOIR8 count plan only. The Kling dance
+shots follow the owner's own takes (§6a), which already carry his choices. The
+Gate 1 clip runtime does not read landings yet. The thresholds were set on
+synthetic drums; the first real songs may call for tuning.
 

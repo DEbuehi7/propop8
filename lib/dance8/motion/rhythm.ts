@@ -19,6 +19,8 @@ import type { DecisionGate } from "../contracts/decision";
 import type { Cue, CueMap } from "../contracts/scene";
 import type { MusicSection } from "../contracts/signal";
 import { barToSec } from "../authoring/validateCueMap";
+import type { BeatFeel } from "./beatFeel";
+import type { Landing } from "./landing";
 
 export type MotionMode = "lateral" | "forward_back" | "vertical" | "rotation" | "orbit" | "compound";
 export type Intent = "load" | "travel" | "release" | "accent" | "resolve";
@@ -133,6 +135,10 @@ export interface PerformerMove {
   contact: Contact;
   /** False while holding (call and response, or the wave not yet arrived). */
   active: boolean;
+  /** Which hit this performer lands on, once the song's beat feel is applied (./landing). Active moves only. */
+  landing?: Landing;
+  /** Song time of that hit; null when holding through a dropped beat. */
+  hitSec?: number | null;
 }
 
 export interface PlannedCount {
@@ -142,6 +148,8 @@ export interface PlannedCount {
   phrase: number;
   count: number;
   gate: DecisionGate;
+  /** The song's feel on this count (./beatFeel), once measured. */
+  feel?: BeatFeel;
   moves: PerformerMove[];
 }
 
@@ -150,6 +158,7 @@ export interface CuePlan {
   section: MusicSection;
   relationship: Relationship;
   bpm: number;
+  beatsPerBar: number;
   beatsPerCount: number;
   startSec: number;
   endSec: number;
@@ -213,7 +222,7 @@ export function planCue(map: Pick<CueMap, "tempo" | "firstDownbeatSec" | "approv
     counts.push({ beat: b, timeSec: secOfBeat(b), phrase, count: (k % 8) + 1, gate, moves });
   }
   return {
-    cueId: cue.id, section: cue.section, relationship: rel, bpm: seg.bpm, beatsPerCount,
+    cueId: cue.id, section: cue.section, relationship: rel, bpm: seg.bpm, beatsPerBar: seg.beatsPerBar, beatsPerCount,
     startSec: secOfBeat(startBeat), endSec: secOfBeat(endBeat), gate,
     reason: verified ? "beat grid from the checked cue map" : "the cue map is still a draft, so its beat grid is unchecked: rehearse with these counts, don't film to them yet",
     counts,
