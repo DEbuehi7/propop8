@@ -16,6 +16,8 @@ import { countSheetHtml } from "../../lib/dance8/motion/countSheet";
 import { choirSheet, countedBeats } from "../../lib/dance8/choirPipeline";
 import type { Cue, CueMap } from "../../lib/dance8/contracts/scene";
 import { saveManifest, type Ctx } from "../../lib/stuttr/commands";
+import { CANON_REGISTER } from "../../lib/canon";
+import { FLOW_RULES, LANDING_TEXT, ROLE_FREEDOM } from "../../lib/dance8/motion/landing";
 import { emptyManifest } from "../../lib/stuttr/library";
 
 // ---------- a synthetic drum track: kick every beat, snare on 2 and 4, a soft hat on each "and" ----------
@@ -242,3 +244,20 @@ test("count sheet: a steady song shows no beat-feel table; landings are marked w
   const text: Record<Exclude<Landing, "on">, string> = { with: "with the hit", and: "on the and", hold: "holds through" };
   assert.ok(liberties.some((w) => html.includes(`<b>${text[w]}`)), "a liberty is marked in bold");
 });
+
+test("canon D8-19 (locked) says what the code does", () => {
+  const e = CANON_REGISTER.find((x) => x.id === "D8-19");
+  assert.ok(e && e.status === "LOCKED", "D8-19 is locked");
+  assert.deepEqual(Object.keys(LANDING_TEXT), ["on", "with", "and", "hold"], "four choices");
+  assert.equal(FLOW_RULES.length, 4, "four flow rules");
+  assert.equal(MIN_GAP_COUNTS, 0.5);
+  assert.equal(ENSEMBLE_SPREAD_COUNTS, 0.5);
+  assert.match(e.statement, /at least half a count before the next beat/);
+  assert.match(e.statement, /within half a count of each other/);
+  assert.match(e.statement, /never two holds in a row/);
+  assert.match(e.statement, /first count of every phrase is shared/);
+  assert.equal(ROLE_FREEDOM.choir / ROLE_FREEDOM.soloist, 0.5, "the choir leans half as far as the soloist");
+  assert.equal(ROLE_FREEDOM.skater / ROLE_FREEDOM.breaker, 0.5, "the skater leans half as far as the breaker");
+  assert.match(e.statement, /lean half as far/);
+});
+

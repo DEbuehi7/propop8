@@ -10,7 +10,7 @@
 //   and   on the "and", where a syncopated accent moved
 //   hold  through a dropped beat: no hit, the move carries on
 //
-// Flow rules (FLOW_RULES below, each tested):
+// Flow rules (FLOW_RULES below, each tested; locked as canon D8-19):
 //   1. The one is shared: on the first count of every phrase the whole cast
 //      lands together, on the beat or with its hit, never on the "and".
 //   2. A landing always leaves room for the next count: at least half a count

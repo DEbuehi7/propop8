@@ -285,9 +285,9 @@ A video `moves` has already read (same fingerprint) is not tracked again;
 
 ---
 
-## 7. Beat feel and freedom of choice (CHOIR8, 7 November 2026)
+## 7. Beat feel and freedom of choice (CHOIR8, canon D8-19, 7 November 2026)
 
-**Asked for by the owner (2026-11-07):** when the song's rhythm changes
+**Decided by the owner (2026-11-07), locked as D8-19:** when the song's rhythm changes
 slightly, the dancers can choose which beat to land on and still stay within
 the flow. This extends CHOIR8, the shared eight-count grammar
 (`lib/dance8/motion/rhythm.ts`, `npm run dance8 -- choir <song>`). It changes
@@ -317,8 +317,8 @@ changes, the music offers:
 - **on the and**, where the accent moved (syncopated)
 - **hold** through a dropped beat (no hit; the move carries on)
 
-**The flow rules.** Every choice stays inside these four rules, and each one is
-tested by breaking it:
+**The flow rules (locked, D8-19).** Every choice stays inside these four rules,
+and each one is tested by breaking it:
 
 1. The one is shared: on the first count of every phrase the whole cast lands
    together, on the beat or with its hit, never on the "and".
@@ -344,5 +344,7 @@ for the next variation. A draft cue map stays DEFER, with or without choices.
 **Not yet.** The landings drive the CHOIR8 count plan only. The Kling dance
 shots follow the owner's own takes (§6a), which already carry his choices. The
 Gate 1 clip runtime does not read landings yet. The thresholds were set on
-synthetic drums; the first real songs may call for tuning.
+synthetic drums; the first real songs may call for tuning. They are code
+constants, not canon: tuning them needs no canon change, as long as the four
+flow rules and the four choices stay as D8-19 says.
 
