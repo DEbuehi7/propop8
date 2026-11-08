@@ -9,6 +9,7 @@
  *   npm run dance8 -- kling cloyne --model kling-3.0-720p     (b-roll, lip sync and tricks on Kling 3.0 at 720p)
  *   npm run dance8 -- kling cloyne --zip                      (this batch as one zip, every upload inside, for the phone)
  *   npm run dance8 -- choir cloyne                            (CHOIR8 count sheet: one eight-count grammar for choir, breaker and skater)
+ *   npm run dance8 -- choir cloyne --variation 1              (another set of beat choices where the song's rhythm shifts)
  *   npm run dance8 -- clips cloyne ~/Downloads/cloyne
  *   npm run dance8 -- approve-clip cloyne broll-intro-drone_wide --drift 0.1
  *   npm run dance8 -- retire-clip cloyne broll-intro-drone_wide
@@ -49,7 +50,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -59,7 +60,7 @@ const usage = `Dance8 (${ctx.library})
   plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
   kling <trackId> [--budget <credits>] [--model <generator>] [--zip]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/)
   clips <trackId> <folder>
-  choir <trackId>                                    (CHOIR8 count sheet, in <song>/dance8/choir/)
+  choir <trackId> [--variation N]                    (CHOIR8 count sheet, in <song>/dance8/choir/; N picks another set of beat choices)
   approve-clip <trackId> <clipId> --drift <0-1> [--landing <sec>]
   retire-clip <trackId> <clipId>
   moves <trackId> [video ...] [--offset <song sec at video start>] [--heavy] [--no-open]
@@ -128,7 +129,11 @@ async function main() {
       break;
     case "choir":
       if (!a1) throw new Error("choir needs a track id");
-      choirSheet(ctx, a1);
+      {
+        const v = flag("variation");
+        if (v !== undefined && !(Number.isInteger(Number(v)) && Number(v) >= 0)) throw new Error("--variation must be a whole number, 0 or more");
+        choirSheet(ctx, a1, { variation: v === undefined ? undefined : Number(v) });
+      }
       break;
     case "clips":
       if (!a1 || !a2) throw new Error("clips needs a track id and a folder of downloads");
