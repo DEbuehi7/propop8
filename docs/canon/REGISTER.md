@@ -1,8 +1,8 @@
-# AIM canon register (v1.10.0)
+# AIM canon register (v1.11.0)
 
 Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by hand; edit the register and regenerate.
 
-209 entries from 22 studies: CONFLICT 0 · OPEN 8 · LOCKED 141 · SPEC 22 · PROPOSED 14 · RESEARCH 15 · CONCEPT 9.
+210 entries from 22 studies: CONFLICT 0 · OPEN 8 · LOCKED 141 · SPEC 22 · PROPOSED 15 · RESEARCH 15 · CONCEPT 9.
 
 ## Coverage by study
 
@@ -14,21 +14,21 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 | Triadic Geometry, EDO Genome and Adaptive Pavilion (`triadic-pavilion`) | 50549a6f | 12 | GOV-21, EDO-02, EDO-05, TRI-01, TRI-07, TRI-08 |
 | Adaptive Reuse, EDO-Triadic Urbanism, Stuttr Murals & Walkable Transit (`mural-transit`) | 5996497e | 10 | B5R-33, B5R-36, STU-05 |
 | Eon Labs BloomWing: Autonomous Mobility and Engineering Feasibility (`bloomwing`) | 5e70b0a2 | 16 | ROB-04, MOB-01, MOB-02, MOB-03, MOB-04, MOB-05, MOB-06, MOB-07, MOB-08, LET-03 |
-| System Architecture, Autonomy, EDO Design and Integration (`system-architecture`) | 5fb005b7 | 11 | GOV-15, GOV-16, GOV-17, GOV-24, B5R-05, B5R-31, INF-04, EDO-14, LET-01, LET-02, D8-13, D8-14, VIS-02, VIS-03, PUR-01, PUR-02, PUR-03 |
+| System Architecture, Autonomy, EDO Design and Integration (`system-architecture`) | 5fb005b7 | 11 | GOV-15, GOV-16, GOV-17, GOV-24, B5R-05, B5R-31, B5R-55, INF-04, EDO-14, LET-01, LET-02, D8-13, D8-14, VIS-02, VIS-03, PUR-01, PUR-02, PUR-03 |
 | PropOps8 Reliability, EDO Visual System, Security & Compliance (`propops8-reliability`) | 805bb03f | 10 | GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06, GOV-07, GOV-08, GOV-09, GOV-10, GOV-11, GOV-12, GOV-13, GOV-18, GOV-19, GOV-20, GOV-21, GOV-25, GOV-28, P8O-01, P8O-02, P8O-03, P8O-04, P8O-08, P8O-09, B5R-04, B5R-31, EDO-01, EDO-05, EDO-09, STU-04, PL8-06, PL8-08, PL8-07, VIS-02, VIS-03 |
 | EDO Triadic Genome, L.E.T. Homes, Seamless Threads and Research (`let-homes-threads`) | 98b5b03a | 13 | EDO-10, TRI-02, TRI-04, TRI-05, TRI-06, TRI-10, TRI-11, TRI-13, LET-01, LET-02, LET-05, LET-07, D8-01, D8-04, D8-11, VIS-09, VIS-11, WAR-01, WLD-01, WLD-02, WLD-03 |
 | Kern/Fresno Property Intelligence, Claude Handoff and Visual QA (`kern-fresno-phase1`) | 9ee156f8 | 4 | GOV-17, B5R-02, B5R-06, B5R-07, B5R-08, VIS-04, VIS-08 |
-| ChronoLayer, EDO-Triadic Visual System, Digital Twins, Dance8-STUTTR (`chronolayer`) | a2b98a0a | 16 | GOV-22, GOV-23, GOV-27, B5R-01, B5R-02, B5R-03, TRI-03, D8-01, D8-02, D8-04, D8-05, D8-11, D8-14, D8-19, D8-15, ST8-01, PL8-09, VIS-01, VIS-06, VIS-07, VIS-10 |
+| ChronoLayer, EDO-Triadic Visual System, Digital Twins, Dance8-STUTTR (`chronolayer`) | a2b98a0a | 16 | GOV-22, GOV-23, GOV-27, B5R-01, B5R-02, B5R-03, B5R-55, TRI-03, D8-01, D8-02, D8-04, D8-05, D8-11, D8-14, D8-19, D8-15, ST8-01, PL8-09, VIS-01, VIS-06, VIS-07, VIS-10 |
 | Design Identity, Development Engine, Stage 1 MVP, Digital Twin and UI System (`design-engine`) | b3e496aa | 12 | GOV-14, GOV-16, GOV-17, GOV-20, GOV-26, GOV-27, B5R-04, B5R-17, B5R-18, B5R-19, B5R-20, B5R-21, B5R-22, B5R-23, B5R-24, B5R-25, B5R-26, B5R-27 |
 | Seamless Threads, Equipment, AI Fast / RE Slow & Portfolio Feedback (`fast-slow-portfolio`) | b77973ab | 15 | GOV-15, P8O-06, P8O-07, B5R-01, B5R-02, B5R-28, B5R-29, B5R-30, B5R-32, LET-06, PUR-04, WAR-01, WAR-02, WAR-03 |
 | Five-Market Intelligence, Resilience, Vault Governance & Camera-First Robotics (`five-market-vault`) | c22ea897 | 15 | GOV-16, B5R-01, B5R-07, B5R-08, B5R-09, B5R-10, B5R-11, B5R-12, B5R-13, B5R-14, B5R-15, B5R-16, ROB-02, ROB-03, ROB-04, ROB-05, ROB-06, ROB-07, PUR-05 |
 | Sears Los Angeles Adaptive Reuse and Intelligent Building Systems (`sears-la`) | c7843add | 15 | GOV-26, GOV-30, B5R-01, B5R-02, B5R-33, B5R-34, B5R-37, STU-05 |
 | Plate8 Entertainment Suite, Claude Integration & Responsive UI (`plate8-suite`) | dad40a17 | 8 | GOV-14, GOV-17, ST8-02, PL8-01, PL8-02, PL8-03, PL8-04, PL8-05 |
-| California Multifamily Infrastructure, Adaptive Reuse and Phased Development (`ca-infrastructure`) | e1cd2318 | 10 | GOV-26, INF-01, INF-02, INF-03, INF-04, INF-05, INF-06, INF-07, INF-08, LET-07 |
+| California Multifamily Infrastructure, Adaptive Reuse and Phased Development (`ca-infrastructure`) | e1cd2318 | 10 | GOV-26, B5R-55, INF-01, INF-02, INF-03, INF-04, INF-05, INF-06, INF-07, INF-08, LET-07 |
 | Robotic Ecology, Triadic Genome & Systems Integration (`robotic-ecology`) | e1ed3f99 | 17 | P8O-05, TRI-03, ROB-01, ROB-02, ROB-03, ROB-04, ROB-08, ROB-09 |
 | Triadic Genome & Responsive Architecture: Dance8 + Skate-Dance Fusion (`triadic-dance8`) | f9af927e | 14 | TRI-01, TRI-02, TRI-04, TRI-08, TRI-09, TRI-11, TRI-12, D8-01, D8-03, D8-11, D8-12, D8-16, D8-17, D8-18, D8-19 |
 | Kirtled and Dance8 Spatial Music Integration (`kirtled`) | fece7f38 | 6 | D8-06, D8-07, D8-08, D8-09, D8-10, D8-16, D8-17, D8-18 |
-| AIM-B5R Façade Intelligence System Complete Study v1.0 (`facade-fis`) | 6837f7a2 | 13 | B5R-38, B5R-39, B5R-40, B5R-41, B5R-42, B5R-43, B5R-44, B5R-45 |
+| AIM-B5R Façade Intelligence System Complete Study v1.0 (`facade-fis`) | 6837f7a2 | 13 | B5R-38, B5R-39, B5R-40, B5R-41, B5R-42, B5R-43, B5R-44, B5R-45, B5R-55 |
 | AIM-B5R Context & Dignity Engine: Locational Intelligence, Sensitive Design & Measurable Outcomes (Design Strategy v1.0) (`context-dignity`) | 75bf0861 | 15 | GOV-29, GOV-30, B5R-46, B5R-47, B5R-48, B5R-49, B5R-50, B5R-51, B5R-52, B5R-53, B5R-54 |
 
 ## OPEN
@@ -223,6 +223,7 @@ Generated from `lib/canon/` by `npx tsx scripts/canon/report.ts`. Do not edit by
 |---|---|---|---|---|---|
 | P8O-05 | PROPOPS8 | Add a Robot-Ready Building section to the Audit Engine (door clearances, travel paths, elevators, connectivity, power, docks; sourced cost only; reviewer), exported as a machine-readable record for AIM-B5R. *Changes the paid report: needs the audit golden diff, owner approval and an engine version bump.* | not_built |  | robotic-ecology p7 |
 | B5R-32 | AIM_B5R | Three acquisition archetypes: distressed multifamily rehab, adaptive reuse and AIModular infill. | n/a |  | fast-slow-portfolio p10 |
+| B5R-55 | AIM_B5R | Weathering layer: AIM-B5R tracks how building and street elements wear over time. Each element names its shearing layer (site, structure, skin, services, space plan, stuff), who can fix it and how it wears. Material wear gets an estimated service life: a sourced reference service life times the seven ISO 15686 factors set for the place (INF-04); a missing input leaves the estimate unknown, never a default. Condition is graded 1 (as new) to 5 (failed or unsafe) by a named person from dated photos taken from a registered viewpoint (capture clock, VIS-10). A grade at the element's intervention grade makes work due; otherwise work falls due at the earlier of the condition trend and the age estimate, and a better latest grade only calls for a re-inspection: the software never moves a date later on its own. Graffiti, vandalism and litter are social and operational cycles, logged as report-to-clear times, never as decay. Wear describes materials and streets, never the people who live there (GOV-29, B5R-54); measured avoided maintenance from it is how façade lifecycle value gets verified (B5R-43). *Asked for by the owner in chat on 2026-11-08, after his own street observations downtown; proposed until he locks it. Asked for in chat rather than by a study, so the sources are those of INF-02, INF-04, VIS-10 and B5R-43, which it builds on. Reference lives, factor values and grades are sourced data, never canon; the intervention grade (4), the 90-day trend minimum and the 0.8 to 1.2 flag are tuning constants in lib/b5r/weathering/serviceLife.ts.* | partial | lib/b5r/weathering/serviceLife.ts; docs/aim-b5r/WEATHERING.md | ca-infrastructure p3; ca-infrastructure p5; ca-infrastructure p8; system-architecture p7; chronolayer p4; facade-fis p9 |
 | LET-05 | LET | L.E.T./short-stay operating loop feeding AIM-B5R recalibration, with guest UI separate from PropOps8 operations, no guest surveillance, minimum data, offline check-in fallback and human vendor escalation. Poster metrics are simulated. | n/a |  | let-homes-threads p7 |
 | LET-06 | LET | Smallest useful node kits: Eon and Lumen get one 43-55 in screen, a wall tablet, a local hub, site sensors and offline control; Transect uses laptop, phone, tablet, portable power and modular cameras. | n/a |  | fast-slow-portfolio p7 |
 | D8-04 | DANCE8 | 1D-8D tiers (pulse, pattern, space, time, branching narrative, multisensory coupling, semantics, adaptive orchestration) as an interface taxonomy, not physical dimensions. | n/a | lib/canon/vocab.ts#DANCE8_TIERS | chronolayer p11; let-homes-threads p9 |
