@@ -1,5 +1,5 @@
 /**
- * The weathering layer (canon B5R-55, proposed): the ISO 15686 factor method,
+ * The weathering layer (canon B5R-55, locked): the ISO 15686 factor method,
  * condition grades from dated photos, and when work falls due.
  *
  * Every element, lifespan and factor below is SYNTHETIC test data (GOV-17):
@@ -197,7 +197,7 @@ test("deterministic: the same element and day give the same assessment", () => {
 test("canon B5R-55 stays in step with the code", () => {
   const e = CANON_REGISTER.find((x) => x.id === "B5R-55");
   assert.ok(e, "B5R-55 is registered");
-  assert.equal(e.status, "PROPOSED");
+  assert.equal(e.status, "LOCKED");
   assert.equal(SHEARING_LAYERS.join(", "), "site, structure, skin, services, space_plan, stuff");
   assert.match(e.statement, /site, structure, skin, services, space plan, stuff/);
   assert.match(e.statement, /ISO 15686/);

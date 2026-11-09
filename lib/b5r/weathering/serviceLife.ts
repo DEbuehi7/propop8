@@ -1,6 +1,6 @@
 // lib/b5r/weathering/serviceLife.ts
 //
-// The weathering layer (canon B5R-55, proposed): how long a building or street
+// The weathering layer (canon B5R-55, locked): how long a building or street
 // element should last where it is, how worn it is now, and when it next needs
 // work. See docs/aim-b5r/WEATHERING.md.
 //

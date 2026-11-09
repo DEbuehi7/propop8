@@ -1,6 +1,6 @@
-# AIM-B5R weathering layer (proposed, 8 Nov 2026)
+# AIM-B5R weathering layer (8 Nov 2026)
 
-Status: **canon B5R-55, PROPOSED in canon 1.11.0.** The calculator is built
+Status: **canon B5R-55, LOCKED by the owner on 8 Nov 2026 (canon 1.11.0).** The calculator is built
 (`lib/b5r/weathering/serviceLife.ts`, tested in `tests/b5rWeathering.test.ts`).
 There are no records, no screen and no photo store yet, and no real lifespan
 or factor value ships with it.
@@ -151,4 +151,4 @@ are tuning constants in the code, not canon.
 
 A records table, a photo store with registered viewpoints, a screen, and
 reference lives with real sources. Each waits for a pilot building (Fresno
-first, B5R-45, B5R-51) and the owner's lock of B5R-55.
+first, B5R-45, B5R-51).

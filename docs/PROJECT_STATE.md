@@ -149,14 +149,14 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 
 Version 1.11.0: 22 studies, 210 entries.
 
-- By status: CONCEPT 9 · LOCKED 141 · OPEN 8 · PROPOSED 15 · RESEARCH 15 · SPEC 22
+- By status: CONCEPT 9 · LOCKED 142 · OPEN 8 · PROPOSED 14 · RESEARCH 15 · SPEC 22
 - By build state: built 55 · n/a 103 · not_built 29 · partial 17 · unchecked 6
 
 Locked or specified, but not fully built (what is still missing):
 
 | Domain | Not built | Partly built |
 |---|---|---|
-| AIM_B5R | B5R-11, B5R-18, B5R-21, B5R-22, B5R-23, B5R-24, B5R-26, B5R-30, B5R-46, B5R-47, B5R-48, B5R-49, B5R-50 | B5R-02, B5R-16, B5R-19, B5R-20, B5R-45 |
+| AIM_B5R | B5R-11, B5R-18, B5R-21, B5R-22, B5R-23, B5R-24, B5R-26, B5R-30, B5R-46, B5R-47, B5R-48, B5R-49, B5R-50 | B5R-02, B5R-16, B5R-19, B5R-20, B5R-45, B5R-55 |
 | DANCE8 | D8-08, D8-13 | D8-01, D8-10 |
 | EDO_PATTERN | EDO-10, EDO-12 | none |
 | GOVERNANCE | GOV-05, GOV-11 | GOV-08, GOV-10, GOV-17, GOV-19, GOV-28 |
