@@ -69,6 +69,8 @@ Status words:
 | [DANCE8_SPEC.md](DANCE8_SPEC.md) | Dance8 motion spec | Reference |
 | [MEDIA_WORKFLOW.md](MEDIA_WORKFLOW.md) | Kling cards, zips, credits, CHOIR8, helper videos | Current |
 | [MEDIA_VAULT.md](MEDIA_VAULT.md) | Read-only index over the private Stuttr library | Reference |
+| [ALBUM_DESK.md](ALBUM_DESK.md) | Stuttr Album Desk: a Suno album in one command, holds, paid-voice plans, Kling clips, drafts | Current |
+| [album-desk/BASELINE.md](album-desk/BASELINE.md) | What existed before the Album Desk, the canon check and the command inventory (10 Nov 2026) | Archive |
 | [LATE8_AUDIOBOOK.md](LATE8_AUDIOBOOK.md) | Publishing the audiobook to R2 and Late8 | Current |
 
 ## Archive

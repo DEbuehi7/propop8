@@ -43,6 +43,9 @@ nothing until someone presses play.
 repository, which is public. When one is used on a page it carries a Concept
 badge and stays off the PropOps8 tools and paid flows (GOV-01, GOV-17).
 
+A whole album at once (import a Suno ZIP, see only the exceptions, then the
+same steps per album): [ALBUM_DESK.md](ALBUM_DESK.md).
+
 ## Dance8: from shot list to video
 
 1. `npm run dance8 -- plan <song>`. The song's `dance8/README.txt` lists the
