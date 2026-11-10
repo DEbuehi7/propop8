@@ -57,3 +57,31 @@ export function chooseRenderFps(rates: readonly number[]): FpsChoice {
   const uneven = [...counts.keys()].filter((r) => r % fps !== 0).sort((a, b) => a - b);
   return { fps, sourceFps, uneven };
 }
+
+const gcd = (a: number, b: number): number => (b === 0 ? Math.abs(a) : gcd(b, a % b));
+
+/** A decimal as an exact fraction ("92.058" -> 92058/1000), from its text so no float error creeps in. */
+export function exactRatio(text: string): { num: number; den: number } {
+  const m = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text.trim());
+  if (!m) throw new Error(`not a plain decimal: ${text}`);
+  const den = 10 ** (m[2]?.length ?? 0);
+  const num = Number(m[1]) * den + Number(m[2] ?? 0);
+  const g = gcd(num, den);
+  return { num: num / g, den: den / g };
+}
+
+/**
+ * Frames per beat and per bar as exact fractions (canon D8-03: 120 BPM at 24
+ * fps is 12 and 48). Rates like 24000/1001 and tempos like 92.058 give
+ * fractions, and `integer` says whether every beat starts on a frame; when it
+ * doesn't, cuts are placed on the nearest frame and drift is reset each bar.
+ */
+export function frameGrid(bpm: string, fps: { num: number; den: number }, beatsPerBar = 4): { perBeat: { num: number; den: number }; perBar: { num: number; den: number }; integer: boolean; barInteger: boolean } {
+  const b = exactRatio(bpm);
+  if (b.num <= 0 || fps.num <= 0 || fps.den <= 0) throw new Error("bpm and fps must be positive");
+  // frames per beat = 60 / bpm * fps = 60 * b.den * fps.num / (b.num * fps.den)
+  const reduce = (n: number, d: number) => { const g = gcd(n, d); return { num: n / g, den: d / g }; };
+  const perBeat = reduce(60 * b.den * fps.num, b.num * fps.den);
+  const perBar = reduce(perBeat.num * beatsPerBar, perBeat.den);
+  return { perBeat, perBar, integer: perBeat.den === 1, barInteger: perBar.den === 1 };
+}
