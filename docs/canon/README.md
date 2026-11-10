@@ -33,6 +33,7 @@ than copying it:
 - R&D lanes, stages and register: `docs/aim-b5r/RESEARCH.md`
 - Façade Intelligence System audit, rules and what is still proposed: `docs/aim-b5r/FACADE_INTELLIGENCE.md`
 - Context & Dignity Engine: fit with canon, conflicts, checked numbers and the atlas review: `docs/aim-b5r/CONTEXT_DIGNITY.md`
+- Weathering layer (B5R-55): service life, condition grades and when work falls due: `lib/b5r/weathering/`, `docs/aim-b5r/WEATHERING.md`
 - Phase 1 identity gate and the ten-property pilot: `lib/b5r/phase1/`, `data/aim-b5r/phase1/`
 - Visual archive and colour rule: `docs/aim-b5r/visual-archive/`
 - Kirtled song-following solver: `lib/dance8/harmony/`, `lib/dance8/contracts/harmony.ts`
@@ -124,6 +125,10 @@ And two changes after the owner's 29 Palms check:
 
 - **D8-19**: where a song departs slightly from its own rhythm, each CHOIR8 dancer chooses where to land: on the beat, with the music's hit, on the "and", or holding through a drop. Four flow rules hold every choice: the first count of a phrase is shared, half a count of room before the next beat, never two holds in a row, one count's landings within half a count. Choices are seeded and repeatable; `--variation` gives another set. Timing only: role expressions and the skaters' tricks (D8-16) are unchanged.
 
+## Decided by the owner (v1.11.0, 8 Nov 2026)
+
+- **B5R-55**: the weathering layer. Each element names its shearing layer (site, structure, skin, services, space plan, stuff), who can fix it and how it wears. Material wear gets an ISO 15686 factor-method service life from a sourced reference life and seven factors, unknown when any input is missing. Condition is graded 1 to 5 by a named person from dated photos at a registered viewpoint. Work is due at an observed grade, else at the earlier of the trend and the age estimate; a better look only asks for a re-inspection, and no date moves later on its own. Graffiti, vandalism and litter are cycles, logged as report-to-clear times, never decay. Wear never describes residents.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
@@ -154,3 +159,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.8.0, 2026-11-06: the Context & Dignity Engine study added as the 22nd source, with GOV-29 and B5R-46 to B5R-50 proposed, B5R-51 a conflict (DTLA versus the Fresno pilot), B5R-52 a concept and B5R-53 and B5R-54 research. No LOCKED entry changed. B5R-53 is checked by `tests/b5rContext.test.ts` through `npvOf`, the façade NPV formula now exported from `lib/b5r/facade/capital.ts` (same results).
 - 1.9.0, 2026-11-06: the owner locked GOV-29 and B5R-46 to B5R-50 and settled B5R-51 (Fresno first). LET-03 corrected (about 0.26 acre, not 0.28; the city's written rules added). GOV-30 added (site-fit check, built in `lib/b5r/site/envelope.ts`) with the ChatGPT brief `docs/canon/CHATGPT_PROMPT.md`.
 - 1.10.0, 2026-11-07: D8-19 added and locked by the owner (beat feel and freedom of choice for the CHOIR8 dancers; built in `lib/dance8/motion/beatFeel.ts` and `lib/dance8/motion/landing.ts`). The detection thresholds stay tuning constants, outside canon.
+- 1.11.0, 2026-11-08: B5R-55 added and locked by the owner (the weathering layer: shearing layers, the ISO 15686 factor method, condition graded 1 to 5 from dated photos at registered viewpoints, the earlier of trend and age with no automatic later dates, graffiti and litter as cycles, never decay). The calculator is built in `lib/b5r/weathering/serviceLife.ts` and explained in `docs/aim-b5r/WEATHERING.md`. No existing LOCKED entry changed. The intervention grade, the 90-day trend minimum and the 0.8 to 1.2 flag stay tuning constants, outside canon.
