@@ -232,7 +232,9 @@ export function roleFromName(fileName: string): { role: FileRole; stemName?: str
   const words = base.split(/[^a-z0-9]+/).filter(Boolean);
   const has = (w: string) => words.includes(w);
   if (/backing|bgv|background\s*vocal|harmon|choir/.test(base)) return { role: "backing_vocals" };
-  if (/instrumental|karaoke|no[\s_-]*vocals?/.test(base) || has("inst")) return { role: "instrumental" };
+  // Suno's lead-vocal split names the other half "Without Lead Vocal": everything but the lead
+  // (instruments and backing vocals), the bed a converted lead goes over. Never a lead vocal.
+  if (/instrumental|karaoke|(^|[^a-z])(no|without|minus)[\s_-]*(lead[\s_-]*)?vocals?/.test(base) || has("inst")) return { role: "instrumental" };
   if (/vocal|acapella|a[\s_-]*cappella/.test(base) || has("vox") || has("voice")) return { role: "vocals" };
   for (const w of STEM_WORDS) {
     if (has(w)) return { role: "stem", stemName: w === "drum" ? "drums" : w === "perc" ? "percussion" : w };

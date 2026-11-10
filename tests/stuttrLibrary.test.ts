@@ -81,6 +81,24 @@ test("slugify and roles from file names", () => {
   assert.ok(!warnings.some((w) => w.includes("Song Style.rtf")));
 });
 
+test("Suno's lead-vocal split: the lead is the vocal, Without Lead Vocal is the bed under it", () => {
+  assert.deepEqual(roleFromName("EDO (The Legacy) (Lead Vocal).wav"), { role: "vocals" });
+  assert.deepEqual(roleFromName("EDO (The Legacy) (Without Lead Vocal).wav"), { role: "instrumental" });
+  assert.deepEqual(roleFromName("Song (Without Vocals).mp3"), { role: "instrumental" });
+  assert.deepEqual(roleFromName("Song (Minus Lead Vocal).wav"), { role: "instrumental" });
+  assert.deepEqual(roleFromName("Without You (Vocals).wav"), { role: "vocals" }, "a title starting with Without is not a split");
+  assert.deepEqual(roleFromName("Song (No Vocals).wav"), { role: "instrumental" });
+  assert.deepEqual(roleFromName("Piano Vocal.wav"), { role: "vocals" }, "piano is not 'no'");
+  for (const names of [
+    ["EDO_The_Legacy_Lead_Vocal.wav", "EDO_The_Legacy_Without_Lead_Vocal.wav", "EDO_The_Legacy.wav"],
+    ["EDO (The Legacy) (Lead Vocal).wav", "EDO (The Legacy) (Without Lead Vocal).wav", "EDO (The Legacy).wav"],
+  ]) {
+    const { roles, warnings } = classifyFolder(names);
+    assert.deepEqual(names.map((n) => roles.get(n)!.role), ["vocals", "instrumental", "full_mix"], names[0]);
+    assert.deepEqual(warnings, [], "one lead vocal, so convert sends the lead and nothing else to ElevenLabs");
+  }
+});
+
 test("a song title with a stem word is not mistaken for a stem", () => {
   assert.equal(sharedPrefix(["Bass Drop Anthem (Full Song)", "Bass Drop Anthem (Vocals)"]), "Bass Drop Anthem (");
   const { roles, warnings } = classifyFolder(["Bass Drop Anthem (Full Song).wav", "Bass Drop Anthem (Vocals).wav", "Bass Drop Anthem (Drums).wav"]);
