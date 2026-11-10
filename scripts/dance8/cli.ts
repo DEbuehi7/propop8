@@ -43,6 +43,7 @@ import { styleLines } from "../../lib/dance8/moves/style";
 import { readoutLines } from "../../lib/dance8/moves/track";
 import { captureTakes } from "./capture/server";
 import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
+import { albumPreview } from "../../lib/stuttr/desk/desk";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -50,7 +51,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -66,7 +67,8 @@ const usage = `Dance8 (${ctx.library})
   moves <trackId> [video ...] [--offset <song sec at video start>] [--heavy] [--no-open]
   check-moves <trackId> [clipId ...] [--shift] [--again] [--no-open]
   style
-  render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]`;
+  render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]
+  album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -110,7 +112,13 @@ async function moves(trackId: string, videos: string[]) {
 }
 
 async function main() {
+  if (has("help")) { console.log(usage); return; }
   switch (cmd) {
+    case "album": {
+      if (a1 !== "preview" || !a2) throw new Error("album needs: preview <albumId>");
+      albumPreview(ctx, a2, { short: flag("short"), only: flag("only")?.split(",") });
+      break;
+    }
     case "plan": {
       if (!a1) throw new Error("plan needs a track id");
       const aspect = flag("aspect") as AspectRatio | undefined;

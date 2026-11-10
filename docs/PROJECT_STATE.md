@@ -29,7 +29,8 @@ Every `export const …VERSION… = "…"` in `lib/`.
 | `PHASE1_RULES_VERSION` | phase1-gate-1.0.0 | `lib/b5r/phase1/seed.ts` |
 | `API_VERSION` | 2023-06-01 | `lib/b5r/screen/claude.ts` |
 | `SCREEN_VERSION` | aim-b5r-photo-screen-1 | `lib/b5r/screen/report.ts` |
-| `CANON_VERSION` | 1.11.0 | `lib/canon/index.ts` |
+| `WEATHERING_VERSION` | aim-weathering-0.1.0 | `lib/b5r/weathering/serviceLife.ts` |
+| `CANON_VERSION` | 1.12.0 | `lib/canon/index.ts` |
 | `ENGINE_VERSION` | 1.1.0 | `lib/engineVersion.ts` |
 
 ## Pages
@@ -146,16 +147,16 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 
 ## Canon
 
-Version 1.11.0: 22 studies, 215 entries.
+Version 1.12.0: 22 studies, 216 entries.
 
-- By status: CONCEPT 9 · LOCKED 145 · OPEN 9 · PROPOSED 14 · RESEARCH 15 · SPEC 23
-- By build state: built 56 · n/a 107 · not_built 29 · partial 17 · unchecked 6
+- By status: CONCEPT 9 · LOCKED 146 · OPEN 9 · PROPOSED 14 · RESEARCH 15 · SPEC 23
+- By build state: built 56 · n/a 107 · not_built 29 · partial 18 · unchecked 6
 
 Locked or specified, but not fully built (what is still missing):
 
 | Domain | Not built | Partly built |
 |---|---|---|
-| AIM_B5R | B5R-11, B5R-18, B5R-21, B5R-22, B5R-23, B5R-24, B5R-26, B5R-30, B5R-46, B5R-47, B5R-48, B5R-49, B5R-50 | B5R-02, B5R-16, B5R-19, B5R-20, B5R-45 |
+| AIM_B5R | B5R-11, B5R-18, B5R-21, B5R-22, B5R-23, B5R-24, B5R-26, B5R-30, B5R-46, B5R-47, B5R-48, B5R-49, B5R-50 | B5R-02, B5R-16, B5R-19, B5R-20, B5R-45, B5R-55 |
 | DANCE8 | D8-08, D8-13 | D8-01, D8-10, D8-21 |
 | EDO_PATTERN | EDO-10, EDO-12 | none |
 | GOVERNANCE | GOV-05, GOV-11 | GOV-08, GOV-10, GOV-17, GOV-19, GOV-28 |

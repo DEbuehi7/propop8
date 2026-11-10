@@ -53,6 +53,22 @@
  *   npm run stuttr -- album-voices sontheravein    (every song not done, and the total)
  *   npm run stuttr -- album-voices sontheravein --go --max-credits 40000
  *
+ * The Album Desk: a whole Suno album in one command, then only the exceptions.
+ * The drop (ZIP or folder) is read, never changed; nothing paid runs without
+ * a reviewed plan hash and a credit cap. See docs/ALBUM_DESK.md.
+ *   npm run stuttr -- album-import ~/StuttrInbox/_drop/Album.zip --manifest ~/StuttrInbox/_drop/album.json --dry-run
+ *   npm run stuttr -- album-import ~/StuttrInbox/_drop/Album.zip --manifest ~/StuttrInbox/_drop/album.json
+ *   npm run stuttr -- album-status synthetic-desk [--html]
+ *   npm run stuttr -- album-process synthetic-desk --stage audio
+ *   npm run stuttr -- album-process synthetic-desk --stage voices   (the plan and its credits; nothing sent)
+ *   npm run stuttr -- album-process synthetic-desk --stage voices --approved-plan <hash> --max-credits <n>
+ *   npm run stuttr -- album-plan-videos synthetic-desk
+ *   npm run stuttr -- album-clips synthetic-desk ~/Downloads/synthetic-desk   (one subfolder per track id)
+ *   npm run stuttr -- album-preview synthetic-desk [--short chorus-1] [--only pulse-song]
+ *   npm run stuttr -- album-resume synthetic-desk
+ *   npm run stuttr -- album-resolve synthetic-desk <jobId> --retry|--abandon --note "what you checked"
+ * The same with a space ("album import", "album status", ...) works too.
+ *
  * Options: --library <folder> (default ~/StuttrLibrary, or $STUTTR_LIBRARY),
  * --id, --title, --suno-plan, --dry (add); --from vocals|backing_vocals
  * (prep-voice, add-voice, approve, reject, mouth, convert); --full (prep-voice,
@@ -76,6 +92,7 @@ import { describeTrack } from "../../lib/stuttr/library";
 import { albumAdd, albumCommand, albumOrder, albumRemove, albumsCommand, albumVoices, voicesCommand } from "../../lib/stuttr/albumCommands";
 import { mediaVaultCommand } from "../../lib/stuttr/mediaVault";
 import { audiobookCommand } from "../../lib/stuttr/audiobookCommands";
+import { albumClips, albumImport, albumPlanVideos, albumPreview, albumProcess, albumResolve, albumResume, albumStatus } from "../../lib/stuttr/desk/desk";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -83,13 +100,17 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file", "manifest", "album", "stage", "approved-plan", "short", "only", "note", "key", "aspect"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
-const [cmd, a1, a2, a3] = positional;
+// The Album Desk also answers to "album import ..." (with a space): those words are its verbs.
+const DESK_VERBS = ["import", "status", "process", "plan-videos", "clips", "preview", "resume", "resolve"];
+const deskForm = positional[0] === "album" && DESK_VERBS.includes(positional[1] ?? "");
+const words = deskForm ? [`album-${positional[1]}`, ...positional.slice(2)] : positional;
+const [cmd, a1, a2, a3] = words;
 
 const usage = `Stuttr song library (${ctx.library})
   add <song folder> [--title "Name"] [--id slug] [--suno-plan Pro] [--dry]
@@ -117,7 +138,18 @@ const usage = `Stuttr song library (${ctx.library})
   media-vault                                   (read-only index of every song's records, in media-vault.json)
   audiobook <book> [--upload <bucket>]          (Late8 audiobook: approved chapters to a publish folder, then to Cloudflare R2)
   voices <trackId> [--preset solo|crew|cast] [--lead Stuttr] [--lang en] [--redo] [--go] [--max-credits N]
-  album-voices <album> [--preset solo|crew] [--redo] [--go --max-credits N]`;
+  album-voices <album> [--preset solo|crew] [--redo] [--go --max-credits N]
+
+Album Desk (docs/ALBUM_DESK.md; "album import" with a space works too):
+  album-import <zip or folder> --manifest <album.json> [--dry-run] [--no-align]   (no manifest: a starter is written, nothing imported)
+  album-status <album> [--html]
+  album-process <album> --stage audio
+  album-process <album> --stage voices [--approved-plan <hash> --max-credits N]
+  album-plan-videos <album> [--key Eb] [--aspect 16:9]
+  album-clips <album> <folder with one subfolder per track id>
+  album-preview <album> [--short <cueId>] [--only <trackId,...>]
+  album-resume <album>                          (the free steps that are due; never a paid one)
+  album-resolve <album> <jobId> --retry|--abandon --note "what you checked"`;
 const fromFlag = () => (flag("from") === "backing_vocals" ? "backing_vocals" : "vocals");
 const numFlag = (name: string): number | undefined => {
   const v = flag(name);
@@ -128,7 +160,45 @@ const numFlag = (name: string): number | undefined => {
 };
 
 async function main(): Promise<void> {
+  if (has("help") || cmd === "help") { console.log(usage); return; }
   switch (cmd) {
+    case "album-import":
+      if (!a1) throw new Error("album-import needs a ZIP or a folder");
+      albumImport(ctx, { source: expand(a1), manifest: flag("manifest") === undefined ? undefined : expand(flag("manifest")!), album: flag("album"), dryRun: has("dry-run") || has("dry"), noAlign: has("no-align") });
+      break;
+    case "album-status":
+      if (!a1) throw new Error("album-status needs an album id");
+      albumStatus(ctx, a1, { html: has("html") });
+      break;
+    case "album-process": {
+      if (!a1) throw new Error("album-process needs an album id");
+      const stage = flag("stage");
+      if (stage !== "audio" && stage !== "voices") throw new Error("album-process needs --stage audio or --stage voices");
+      await albumProcess(ctx, a1, { stage, approvedPlan: flag("approved-plan"), maxCredits: numFlag("max-credits") });
+      break;
+    }
+    case "album-plan-videos":
+      if (!a1) throw new Error("album-plan-videos needs an album id");
+      albumPlanVideos(ctx, a1, { key: flag("key"), aspect: flag("aspect") });
+      break;
+    case "album-clips":
+      if (!a1 || !a2) throw new Error("album-clips needs an album id and a folder (one subfolder per track id)");
+      albumClips(ctx, a1, expand(a2));
+      break;
+    case "album-preview":
+      if (!a1) throw new Error("album-preview needs an album id");
+      albumPreview(ctx, a1, { short: flag("short"), only: flag("only")?.split(",") });
+      break;
+    case "album-resume":
+      if (!a1) throw new Error("album-resume needs an album id");
+      await albumResume(ctx, a1);
+      break;
+    case "album-resolve": {
+      if (!a1 || !a2) throw new Error("album-resolve needs an album id and a job id");
+      if (has("retry") === has("abandon")) throw new Error("album-resolve needs --retry or --abandon");
+      albumResolve(ctx, a1, a2, has("retry") ? "retry" : "abandon", flag("note") ?? "");
+      break;
+    }
     case "add":
       if (!a1) throw new Error("add needs a song folder");
       addSong(ctx, { folder: expand(a1), id: flag("id"), title: flag("title"), sunoPlan: flag("suno-plan"), dry: has("dry") });

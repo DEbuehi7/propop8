@@ -36,6 +36,7 @@ Status words:
 | [aim-b5r/PHOTO_SCREEN.md](aim-b5r/PHOTO_SCREEN.md) | Photo screen: photos in, a first-look report out | Current |
 | [aim-b5r/FACADE_INTELLIGENCE.md](aim-b5r/FACADE_INTELLIGENCE.md) | Façade Intelligence System: audit, rules, E/S/C register, next decision | Current |
 | [aim-b5r/CONTEXT_DIGNITY.md](aim-b5r/CONTEXT_DIGNITY.md) | Context & Dignity Engine study: how it fits canon, conflicts, checked numbers, the Atlantic atlas review | Research (canon 1.8.0, proposed) |
+| [aim-b5r/WEATHERING.md](aim-b5r/WEATHERING.md) | Weathering layer: shearing layers, the ISO 15686 factor method, condition grades, when work falls due | Current (canon B5R-55, locked 1.11.0) |
 | [aim-b5r/RESEARCH.md](aim-b5r/RESEARCH.md) | The research and development segment | Reference |
 | [aim-b5r/visual-archive/README.md](aim-b5r/visual-archive/README.md) | Concept image archive (never evidence) | Reference |
 | [../aim-b5r-engine/README.md](../aim-b5r-engine/README.md) | Python reference engine and weekly data job | Reference |
@@ -68,6 +69,8 @@ Status words:
 | [DANCE8_SPEC.md](DANCE8_SPEC.md) | Dance8 motion spec | Reference |
 | [MEDIA_WORKFLOW.md](MEDIA_WORKFLOW.md) | Kling cards, zips, credits, CHOIR8, helper videos | Current |
 | [MEDIA_VAULT.md](MEDIA_VAULT.md) | Read-only index over the private Stuttr library | Reference |
+| [ALBUM_DESK.md](ALBUM_DESK.md) | Stuttr Album Desk: a Suno album in one command, holds, paid-voice plans, Kling clips, drafts | Current |
+| [album-desk/BASELINE.md](album-desk/BASELINE.md) | What existed before the Album Desk, the canon check and the command inventory (10 Nov 2026) | Archive |
 | [LATE8_AUDIOBOOK.md](LATE8_AUDIOBOOK.md) | Publishing the audiobook to R2 and Late8 | Current |
 
 ## Archive
