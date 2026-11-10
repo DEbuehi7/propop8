@@ -48,3 +48,36 @@ test("kirtled canon: the solver plays the example with the canonical words and c
   assert.equal(plan!.leaps.length, 0);
   assert.ok(plan!.moves.every((m) => m.sounding === false), "song-following never adds sound");
 });
+
+test("kirtled canon D8-20: the six-move table agrees with every list it restates", () => {
+  const t = vocab.KIRTLED_MOVE_TABLE;
+  assert.deepEqual(t.map((r) => [r.word, r.move]), vocab.KIRTLED_MOVES.map((m) => [m.word, m.move]), "same words and moves, same order");
+  const body = (w: string) => vocab.KIRTLED_BODY_MOVES.find((b) => b.word === (w === "DASH" ? "FREEZE" : w))!;
+  const trick = (w: string) => vocab.KIRTLED_SKATE_TRICKS.find((k) => k.cue === (w === "DASH" ? "HOLD" : w));
+  for (const r of t) {
+    assert.equal(r.dancer, body(r.word).detectedWhen, `${r.word} dancer is D8-17's`);
+    assert.equal(r.skater, trick(r.word)?.label ?? null, `${r.word} skater is D8-16's`);
+    assert.equal(r.colour, vocab.KIRTLED_WORDMARK[r.word[0] as keyof typeof vocab.KIRTLED_WORDMARK], `${r.word} takes its letter's wordmark colour`);
+    for (const side of r.sides) assert.ok(side in vocab.KIRTLED_SIDE_CUES, `${r.word}: ${side} is a side with a cue`);
+  }
+  // A move word never names a drum: the drum is the crossed side's.
+  assert.deepEqual(t.find((r) => r.word === "LA")!.sides, ["P"]);
+  assert.equal(vocab.KIRTLED_SIDE_CUES.P, "snare");
+  assert.deepEqual(t.find((r) => r.word === "TI")!.sides, ["jump"]);
+  // KA orbits a corner: around C it crosses R, L, P in turn and comes back after six.
+  let x = triad(0, "maj");
+  const orbit = [triadName(x)];
+  for (let k = 0; k < 6; k++) { x = cross(x, (["R", "L", "P"] as const)[k % 3]); orbit.push(triadName(x)); }
+  assert.deepEqual(orbit, ["C", "Am", "F", "Fm", "Ab", "Cm", "C"]);
+  // DO and DASH are the performance-mode moves (D8-08), not built.
+  assert.deepEqual(vocab.KIRTLED_MOVES.filter((m) => !m.builtInSongFollowing).map((m) => m.word), ["DO", "DASH"]);
+});
+
+test("kirtled canon D8-22: the trio sits low to high on the A minor triangle, in the wordmark's colours", () => {
+  const trio = vocab.KIRTLED_TRIO;
+  assert.deepEqual(trio.map((p) => p.mapNote), ["A", "C", "E"]);
+  assert.equal(triadName(triad(9, "min")), "Am");
+  const palette = new Set<string>(Object.values(vocab.KIRTLED_WORDMARK).filter((c) => c !== "white"));
+  for (const p of trio) assert.ok(palette.has(p.colour), `${p.name}: ${p.colour} is a wordmark colour`);
+  assert.equal(new Set(trio.map((p) => p.colour)).size, 3);
+});
