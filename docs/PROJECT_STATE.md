@@ -22,6 +22,8 @@ Every `export const …VERSION… = "…"` in `lib/`.
 
 | Constant | Value | File |
 |---|---|---|
+| `CONTINUITY_ENGINE_VERSION` | aim-continuity-0.1.0 | `lib/b5r/continuity/contracts.ts` |
+| `CONTINUITY_MAP_VERSION` | aim-continuity-map-0.1 | `lib/b5r/continuity/map.ts` |
 | `FIS_SCHEMA_VERSION` | aim-fis-project-1 | `lib/b5r/facade/contracts.ts` |
 | `FIS_ENGINE_VERSION` | aim-fis-flat-0.2.0 | `lib/b5r/facade/contracts.ts` |
 | `FIS_CONTRACT_VERSION` | aim-fis-decision-1 | `lib/b5r/facade/contracts.ts` |

@@ -1,0 +1,200 @@
+{
+  "schema": "aim-design-proposal-1",
+  "id": "synthetic-walkup-facade",
+  "version": 1,
+  "title": "Synthetic walk-up façade refresh (software fixture)",
+  "dataStatus": "SYNTHETIC",
+  "canonVersion": "1.11.0",
+  "scope": [
+    "facade"
+  ],
+  "components": [
+    {
+      "ref": "GOV-01",
+      "decision": "INCLUDED",
+      "reason": "Elevations and the colour study render the façade contract; no image sets a cost, score or call."
+    },
+    {
+      "ref": "GOV-14",
+      "decision": "INCLUDED",
+      "reason": "Gates, capital and scores come from the FIS engine; AI only writes the explanation."
+    },
+    {
+      "ref": "GOV-16",
+      "decision": "INCLUDED",
+      "reason": "Synthetic fixture: no employer building, data or imagery is used."
+    },
+    {
+      "ref": "GOV-17",
+      "decision": "INCLUDED",
+      "reason": "Every number in the package is labelled SYNTHETIC; nothing is shown as live."
+    },
+    {
+      "ref": "GOV-22",
+      "decision": "INCLUDED",
+      "reason": "The elevation and cell register control the design; the concept image is the hypothesis."
+    },
+    {
+      "ref": "GOV-24",
+      "decision": "INCLUDED",
+      "reason": "Go/no-go and capital stay with the owner; the proposal recommends and commits nothing."
+    },
+    {
+      "ref": "GOV-26",
+      "decision": "INCLUDED",
+      "reason": "Exit signs, egress lighting and the fire alarm stay independent of the graphics and of any network."
+    },
+    {
+      "ref": "GOV-29",
+      "decision": "INCLUDED",
+      "reason": "The design reads the building only; no resident data or imagery is used."
+    },
+    {
+      "ref": "B5R-17",
+      "decision": "INCLUDED",
+      "reason": "Flat modules only; each added element names the building problem it solves."
+    },
+    {
+      "ref": "B5R-19",
+      "decision": "INCLUDED",
+      "reason": "Each cell carries evidence, state and confidence; drawings stay AI_CONCEPT until an architect reviews them."
+    },
+    {
+      "ref": "B5R-33",
+      "decision": "INCLUDED",
+      "reason": "A residential walk-up; no retail or mixed-use program."
+    },
+    {
+      "ref": "INF-01",
+      "decision": "INCLUDED",
+      "reason": "Repair (F0) comes before colour and wayfinding; no monitoring or automation is added."
+    },
+    {
+      "ref": "INF-08",
+      "decision": "INCLUDED",
+      "reason": "Fire access, the step-free entrance and drainage are untouched."
+    },
+    {
+      "ref": "B5R-18",
+      "decision": "INCLUDED",
+      "reason": "Retain and repair is the base option; additions are the least that meets the brief."
+    },
+    {
+      "ref": "INF-05",
+      "decision": "INCLUDED",
+      "reason": "Reuse eligibility is not treated as a code approval; FG5 carries the permit questions."
+    },
+    {
+      "ref": "B5R-38",
+      "decision": "INCLUDED",
+      "reason": "Every elevation is cut into one-bay cells with a survey state.",
+      "detail": "unmeasured cells take F0 only"
+    },
+    {
+      "ref": "B5R-39",
+      "decision": "INCLUDED",
+      "reason": "Windows, egress, utilities and access points are masks; nothing covers egress or historic fabric.",
+      "detail": "F3 only on the stair window, with a written justification and source"
+    },
+    {
+      "ref": "B5R-40",
+      "decision": "INCLUDED",
+      "reason": "FG1-FG7 are recorded for each option; an unknown gate is HOLD."
+    },
+    {
+      "ref": "B5R-41",
+      "decision": "INCLUDED",
+      "reason": "Flat first: F0, F1, F3 and F4 only; no F6 or F7."
+    },
+    {
+      "ref": "B5R-42",
+      "decision": "INCLUDED",
+      "reason": "C_total stays unknown until every line is priced; there is no rent or value line."
+    },
+    {
+      "ref": "B5R-43",
+      "decision": "INCLUDED",
+      "reason": "Default weights; options are scored only after the gates.",
+      "detail": "default weights 25/20/25/15/10/5"
+    },
+    {
+      "ref": "B5R-44",
+      "decision": "INCLUDED",
+      "reason": "The FIS decision contract is sealed and names its reviewer."
+    },
+    {
+      "ref": "B5R-45",
+      "decision": "INCLUDED",
+      "reason": "Runs on the labelled synthetic fixture until the Fresno pilot building is chosen."
+    },
+    {
+      "ref": "B5R-48",
+      "decision": "INCLUDED",
+      "reason": "Expression is colour, code and wayfinding on the flat wall; no LED or moiré network."
+    },
+    {
+      "ref": "B5R-55",
+      "decision": "DEFERRED",
+      "reason": "Service lives need the place's ISO 15686 factors and a dated condition survey.",
+      "until": "condition survey before licensed design"
+    },
+    {
+      "ref": "FIS:F0",
+      "decision": "INCLUDED",
+      "reason": "Repair the existing wall before anything is added.",
+      "detail": "repoint brick, reflash the parapet, repair windows"
+    },
+    {
+      "ref": "FIS:F1",
+      "decision": "INCLUDED",
+      "reason": "Colour for orientation, on solid wall only.",
+      "detail": "two-tone mineral paint on the opaque bays"
+    },
+    {
+      "ref": "FIS:F3",
+      "decision": "INCLUDED",
+      "reason": "Glare and privacy on the stair window; the justification and source sit on the cell.",
+      "detail": "perforated screen on the stair window, 30% open area"
+    },
+    {
+      "ref": "FIS:F4",
+      "decision": "INCLUDED",
+      "reason": "Wayfinding at the entrance; FG1 reviews it.",
+      "detail": "address and entry sign beside the lobby door"
+    }
+  ],
+  "claims": [
+    {
+      "id": "glare",
+      "kind": "performance",
+      "text": "The stair-window screen lowers afternoon glare on the stair landing.",
+      "proof": "CONCEPTUAL"
+    },
+    {
+      "id": "daylight",
+      "kind": "performance",
+      "text": "Daylight on the stair landing stays usable with the screen in place.",
+      "proof": "SIMULATED",
+      "source": "fixture daylight run (SYNTHETIC; no real model was run)"
+    }
+  ],
+  "irreversible": [
+    {
+      "id": "awning",
+      "text": "Remove the non-original metal awning over the lobby door.",
+      "evidence": [
+        "SYNTHETIC fixture note: the awning is not original fabric"
+      ],
+      "approval": {
+        "by": "SYNTHETIC approver (fixture)",
+        "date": "2026-11-10",
+        "record": "fixture only: no real decision was made"
+      }
+    }
+  ],
+  "approval": {
+    "by": "SYNTHETIC approver (fixture)",
+    "date": "2026-11-10",
+    "record": "fixture only: no real decision was made"
+  }
+}

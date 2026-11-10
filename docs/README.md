@@ -37,6 +37,7 @@ Status words:
 | [aim-b5r/FACADE_INTELLIGENCE.md](aim-b5r/FACADE_INTELLIGENCE.md) | Façade Intelligence System: audit, rules, E/S/C register, next decision | Current |
 | [aim-b5r/CONTEXT_DIGNITY.md](aim-b5r/CONTEXT_DIGNITY.md) | Context & Dignity Engine study: how it fits canon, conflicts, checked numbers, the Atlantic atlas review | Research (canon 1.8.0, proposed) |
 | [aim-b5r/WEATHERING.md](aim-b5r/WEATHERING.md) | Weathering layer: shearing layers, the ISO 15686 factor method, condition grades, when work falls due | Current (canon B5R-55, locked 1.11.0) |
+| [aim-b5r/DESIGN_CONTINUITY.md](aim-b5r/DESIGN_CONTINUITY.md) | Design continuity: every applicable canon rule answered, every change between versions logged | Current (rule proposed for canon) |
 | [aim-b5r/RESEARCH.md](aim-b5r/RESEARCH.md) | The research and development segment | Reference |
 | [aim-b5r/visual-archive/README.md](aim-b5r/visual-archive/README.md) | Concept image archive (never evidence) | Reference |
 | [../aim-b5r-engine/README.md](../aim-b5r-engine/README.md) | Python reference engine and weekly data job | Reference |
