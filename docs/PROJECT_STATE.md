@@ -22,6 +22,8 @@ Every `export const …VERSION… = "…"` in `lib/`.
 
 | Constant | Value | File |
 |---|---|---|
+| `CONTINUITY_ENGINE_VERSION` | aim-continuity-0.1.0 | `lib/b5r/continuity/contracts.ts` |
+| `CONTINUITY_MAP_VERSION` | aim-continuity-map-0.1 | `lib/b5r/continuity/map.ts` |
 | `FIS_SCHEMA_VERSION` | aim-fis-project-1 | `lib/b5r/facade/contracts.ts` |
 | `FIS_ENGINE_VERSION` | aim-fis-flat-0.2.0 | `lib/b5r/facade/contracts.ts` |
 | `FIS_CONTRACT_VERSION` | aim-fis-decision-1 | `lib/b5r/facade/contracts.ts` |
@@ -30,7 +32,7 @@ Every `export const …VERSION… = "…"` in `lib/`.
 | `API_VERSION` | 2023-06-01 | `lib/b5r/screen/claude.ts` |
 | `SCREEN_VERSION` | aim-b5r-photo-screen-1 | `lib/b5r/screen/report.ts` |
 | `WEATHERING_VERSION` | aim-weathering-0.1.0 | `lib/b5r/weathering/serviceLife.ts` |
-| `CANON_VERSION` | 1.12.0 | `lib/canon/index.ts` |
+| `CANON_VERSION` | 1.13.0 | `lib/canon/index.ts` |
 | `ENGINE_VERSION` | 1.1.0 | `lib/engineVersion.ts` |
 
 ## Pages
@@ -147,10 +149,10 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 
 ## Canon
 
-Version 1.12.0: 22 studies, 216 entries.
+Version 1.13.0: 22 studies, 217 entries.
 
-- By status: CONCEPT 9 · LOCKED 146 · OPEN 9 · PROPOSED 14 · RESEARCH 15 · SPEC 23
-- By build state: built 56 · n/a 107 · not_built 29 · partial 18 · unchecked 6
+- By status: CONCEPT 9 · LOCKED 147 · OPEN 9 · PROPOSED 14 · RESEARCH 15 · SPEC 23
+- By build state: built 57 · n/a 107 · not_built 29 · partial 18 · unchecked 6
 
 Locked or specified, but not fully built (what is still missing):
 

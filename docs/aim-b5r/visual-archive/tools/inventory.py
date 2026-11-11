@@ -353,7 +353,15 @@ ADDED = [
     ("19e7df26-image.png", "19e7df26-image.png", "2026-11-06", "MED-01", "EDO-01",
      "Skate-breakdance crew on a gold plaza",
      "A dreadlocked breaker in a one-hand freeze, in black, white and gold Voronoi-pattern clothing with straps; behind him breakers in the air and skaters on boards in matching outfits; a skateboard at the top right edge; a glowing gold floor of circles and triangles on a wet plaza; lattice arches, towers and a crowd at dusk.",
-     "CONCEPT", "Lead dancer not matched to a named character (refs/cast). If the floor is meant as the Kirtled lattice, its triangles should follow the canon layout (D8-06); as drawn it is decorative", ""),
+     "CONCEPT", "Lead dancer not matched to a named character (refs/cast). If the floor is meant as the Kirtled lattice, its triangles should follow the canon layout (D8-06); as drawn it is decorative", ""),    # 2026-11-11: the AIM-OCULAR boards, checked against canon in docs/aim-b5r/AIM_OCULAR.md
+    ("cb1a1235-image.png", "cb1a1235-image.png", "2026-11-11", "BRD-01", "EVID-01;OPS-05;SYS-01;EDO-02",
+     "AIM-B5R Ocular Intelligence OS board (AIM-OCULAR)",
+     "Title 'AIM-B5R Artificial Intelligence Multifamily | Ocular Intelligence OS: See, Assess, Decide, Build, Operate, Grow'. Five lens figures: a gold anime-style eye (Perception: micro-sensing of units, people, use), a bearded old man (Wisdom (Odin): site, history, value), an eye in a blue pyramid (Omniview: AIM-B5R core), a one-eyed ogre (Strength: systems, risk, durability) and a crowned red-and-black figure with a trident (Duality: tenants, community, health). Left, an 'Ocular Stack': Site, Building (with a dome camera), Tenant, Capital and Future Eyes. Centre, a mid-rise with a giant LED eye screen, gold lattice panels, a mural of the crowned figure, pedestrians and a sidewalk delivery robot. Right, a 'Triadic Ocular Engine' (AIM, EDO and GENOME eyes 120 degrees apart) and 'AIM-B5R Outcomes (Typical Ranges)' bars. Bottom, the Assess-to-Repeat lifecycle with a heat map, floor plan, chart and a 'B5R 92' dial; locational examples DTLA (Test Cell), HB (Lifestyle Density), 29 Palms (Execute Sandbox), Crestline (Lumen Labs); value and result text; a man in a headset before a holographic city.",
+     "CONCEPT", "Stops on GOV-29: the Tenant Eye tracks behaviour and risk. Outcome ranges, the B5R 92 dial and 'healthier tenants' are invented (GOV-17, VIS-05). AIM expanded as 'Artificial Intelligence Multifamily' (TRI-14). Eye-in-pyramid shown as the core mark (VIS-11). LED eye screen is F7, disabled (B5R-41). Street robot (ROB-06). Text defects: 'TRI/ADIC', 'SAMPLES' over '(EXAMPLES)'. Owner 11 Nov: figures on hold, the AIM-OCULAR name stays, HB stays a concept. See docs/aim-b5r/AIM_OCULAR.md", ""),
+    ("476e3514-image.png", "476e3514-image.png", "2026-11-11", "DES-01", "OPS-03;OPS-05;ACQ-01;EDO-02",
+     "AIM-OCULAR DTLA Test Cell 01 board",
+     "Title 'AIM-OCULAR | AIM-B5R DTLA Test Cell 01: adaptive reuse multifamily prototype, intelligent building + capital decision engine', with AIM (Intelligence), EDO (Reduction), Triadic (Balance) and Genome (Adaptation, DNA-helix icon) marks. Left, a five-storey stone and brick building at dusk: gold triangular perforated screens across the upper windows, cyan light strips, a rooftop terrace with umbrellas and solar, a vertical 'AIM-B5R DTLA Test Cell' banner, street number 408, ground-floor windows labelled 'Living Units' (a furnished bedroom) and 'Building History', a wheelchair user at the entry, downtown towers behind; callouts for rooftop community, daylight + shading ('perforated fins reduce heat'), occupant view, historic fabric, accessible entry ('ADA-compliant') and street + wayfinding ('active storefront, unit preview'). Centre, a 'Digital Twin (BIM)' cutaway with floor labels and resident, street and building-self-knowledge views. Right, Facade (condition fair, 2 envelope leaks, 4 window seals, shade performance within target, historic review required), Operations (riser, submeter, HVAC, elevator and network statuses; four example work orders with priority and confidence) and Capital (baseline vs after-upgrade bars for energy, water and opex; a phased upgrade package). Bottom, Observe, Verify, Decide, Measure.",
+     "CONCEPT", "Stops on B5R-39: screens cross the historic upper façade. DTLA as a test cell conflicts with B5R-51 (desk research only) and B5R-45 (first façade pilot in Fresno); 408 is a render number, not a site, and a test cell is never an employer's building (GOV-16). Statuses, condition counts and capital bars are invented (GOV-17, VIS-05); 'ADA-compliant' is an unverified approval. The 'Living Units' window shows an interior: model or consented only (B5R-48). DNA icon for the genome (TRI-04). Digital twin before a deal (B5R-04). See docs/aim-b5r/AIM_OCULAR.md", ""),
 ]
 ADDED_DUPLICATES = {  # duplicate upload name -> the upload it duplicates (byte-identical)
     "89f99d7e-AIM_B5R_Report_and_Designs.zip: AIM_B5R_Design_Concepts.png": "1f78c4ac-image.png",
@@ -423,8 +431,11 @@ def append(uploads, out):
         rows = list(csv.DictReader(f))
     fields = list(rows[0].keys())
     have = {r["sha256"] for r in rows}
+    have_upload = {r["upload_filename"] for r in rows}
     added = 0
     for entry in ADDED:
+        if entry[1] in have_upload:  # already registered; its file need not be in this uploads folder
+            continue
         row = added_row(len(rows) + 1, entry, uploads)
         if row["sha256"] in have:
             continue

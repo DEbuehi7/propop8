@@ -141,6 +141,11 @@ After a check of fifteen Kirtled concept images (the visual system check of 10 N
 - **D8-10** unchanged: the all-gold wordmark in the concept art is recoloured to the rule.
 - **D8-24** left open: who the seated Kirtled player is.
 
+## Decided by the owner (v1.13.0, 11 Nov 2026)
+
+- **GOV-31**: design continuity. Every AIM-B5R design proposal answers each rule that applies to its scope (included, modified, deferred with what it waits for, excluded or unresolved, with a reason); no undocumented omissions, no silent substitutions between versions, no claim without its proof tag and source, no irreversible decision without evidence and a named approval. Built in `lib/b5r/continuity/` (`npm run b5r -- continuity`), explained in `docs/aim-b5r/DESIGN_CONTINUITY.md`.
+- **TRI-14** applied: "Artificial Intelligence Multifamily", the expansion under AIM-B5R on the AIM-OCULAR board, joins `RETIRED_EXPANSIONS`. The rule itself is unchanged.
+
 ## Still open
 
 P8O-08 recert price, P8O-09 L.E.T. page content, D8-24 the seated Kirtled player, B5R-31
@@ -173,3 +178,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.10.0, 2026-11-07: D8-19 added and locked by the owner (beat feel and freedom of choice for the CHOIR8 dancers; built in `lib/dance8/motion/beatFeel.ts` and `lib/dance8/motion/landing.ts`). The detection thresholds stay tuning constants, outside canon.
 - 1.11.0, 2026-11-08: B5R-55 added and locked by the owner (the weathering layer: shearing layers, the ISO 15686 factor method, condition graded 1 to 5 from dated photos at registered viewpoints, the earlier of trend and age with no automatic later dates, graffiti and litter as cycles, never decay). The calculator is built in `lib/b5r/weathering/serviceLife.ts` and explained in `docs/aim-b5r/WEATHERING.md`. No existing LOCKED entry changed. The intervention grade, the 90-day trend minimum and the 0.8 to 1.2 flag stay tuning constants, outside canon.
 - 1.12.0, 2026-11-10: D8-20 (the six-move table), D8-22 (the trio), D8-23 (album names) and TRI-14 (no AIM or EDO expansions) added and locked by the owner; D8-21 (the three-arm instrument, a conceptual spec, its arithmetic built in `lib/dance8/harmony/arms.ts`) added; D8-24 (the seated player) left open; a note on D8-10. No existing rule changed.
+- 1.13.0, 2026-11-11: GOV-31 (design continuity) added and locked by the owner, built in `lib/b5r/continuity/`; "Artificial Intelligence Multifamily" added to `RETIRED_EXPANSIONS` under TRI-14. No existing rule changed. The AIM-OCULAR boards (AIMV-101, 102) were checked against canon in `docs/aim-b5r/AIM_OCULAR.md`; they are concept art and add nothing to canon.

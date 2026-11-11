@@ -614,4 +614,5 @@ export const RETIRED_EXPANSIONS = [
   "Artificial-Intelligence-Mediated Evolutionary Design Optimization",
   "Adaptive Intelligent Music",
   "Equal Divisions of the Octave",
+  "Artificial Intelligence Multifamily", // under AIM-B5R on the AIM-OCULAR board (AIMV-101), 2026-11-11
 ] as const;
