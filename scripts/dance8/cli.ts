@@ -22,6 +22,10 @@
  *   npm run dance8 -- render cloyne --short chorus-1          (a draft short from the approved clips)
  *   npm run dance8 -- render cloyne --approved                (the final, with the AI disclosure caption)
  *     The audio is the song's Stuttr voice master (npm run stuttr -- master), never the Suno mix (D8-14).
+ *   npm run dance8 -- react ~/Music/edo.features.json --windows ~/Music/edo-windows.csv --out ~/Movies/edo-reaction --base ~/Movies/edo-rough-cut.mp4
+ *     The visual reaction layer (canon D8-25): silent overlays drawn from Stuttr's saved feature file
+ *     (npm run stuttr -- visual-features), a reduced-motion version of each, and with --base the
+ *     footage excerpts, Screen-blended composites and preview.html. Offline; nothing is paid for.
  *
  * plan writes <id>/dance8/: cue map, harmony, Kirtled plan, clip library, shot
  * list, mouth tracks and README. It keeps a cue map, harmony or clip library
@@ -44,6 +48,7 @@ import { readoutLines } from "../../lib/dance8/moves/track";
 import { captureTakes } from "./capture/server";
 import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
 import { albumPreview } from "../../lib/stuttr/desk/desk";
+import { reactionInputsExist, renderReaction } from "../../lib/dance8/reactionPipeline";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -51,7 +56,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -68,7 +73,8 @@ const usage = `Dance8 (${ctx.library})
   check-moves <trackId> [clipId ...] [--shift] [--again] [--no-open]
   style
   render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]
-  album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)`;
+  album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)
+  react <features.json> --windows <windows.csv|json> --out <folder> [--base <footage.mp4>] [--events <verified.json>] [--song <id>] [--expect-sha <audio sha256>]`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -114,6 +120,20 @@ async function moves(trackId: string, videos: string[]) {
 async function main() {
   if (has("help")) { console.log(usage); return; }
   switch (cmd) {
+    case "react": {
+      if (!a1 || !flag("windows") || !flag("out")) throw new Error("react needs a feature file, --windows <file> and --out <folder>");
+      const missing = reactionInputsExist([expand(a1), expand(flag("windows")!), flag("base") && expand(flag("base")!), flag("events") && expand(flag("events")!)]);
+      if (missing.length) throw new Error(`not found: ${missing.join(", ")}`);
+      const r = await renderReaction({
+        featuresPath: expand(a1), windowsPath: expand(flag("windows")!), outDir: expand(flag("out")!),
+        basePath: flag("base") ? expand(flag("base")!) : undefined, eventsPath: flag("events") ? expand(flag("events")!) : undefined,
+        songId: flag("song"), expectSourceSha256: flag("expect-sha"), log: (l) => console.log(l),
+      });
+      for (const h of r.held) console.log(`HOLD ${h.window ?? "all"} (${h.kind}): ${h.reason}`);
+      console.log(r.failed.length ? `${r.failed.length} check(s) failed; see reaction-manifest.json` : `all checks passed\n  ${expand(flag("out")!)}`);
+      if (r.failed.length) process.exitCode = 1;
+      break;
+    }
     case "album": {
       if (a1 !== "preview" || !a2) throw new Error("album needs: preview <albumId>");
       albumPreview(ctx, a2, { short: flag("short"), only: flag("only")?.split(",") });
