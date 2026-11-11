@@ -1,0 +1,311 @@
+{
+  "schema": "aim-design-proposal-1",
+  "id": "aim-ocular-dtla-test-cell-01",
+  "version": 1,
+  "title": "AIM-OCULAR: Ocular Intelligence OS and DTLA Test Cell 01, as drawn",
+  "dataStatus": "ILLUSTRATIVE",
+  "canonVersion": "1.12.0",
+  "scope": [
+    "existing_building",
+    "landmark",
+    "site",
+    "facade",
+    "weathering",
+    "context_dignity",
+    "building_intelligence",
+    "robot_ready",
+    "pattern",
+    "triadic",
+    "imagery",
+    "media_overlay",
+    "costed"
+  ],
+  "components": [
+    {
+      "ref": "GOV-01",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the boards set results themselves; a 'B5R 92' dial, outcome bars and before/after capital bars come from no calculation."
+    },
+    {
+      "ref": "GOV-17",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: statuses read as live ('Online', 'Healthy (Secure)', 'No active leak', elevator service in 60 days) with no MOCK label."
+    },
+    {
+      "ref": "GOV-22",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the LED eye screen and murals lead; no plan, section, dimension or source record stands behind the outcome ranges."
+    },
+    {
+      "ref": "GOV-23",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: titles, metrics and labels are generated inside the image, with defects ('TRI/ADIC', 'SAMPLES' over '(EXAMPLES)')."
+    },
+    {
+      "ref": "GOV-27",
+      "decision": "MODIFIED",
+      "reason": "As drawn: cameras lead the Building Eye's inputs, with no disclosure or retention limit.",
+      "detail": "cameras, IoT, MEP, energy, security, health"
+    },
+    {
+      "ref": "GOV-29",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the Tenant Eye tracks tenant occupancy, behaviour and risk, Perception senses people, and Duality reads tenant health.",
+      "detail": "Tenant Eye: occupancy, behaviour, risk, support, retention"
+    },
+    {
+      "ref": "B5R-17",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: an LED eye screen, deity murals and light strips, with no building problem named for them."
+    },
+    {
+      "ref": "B5R-18",
+      "decision": "INCLUDED",
+      "reason": "Adaptive reuse multifamily prototype that keeps the original façade, masonry and window rhythm."
+    },
+    {
+      "ref": "B5R-19",
+      "decision": "MODIFIED",
+      "reason": "As drawn: work orders carry a confidence column, but outcomes, statuses and drawings carry no evidence or state."
+    },
+    {
+      "ref": "B5R-33",
+      "decision": "UNRESOLVED",
+      "reason": "'Active storefront' on the ground floor: a leasing and information front, or retail?"
+    },
+    {
+      "ref": "INF-01",
+      "decision": "INCLUDED",
+      "reason": "The upgrade package puts envelope and leak detection first, HVAC and common areas next, density options last."
+    },
+    {
+      "ref": "INF-08",
+      "decision": "UNRESOLVED",
+      "reason": "Step-free entry and an elevator are shown; fire access, drainage and the roof terrace's load are not addressed."
+    },
+    {
+      "ref": "B5R-37",
+      "decision": "INCLUDED",
+      "reason": "Historic fabric callout and 'Historic review: Required'."
+    },
+    {
+      "ref": "VIS-05",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: invented efficiencies and costs (outcome ranges; energy, water and opex bars), an invented approval ('ADA-compliant') and invented existing conditions (2 envelope leaks, 4 window seals)."
+    },
+    {
+      "ref": "GOV-30",
+      "decision": "INCLUDED",
+      "reason": "The Site Eye covers zoning, density and access."
+    },
+    {
+      "ref": "B5R-11",
+      "decision": "INCLUDED",
+      "reason": "The Site Eye covers hazard."
+    },
+    {
+      "ref": "B5R-24",
+      "decision": "INCLUDED",
+      "reason": "Locational intelligence: each place has its own role."
+    },
+    {
+      "ref": "B5R-39",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: gold triangular screens run across the historic upper façade and over its windows.",
+      "detail": "screens across the historic upper façade"
+    },
+    {
+      "ref": "B5R-41",
+      "decision": "MODIFIED",
+      "reason": "As drawn: adds an LED media screen and light strips (F7)."
+    },
+    {
+      "ref": "B5R-45",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the façade prototype is DTLA Test Cell 01, not a Fresno building."
+    },
+    {
+      "ref": "B5R-48",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: an LED eye screen leads the expression, and the 'Living Units' window shows a furnished interior with no note that it is a model."
+    },
+    {
+      "ref": "B5R-55",
+      "decision": "UNRESOLVED",
+      "reason": "Durability appears as a lens and as maintenance items, with no service-life method or dated condition grades."
+    },
+    {
+      "ref": "FIS:F1",
+      "decision": "INCLUDED",
+      "reason": "Façade art.",
+      "detail": "mural of the crowned trident figure"
+    },
+    {
+      "ref": "FIS:F3",
+      "decision": "INCLUDED",
+      "reason": "'Perforated fins reduce heat, control glare, maintain views'.",
+      "detail": "gold triangular perforated screens across the upper façade"
+    },
+    {
+      "ref": "FIS:F4",
+      "decision": "INCLUDED",
+      "reason": "Street wayfinding and building information.",
+      "detail": "street wayfinding, building information and history panels"
+    },
+    {
+      "ref": "FIS:F7",
+      "decision": "INCLUDED",
+      "reason": "Façade identity at night.",
+      "detail": "LED eye screen and cyan light strips"
+    },
+    {
+      "ref": "B5R-46",
+      "decision": "INCLUDED",
+      "reason": "Resident View: comfort, daylight, views and privacy."
+    },
+    {
+      "ref": "B5R-49",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: outcomes are 'typical ranges', assumed rather than measured, and resident health sits beside building measures."
+    },
+    {
+      "ref": "B5R-51",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: DTLA is the test cell, with building work on a DTLA building."
+    },
+    {
+      "ref": "B5R-04",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: a digital twin and live monitoring for a building that has not been bought."
+    },
+    {
+      "ref": "ROB-06",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: a delivery robot works the public sidewalk."
+    },
+    {
+      "ref": "EDO-08",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: an eye in a pyramid stands as the AIM-B5R core mark."
+    },
+    {
+      "ref": "VIS-11",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: an eye in a pyramid stands as the AIM-B5R core mark, not the Voronoi AIM logo."
+    },
+    {
+      "ref": "GOV-21",
+      "decision": "MODIFIED",
+      "reason": "As drawn: EDO is glossed 'Reduction / Modularity', which drops its Edo and Benin attribution."
+    },
+    {
+      "ref": "TRI-14",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: AIM-B5R is expanded as 'Artificial Intelligence Multifamily', and AIM and EDO carry glosses ('Intelligence', 'Reduction').",
+      "detail": "AIM and EDO expanded and glossed"
+    },
+    {
+      "ref": "TRI-13",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the genome is 'Adaptation (Environment)' with a DNA helix."
+    },
+    {
+      "ref": "TRI-04",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the genome reads as biology (a DNA helix)."
+    },
+    {
+      "ref": "TRI-03",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: a new 'Triadic Ocular Engine' joins AIM, EDO and GENOME into one triad."
+    },
+    {
+      "ref": "TRI-06",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: 'Triadic intelligence (balance, sync, growth)' carries no evidence tag."
+    },
+    {
+      "ref": "STU-05",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: the LED eye screen spans the façade; the windows and sightlines behind it are not shown clear."
+    },
+    {
+      "ref": "B5R-23",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: capital bars and the upgrade package carry no region, source, date or confidence."
+    },
+    {
+      "ref": "B5R-42",
+      "decision": "EXCLUDED",
+      "reason": "As drawn: before/after bars stand in for priced lines and a verified benefit."
+    }
+  ],
+  "claims": [
+    {
+      "id": "noi",
+      "kind": "performance",
+      "text": "NOI improvement of 15% to 45% (typical range)."
+    },
+    {
+      "id": "occupancy",
+      "kind": "performance",
+      "text": "Occupancy uplift of 5 to 15 points (typical range)."
+    },
+    {
+      "id": "opex",
+      "kind": "cost",
+      "text": "Operating cost reduction of 10% to 30% (typical range)."
+    },
+    {
+      "id": "velocity",
+      "kind": "performance",
+      "text": "Capital velocity of 1.5x to 3.0x (typical range)."
+    },
+    {
+      "id": "refi",
+      "kind": "performance",
+      "text": "Refinance probability of 70% to 95% (typical range)."
+    },
+    {
+      "id": "asset-health",
+      "kind": "performance",
+      "text": "Asset health score of 80 to 98 out of 100 (typical range)."
+    },
+    {
+      "id": "b5r-92",
+      "kind": "performance",
+      "text": "B5R score 92."
+    },
+    {
+      "id": "shade",
+      "kind": "performance",
+      "text": "Shade performance within target."
+    },
+    {
+      "id": "fins",
+      "kind": "performance",
+      "text": "Perforated fins reduce heat, control glare and maintain views."
+    },
+    {
+      "id": "ada",
+      "kind": "capability",
+      "text": "ADA-compliant access."
+    },
+    {
+      "id": "upgrade-bars",
+      "kind": "cost",
+      "text": "Energy, water and opex fall after the upgrades (forecast, subject to validation)."
+    },
+    {
+      "id": "tenants",
+      "kind": "performance",
+      "text": "Healthier tenants and systems."
+    },
+    {
+      "id": "triadic",
+      "kind": "other",
+      "text": "Triadic intelligence: balance, sync, growth."
+    }
+  ],
+  "irreversible": []
+}

@@ -48,7 +48,7 @@ export function reportMarkdown(r: ContinuityReport): string {
     if (!r.diff.length) out.push("None.", "");
     else {
       out.push("| Item | Before | After | Logged | Approved by |", "|---|---|---|---|---|");
-      for (const d of r.diff) out.push(`| ${cell(d.key)} | ${cell(d.before)} | ${cell(d.after)} | ${d.logged ? "yes" : "**no**"} | ${cell(d.approvedBy)} |`);
+      for (const d of r.diff) out.push(`| ${cell(d.key)} | ${cell(d.before)} | ${cell(d.after)} | ${d.log === "no" ? "**no**" : d.log} | ${cell(d.approvedBy)} |`);
       out.push("");
     }
   }

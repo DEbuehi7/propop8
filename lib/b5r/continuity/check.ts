@@ -166,7 +166,7 @@ export const LIMITS: readonly string[] = [
   "The check proves every applicable item was answered; it does not prove the answers are true. A named reviewer still reads them (B5R-44).",
   "EXECUTE means the next design stage; it is never construction, permit or publication approval.",
   "An approval on a line records a project decision; it never changes canon. Changing a rule needs the owner and a CANON_VERSION bump.",
-  `Which items apply comes from the continuity map (${CONTINUITY_MAP_VERSION}), a proposed reading of canon that is not canon itself.`,
+  `Which items apply comes from the continuity map (${CONTINUITY_MAP_VERSION}), a reading of canon that is not canon itself.`,
 ];
 
 const describeComponent = (c: ComponentLine | undefined) => (c ? `${c.decision}${c.detail ? `: ${c.detail}` : ""}` : "ABSENT");
@@ -291,6 +291,15 @@ export async function checkContinuity(p: DesignProposal, opts: { baseline?: Desi
     }
     const before = new Map<string, string>();
     const after = new Map<string, string>();
+    // Scope and data status are part of what a version says: narrowing the
+    // scope drops rules, so it is logged like any other change.
+    const bScope = expandScope(b.scope);
+    const narrowed = bScope.filter((w) => !scope.includes(w));
+    before.set("scope", bScope.join(", ") || "(none)");
+    after.set("scope", scope.join(", ") || "(none)");
+    before.set("dataStatus", b.dataStatus);
+    after.set("dataStatus", p.dataStatus);
+    const bReqs = new Map(requirements(bScope).map((r) => [r.ref, r]));
     const bLines = new Map(b.components.map((c) => [c.ref, c]));
     for (const ref of new Set([...bLines.keys(), ...lines.keys()])) { before.set(ref, describeComponent(bLines.get(ref))); after.set(ref, describeComponent(lines.get(ref))); }
     const claimText = (c?: DesignProposal["claims"][number]) => (c ? `${c.proof ?? "untagged"}: ${c.text}${c.source ? ` [${c.source}]` : ""}` : "ABSENT");
@@ -307,13 +316,23 @@ export async function checkContinuity(p: DesignProposal, opts: { baseline?: Desi
       if (was === now) continue;
       const entry = log.get(key);
       const logged = !!entry && !!entry.reason.trim();
-      if (!logged) add("SILENT_SUBSTITUTION", "DEFER", key, `${key} changed (${was} → ${now}) with no line in the change log`, `add {"key": "${key}", "reason": "..."} to changes`);
+      const isLine = lines.has(key) || bLines.has(key);
+      // Answering a required rule that was missing, or dropping a line whose
+      // rule left with the scope, is not a substitution of its own: the scope
+      // change carries the finding.
+      const answersGap = isLine && was === "ABSENT" && reqByRef.get(key)?.role === "mandatory";
+      const leftWithScope = isLine && now === "ABSENT" && !reqByRef.has(key) && bReqs.has(key);
+      const needed = !answersGap && !leftWithScope;
+      if (needed && !logged) add("SILENT_SUBSTITUTION", "DEFER", key, `${key} changed (${was} → ${now}) with no line in the change log`, `add {"key": "${key}", "reason": "..."} to changes`);
       const lineApproval = lines.get(key)?.approval;
       const ok = (entry?.approval && approved(entry.approval, key)) || validApproval(lineApproval);
-      const constrained = ENTRY.get(key)?.status === "LOCKED" || reqByRef.get(key)?.role === "mandatory";
-      if (constrained && bApproved && !ok) add("UNAUTHORIZED_CHANGE", "ESCALATE", key, `${key} was approved in version ${b.version} and has changed without an approval`, "record the owner's approval on the change line");
+      const constrained = key === "scope" ? narrowed.length > 0 : needed && (ENTRY.get(key)?.status === "LOCKED" || reqByRef.get(key)?.role === "mandatory");
+      if (constrained && bApproved && !ok) {
+        const what = key === "scope" ? `the scope drops ${narrowed.join(", ")}, and the rules that come with it, ` : `${key} was approved in version ${b.version} and `;
+        add("UNAUTHORIZED_CHANGE", "ESCALATE", key, `${what}has changed without an approval`, "record the owner's approval on the change line");
+      }
       const by = entry?.approval && validApproval(entry.approval) ? entry.approval.by : validApproval(lineApproval) ? lineApproval.by : null;
-      diff.push({ key, before: was, after: now, logged, approvedBy: by });
+      diff.push({ key, before: was, after: now, log: logged ? "yes" : needed ? "no" : "not needed", approvedBy: by });
     }
     for (const key of log.keys()) if (!diff.some((d) => d.key === key)) add("STALE_CHANGE_LINE", "NOTE", key, `the change log mentions ${key}, which did not change`, "remove the line, or check that the change was made");
   }

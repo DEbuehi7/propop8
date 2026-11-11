@@ -1,6 +1,6 @@
 # Design continuity
 
-A design proposal for an AIM-B5R building has to answer every canon rule that applies to it, and a new version of a proposal has to say what changed. This check does both, in code, with no AI and no network. It answers the "Design Continuity Engine" note of 10 Nov 2026: a coverage report for every proposal and a gate that fails on a missing rule or an unapproved change.
+A design proposal for an AIM-B5R building has to answer every canon rule that applies to it, and a new version of a proposal has to say what changed. This check does both, in code, with no AI and no network. It answers the "Design Continuity Engine" note of 10 Nov 2026 and is canon GOV-31: a coverage report for every proposal and a gate that fails on a missing rule or an unapproved change.
 
 Code: `lib/b5r/continuity/`. Tests: `tests/b5rContinuity.test.ts`. Examples: `data/aim-b5r/continuity/` (synthetic).
 
@@ -41,8 +41,8 @@ The check uses the EDO.DECISION words (no new vocabulary, TRI-03). The worst fin
 | Call | When |
 |---|---|
 | KILL | A rule no project approval can waive is modified or excluded: GOV-15, GOV-16, GOV-26, GOV-29, INF-08, B5R-33, B5R-39, B5R-40, ROB-04 |
-| ESCALATE | A locked rule is modified or excluded without approval, or changed since an approved version without approval; a never-waived rule is left out or deferred; F7 is used; a line builds on an OPEN decision; an irreversible decision has no approval; the baseline is not the version the proposal says it replaces |
-| DEFER | A required rule is left out; a line has no reason, an open-ended deferral or is unresolved; a claim has no proof tag or source; an irreversible decision has no evidence; a change since the last version is not logged, or a later version is checked without the version it replaces; F6 (pilot) is used; the data is synthetic, mock or illustrative |
+| ESCALATE | A locked rule is modified or excluded without approval, or changed since an approved version without approval; the scope narrows after an approved version without approval; a never-waived rule is left out or deferred; F7 is used; a line builds on an OPEN decision; an irreversible decision has no approval; the baseline is not the version the proposal says it replaces |
+| DEFER | A required rule is left out; a line has no reason, an open-ended deferral or is unresolved; a claim has no proof tag or source; an irreversible decision has no evidence; a change since the last version is not logged (scope and data status count as changes), or a later version is checked without the version it replaces; F6 (pilot) is used; the data is synthetic, mock or illustrative |
 | EXECUTE | Nothing above. The next design stage, never construction, permit or publication approval |
 
 Coverage is complete when nothing but synthetic data holds the call. Notes never block: an approved deviation, a CONCEPTUAL claim shown as a design goal, a concept or research entry that keeps its label, a proposal written against an older canon.
@@ -59,11 +59,15 @@ It proves every applicable rule was answered; it does not prove the answers are 
 - The "component taxonomy" is the canon register and the FIS module catalogue; nothing new was invented.
 - Kinetic, curved, LED and planted façade elements are F7, which stays disabled (B5R-41); a proposal that uses one is escalated, not scored.
 - The "BIR" image categories exist only as tags in the concept archive (`docs/aim-b5r/visual-archive/`), which is never evidence.
-- The AIM-OCULAR concept is not in the repo or the shared chats yet; its crosswalk waits for the write-up or images.
+- The AIM-OCULAR boards arrived on 11 Nov; their check is `docs/aim-b5r/AIM_OCULAR.md`.
 - The check is plain code with no running cost, so it does not wait on the revenue gate; design automation does (INF-01, B5R-31).
 
-## Proposed for canon
+## Canon
 
-Not canon yet. For the owner to approve after the Kirtled canon change (PR #69) merges, as GOV-31, LOCKED:
+GOV-31, locked by the owner on 11 Nov 2026 (canon 1.13.0):
 
 > Design continuity: every AIM-B5R design proposal answers each canon rule that applies to its scope as included, modified, deferred (with what it waits for), excluded or unresolved, each with a reason. No undocumented omissions, no silent substitutions between versions, no performance or cost claim without its proof tag and source, and no irreversible design decision without evidence and a named approval. A project approval records a decision and never changes canon. The check is deterministic (GOV-14); EXECUTE means the next design stage, never construction or publication.
+
+GOV-31 itself is listed in the map as "not a design input": it is the rule the check enforces, not a line a proposal answers.
+
+The first real run is the AIM-OCULAR boards: `docs/aim-b5r/AIM_OCULAR.md`.

@@ -7,8 +7,8 @@
  * module F0 is mandatory for façade work: a façade proposal says what happens
  * to the existing wall before anything is added (B5R-18, B5R-38, B5R-41).
  *
- * This map is a proposed reading of canon, not canon itself (canon 1.11.0;
- * the governing rule is proposed for canon in docs/aim-b5r/DESIGN_CONTINUITY.md).
+ * This map is a reading of canon, not canon itself (canon 1.13.0). The rule
+ * it serves is GOV-31; docs/aim-b5r/DESIGN_CONTINUITY.md explains it.
  * tests/b5rContinuity.test.ts keeps it honest: every id must exist, and every
  * LOCKED entry in SCANNED_DOMAINS must be mapped or listed in
  * NOT_DESIGN_INPUTS with a reason, so a new locked rule cannot be skipped
@@ -17,7 +17,7 @@
  */
 import type { CanonDomain } from "../../canon";
 
-/** 0.1: first reading, canon 1.11.0 (10 Nov 2026). */
+/** 0.1: first reading, canon 1.13.0 (11 Nov 2026). */
 export const CONTINUITY_MAP_VERSION = "aim-continuity-map-0.1";
 
 export const WORK_TYPES = [
@@ -68,9 +68,9 @@ export const CONTINUITY_MAP: Record<"always" | WorkType, readonly string[]> = {
   context_dignity: ["B5R-46", "B5R-47", "B5R-49", "B5R-50", "B5R-51", "GOV-27"],
   building_intelligence: ["B5R-04", "GOV-27", "EDO-14", "EDO-10"],
   robot_ready: ["ROB-04", "ROB-06", "EDO-14", "EDO-10", "P8O-05"],
-  pattern: ["EDO-01", "EDO-05", "EDO-06", "EDO-07", "EDO-08", "EDO-11", "EDO-13", "GOV-21", "TRI-13", "VIS-11"],
-  triadic: ["TRI-03", "TRI-04", "TRI-06", "TRI-09", "TRI-13"],
-  imagery: ["GOV-23", "B5R-20", "VIS-05", "VIS-06", "VIS-08", "VIS-11", "VIS-07", "VIS-09"],
+  pattern: ["EDO-01", "EDO-05", "EDO-06", "EDO-07", "EDO-08", "EDO-11", "EDO-13", "GOV-21", "TRI-13", "TRI-14", "VIS-11"],
+  triadic: ["TRI-03", "TRI-04", "TRI-06", "TRI-09", "TRI-13", "TRI-14"],
+  imagery: ["GOV-23", "B5R-20", "VIS-05", "VIS-06", "VIS-08", "VIS-11", "TRI-14", "VIS-07", "VIS-09"],
   media_overlay: ["STU-05", "GOV-15", "TRI-09"],
   costed: ["B5R-23", "INF-02"],
 };
@@ -111,6 +111,7 @@ export const NOT_DESIGN_INPUTS: ReadonlyMap<string, string> = new Map([
   ["GOV-20", "where doctrine and runtime facts live"],
   ["GOV-25", "vendor register"],
   ["GOV-28", "file retention"],
+  ["GOV-31", "the continuity rule itself, which this check enforces"],
   ["B5R-01", "investment cycle"],
   ["B5R-02", "buy decision contents"],
   ["B5R-03", "investment stages vs release gates"],

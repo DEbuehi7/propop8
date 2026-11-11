@@ -95,7 +95,36 @@ test("example v2 against v1: every drift is caught and the owner is needed", asy
   const f3 = r.diff.find((d) => d.key === "FIS:F3")!;
   assert.match(f3.before, /30%/);
   assert.match(f3.after, /60%/);
-  assert.equal(f3.logged, false);
+  assert.equal(f3.log, "no");
+});
+
+test("narrowing the scope drops rules, so it is logged and, after an approved version, approved", async () => {
+  const base = { ...V1(), scope: ["facade", "imagery"] as DesignProposal["scope"] };
+  base.components = [...base.components, ...starterProposal(["imagery"], "x", "x").components.filter((c) => !base.components.some((b) => b.ref === c.ref)).map((c) => ({ ...c, decision: "INCLUDED" as const, reason: "met" }))];
+  const next = { ...V1(), version: 2, supersedes: { version: 1, sha256: await proposalSha256(base) } };
+  delete next.approval;
+  const silent = await checkContinuity(next, { baseline: base });
+  assert.ok(has(silent, "SILENT_SUBSTITUTION", "scope"));
+  assert.equal(severity(silent, "UNAUTHORIZED_CHANGE", "scope"), "ESCALATE");
+  assert.ok(!has(silent, "SILENT_SUBSTITUTION", "GOV-23"), "a line whose rule left with the scope is not a separate substitution");
+  next.changes = [{ key: "scope", reason: "No imagery goes out with this version.", approval: APPROVAL }];
+  const logged = await checkContinuity(next, { baseline: base });
+  assert.ok(!has(logged, "UNAUTHORIZED_CHANGE"));
+  assert.ok(!has(logged, "SILENT_SUBSTITUTION"));
+  assert.equal(logged.diff.find((d) => d.key === "GOV-23")?.log, "not needed");
+  const dataOnly = { ...V1(), version: 2, dataStatus: "HISTORICAL" as const, supersedes: { version: 1, sha256: await proposalSha256(V1()) } };
+  assert.ok(has(await checkContinuity(dataOnly, { baseline: V1() }), "SILENT_SUBSTITUTION", "dataStatus"));
+});
+
+test("answering a required rule that was missing needs no change line", async () => {
+  const base = V1();
+  base.components = base.components.filter((c) => c.ref !== "GOV-22");
+  delete base.approval;
+  const next = { ...V1(), version: 2, supersedes: { version: 1, sha256: await proposalSha256(base) } };
+  delete next.approval;
+  const r = await checkContinuity(next, { baseline: base });
+  assert.ok(!has(r, "SILENT_SUBSTITUTION"));
+  assert.equal(r.diff.find((d) => d.key === "GOV-22")?.log, "not needed");
 });
 
 test("a later version checked alone, or against the wrong file, does not pass", async () => {
@@ -185,7 +214,7 @@ test("against an unapproved baseline, changes need logging but not approval", as
   assert.ok(!has(r, "UNAUTHORIZED_CHANGE"));
   assert.ok(!has(r, "SILENT_SUBSTITUTION"));
   assert.ok(has(r, "STALE_CHANGE_LINE", "GOV-01"));
-  assert.equal(r.diff.find((d) => d.key === "B5R-43")?.logged, true);
+  assert.equal(r.diff.find((d) => d.key === "B5R-43")?.log, "yes");
 });
 
 test("against an approved baseline, a change to a locked line needs the owner", async () => {
@@ -245,4 +274,27 @@ test("markdown: shows the call, escapes table pipes and lists every coverage row
   assert.match(md, /\*\*DEFER\*\*, coverage complete/);
   assert.match(md, /renders \\\| never decides/);
   for (const row of r.coverage) assert.ok(md.includes(`| ${row.ref}: `), row.ref);
+});
+
+test("AIM-OCULAR as drawn stops on two never-waived rules; reframed, it answers every rule", async () => {
+  const drawn = load("aim-ocular-v1.json");
+  const reframed = load("aim-ocular-v2.json");
+  const r1 = await checkContinuity(drawn);
+  assert.equal(r1.call, "KILL");
+  assert.equal(severity(r1, "NEVER_WAIVED", "GOV-29"), "KILL", "the Tenant Eye tracks behaviour and risk");
+  assert.equal(severity(r1, "NEVER_WAIVED", "B5R-39"), "KILL", "screens across the historic façade");
+  for (const ref of ["GOV-16", "GOV-26", "B5R-40"]) assert.equal(severity(r1, "SILENT_OMISSION", ref), "ESCALATE", ref);
+  assert.ok(has(r1, "DISABLED_MODULE", "FIS:F7"));
+  assert.ok(has(r1, "UNAUTHORIZED_CHANGE", "TRI-14"));
+  assert.equal(r1.claims.filter((c) => c.standing === "UNSUPPORTED").length, drawn.claims.length, "every outcome range is unsupported");
+
+  assert.equal(reframed.supersedes?.sha256, await proposalSha256(drawn));
+  const r2 = await checkContinuity(reframed, { baseline: drawn });
+  assert.equal(r2.complete, true);
+  assert.equal(r2.call, "DEFER");
+  assert.deepEqual(r2.findings.filter((f) => f.severity !== "NOTE").map((f) => f.code), ["SYNTHETIC_INPUT"]);
+  assert.equal(r2.counts.missing, 0);
+  assert.deepEqual(r2.diff.filter((d) => d.log === "no").map((d) => d.key), [], "every change is logged");
+  assert.equal(r2.diff.find((d) => d.key === "ROB-06")?.log, "not needed", "robot rules left with the scope");
+  assert.ok(!has(r2, "STALE_CHANGE_LINE"));
 });

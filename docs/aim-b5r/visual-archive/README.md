@@ -26,7 +26,7 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
-100 images are indexed:
+102 images are indexed:
 
 - AIMV-001 to 046: received 7 to 9 Oct.
 - AIMV-047 to 072: received 11 Oct, daytime. Triadic Planet boards, EDO robots,
@@ -45,6 +45,12 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
   099), and a skate-breakdance crew on a gold plaza (AIMV-100). Added with
   `python3 tools/inventory.py --append <uploads folder> .`, which keeps every
   row already here; JPEGs keep their `.jpg` name.
+- AIMV-101 and 102: received 11 Nov. The AIM-OCULAR boards: the Ocular
+  Intelligence OS board (AIMV-101) and DTLA Test Cell 01 (AIMV-102). As drawn
+  they stop on GOV-29 (a Tenant Eye that tracks behaviour and risk) and B5R-39
+  (screens across a historic façade); the full check is
+  `docs/aim-b5r/AIM_OCULAR.md`. Rows already in the register are skipped by
+  `--append`, so earlier uploads need not be present.
 
 Duplicates and derivatives:
 

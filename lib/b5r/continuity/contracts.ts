@@ -6,7 +6,7 @@
  * turns it into a coverage report and a call in the EDO.DECISION words
  * (EXECUTE / DEFER / ESCALATE / KILL; no new vocabulary, TRI-03).
  *
- * Governing rule (proposed for canon): no undocumented omissions, no silent
+ * Governing rule (canon GOV-31): no undocumented omissions, no silent
  * substitutions, no unsupported performance claims, no irreversible design
  * decision without evidence and approval.
  * Pure types and constants: no I/O, no AI.
@@ -72,7 +72,7 @@ export interface IrreversibleDecision {
   approval?: Approval;
 }
 
-/** A logged change from the version this one supersedes. key: a component ref, claim:<id> or irreversible:<id>. */
+/** A logged change from the version this one supersedes. key: a component ref, claim:<id>, irreversible:<id>, scope or dataStatus. */
 export interface ChangeLine {
   key: string;
   reason: string;
@@ -138,10 +138,12 @@ export interface CoverageRow {
 }
 
 export interface DiffRow {
+  /** A component ref, claim:<id>, irreversible:<id>, scope or dataStatus. */
   key: string;
   before: string;
   after: string;
-  logged: boolean;
+  /** "not needed": the change answers a missing required rule, or drops a line whose rule left with the scope (the scope line carries it). */
+  log: "yes" | "no" | "not needed";
   approvedBy: string | null;
 }
 
