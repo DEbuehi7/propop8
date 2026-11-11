@@ -559,3 +559,59 @@ export const KIRTLED_MIDI_EXPORT = {
 } as const;
 
 export const KIRTLED_WORDMARK = { K: "magenta", R: "magenta", L: "magenta", T: "gold", D: "teal", I: "white", E: "white" } as const;
+
+/**
+ * The one six-move table every Kirtled image, page and prompt draws from
+ * (D8-20, decided by the owner 2026-11-10). It restates D8-06, D8-08, D8-16,
+ * D8-17 and the vocab above in one place; tests/dance8/kirtledCanon.test.ts
+ * checks every row against them. `sides` are the lattice sides a move
+ * crosses; the drum is always the side's (KIRTLED_SIDE_CUES), never the word's.
+ * The colour is the move's own letter in the wordmark: DO and DASH teal (a dot
+ * and a dash, D8-09), RA, LA and KA magenta, TI gold.
+ */
+export const KIRTLED_MOVE_TABLE = [
+  { word: "DO", move: "STOMP", floor: "Stay on the current triangle and replay its chord (performance mode, not built)", gesture: "Strike the lit triangle",
+    dancer: "One foot hits down hard on a beat", skater: null, sides: [], drums: "none: no crossing", colour: "teal" },
+  { word: "RA", move: "ROLL", floor: "Travel to a connected triangle", gesture: "Slide to the next triangle",
+    dancer: "The hips move at least half a body-width within a bar", skater: "Floor carve to the next triangle", sides: ["R", "L"], drums: "kick across an R side, hi-hat across an L side", colour: "magenta" },
+  { word: "LA", move: "FLIP", floor: "Switch major and minor on the same root", gesture: "Flip the triangle over its root-to-fifth edge",
+    dancer: "The hips change level without travelling", skater: "Kickflip sweep", sides: ["P"], drums: "snare", colour: "magenta" },
+  { word: "KA", move: "SPIN", floor: "Orbit a shared corner: around C, C -> Am -> F", gesture: "Circle one corner",
+    dancer: "The body turns 180 degrees or more within a bar", skater: "Handplant roll or a 180/360 spin", sides: ["R", "L", "P"], drums: "kick, hi-hat and snare in turn around the corner", colour: "magenta" },
+  { word: "TI", move: "JUMP", floor: "Change the key and triangle set; only TI changes key", gesture: "Jump to the same shape in the new key",
+    dancer: "Both feet leave the floor", skater: "Big ollie leap (key change; also a leap too far for the tempo)", sides: ["jump"], drums: "crash", colour: "gold" },
+  { word: "DASH", move: "FREEZE", floor: "Hold the chord and pads and mute the drums until release (performance mode, not built)", gesture: "Press and hold",
+    dancer: "Holding still for a beat or more", skater: "Board-assisted freeze (the chord is held)", sides: [], drums: "muted", colour: "teal" },
+] as const;
+
+/**
+ * The Kirtled instrument's three arms (D8-21, SPEC, CONCEPTUAL under TRI-06):
+ * the R/P cycles of the 24 triads, eight to an arm, read from the hub out.
+ * Neighbours along an arm alternate R and P; the two end triangles are P
+ * neighbours too (each arm is a loop). tests/dance8/kirtledArms.test.ts
+ * rebuilds them from the lattice.
+ */
+export const KIRTLED_ARMS = [
+  { arm: "A", strip: ["C", "Am", "A", "F#m", "F#", "Ebm", "Eb", "Cm"], notes: ["C", "Db", "Eb", "E", "F#", "G", "A", "Bb"] },
+  { arm: "B", strip: ["Db", "Bbm", "Bb", "Gm", "G", "Em", "E", "Dbm"], notes: ["Db", "D", "E", "F", "G", "Ab", "Bb", "B"] },
+  { arm: "C", strip: ["D", "Bm", "B", "Abm", "Ab", "Fm", "F", "Dm"], notes: ["C", "D", "Eb", "F", "F#", "Ab", "A", "B"] },
+] as const;
+
+/**
+ * The Kirtled trio (D8-22, decided by the owner 2026-11-10): three fictional
+ * performer roles, low to high, each holding one corner of a triangle (A, C
+ * and E on the Dance8 harmony map). Colours only, from the wordmark; the
+ * TRIADIC.FORM role words are never attached to people (TRI-03).
+ */
+export const KIRTLED_TRIO = [
+  { name: "EDO EDO BOY", role: "Lead rapper, rhythmic architect", origin: "Nigeria", voice: "Low register, deep and resonant; stutter attacks", corner: "low", mapNote: "A", colour: "teal" },
+  { name: "NIKA NIKA", role: "Melodic counterpoint, precision rapper", origin: "Germany and Greece", voice: "Crystalline alto; rapid, precise triplets", corner: "middle", mapNote: "C", colour: "magenta" },
+  { name: "IARA IARA", role: "Rhythmic hook leader, improvisational rapper", origin: "Brazil", voice: "Commanding mezzo; agile", corner: "top", mapNote: "E", colour: "gold" },
+] as const;
+
+/** Expansions of AIM and EDO seen on concept boards; none is used (TRI-14). */
+export const RETIRED_EXPANSIONS = [
+  "Artificial-Intelligence-Mediated Evolutionary Design Optimization",
+  "Adaptive Intelligent Music",
+  "Equal Divisions of the Octave",
+] as const;

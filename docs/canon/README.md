@@ -129,9 +129,21 @@ And two changes after the owner's 29 Palms check:
 
 - **B5R-55**: the weathering layer. Each element names its shearing layer (site, structure, skin, services, space plan, stuff), who can fix it and how it wears. Material wear gets an ISO 15686 factor-method service life from a sourced reference life and seven factors, unknown when any input is missing. Condition is graded 1 to 5 by a named person from dated photos at a registered viewpoint. Work is due at an observed grade, else at the earlier of the trend and the age estimate; a better look only asks for a re-inspection, and no date moves later on its own. Graffiti, vandalism and litter are cycles, logged as report-to-clear times, never decay. Wear never describes residents.
 
+## Decided by the owner (v1.12.0, 10 Nov 2026)
+
+After a check of fifteen Kirtled concept images (the visual system check of 10 Nov):
+
+- **D8-20**: one six-move table for every image, page and prompt (`KIRTLED_MOVE_TABLE`): what each move does on the floor, on the instrument, for a dancer and a skater, the drum of the side it crosses, and its colour from the wordmark (DO and DASH teal; RA, LA, KA magenta; TI gold). Nothing in D8-06, D8-08, D8-09, D8-16 or D8-17 changes.
+- **D8-21** (spec, conceptual): the instrument is three 120-degree arms, each a strip of eight triangles, one R/P cycle of the 24 triads per arm (`KIRTLED_ARMS`, `lib/dance8/harmony/arms.ts`). Button and toggle designs are not used.
+- **D8-22**: the trio, EDO EDO BOY, NIKA NIKA and IARA IARA, are fictional roles holding the low, middle and top corners of one triangle, in teal, magenta and gold; their artist cards are the reference looks and "Meet the Trio V1" is retired; voices only from a private, approved voice map.
+- **D8-23**: TIME AND SOUND is the typed title; "Time × Sound" is the logo lockup, "Time × Sound × Movement" the album with its dance, "Live Motion" the live show.
+- **TRI-14**: AIM and EDO are never expanded in art or copy.
+- **D8-10** unchanged: the all-gold wordmark in the concept art is recoloured to the rule.
+- **D8-24** left open: who the seated Kirtled player is.
+
 ## Still open
 
-P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
+P8O-08 recert price, P8O-09 L.E.T. page content, D8-24 the seated Kirtled player, B5R-31
 revenue threshold, data sources and binding thresholds, STU-04 Stuttr storage
 and rights, PL8-07 Plate8 public or
 admin-only, PUR-02 Pure permissions, VIS-03 amber and green hex values, VIS-09
@@ -160,3 +172,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.9.0, 2026-11-06: the owner locked GOV-29 and B5R-46 to B5R-50 and settled B5R-51 (Fresno first). LET-03 corrected (about 0.26 acre, not 0.28; the city's written rules added). GOV-30 added (site-fit check, built in `lib/b5r/site/envelope.ts`) with the ChatGPT brief `docs/canon/CHATGPT_PROMPT.md`.
 - 1.10.0, 2026-11-07: D8-19 added and locked by the owner (beat feel and freedom of choice for the CHOIR8 dancers; built in `lib/dance8/motion/beatFeel.ts` and `lib/dance8/motion/landing.ts`). The detection thresholds stay tuning constants, outside canon.
 - 1.11.0, 2026-11-08: B5R-55 added and locked by the owner (the weathering layer: shearing layers, the ISO 15686 factor method, condition graded 1 to 5 from dated photos at registered viewpoints, the earlier of trend and age with no automatic later dates, graffiti and litter as cycles, never decay). The calculator is built in `lib/b5r/weathering/serviceLife.ts` and explained in `docs/aim-b5r/WEATHERING.md`. No existing LOCKED entry changed. The intervention grade, the 90-day trend minimum and the 0.8 to 1.2 flag stay tuning constants, outside canon.
+- 1.12.0, 2026-11-10: D8-20 (the six-move table), D8-22 (the trio), D8-23 (album names) and TRI-14 (no AIM or EDO expansions) added and locked by the owner; D8-21 (the three-arm instrument, a conceptual spec, its arithmetic built in `lib/dance8/harmony/arms.ts`) added; D8-24 (the seated player) left open; a note on D8-10. No existing rule changed.
