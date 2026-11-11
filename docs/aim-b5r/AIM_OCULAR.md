@@ -37,7 +37,7 @@ Version 1 encodes only what the boards show or say; a rule the boards never touc
 | Building Eye with cameras first | GOV-27 | Sensors first. Cameras only in common areas, disclosed and minimally retained; none in units |
 | Gold triangular screens across the historic upper façade | B5R-39 (never waived), B5R-37 | The historic street façade gets F0 repair only. F3 screens only on a non-historic elevation, on a free-standing frame with no anchors in masonry |
 | LED eye screen and cyan light strips | B5R-41 (F7 disabled), B5R-48, STU-05 | Removed |
-| Mural of the crowned trident figure on the building | B5R-46 (resident art is opt-in and resident-led) | Off the building |
+| Mural of the crowned trident figure on the building | B5R-46 (resident art is opt-in and resident-led) | Off the building; the figures themselves are on hold (owner, 11 Nov) |
 | Eye in a pyramid as the AIM-B5R core mark | VIS-11, EDO-08 | The Voronoi AIM mark; renders labelled approximations until the VIS-09 vector exists |
 | "AIM-B5R Artificial Intelligence Multifamily" | TRI-14 | Removed; the phrase joins `RETIRED_EXPANSIONS` |
 | AIM (Intelligence), EDO (Reduction / Modularity), Genome (Adaptation) with a DNA helix | TRI-14, GOV-21, TRI-13, TRI-04 | No glosses; EDO keeps its Edo and Benin attribution; no DNA imagery for the genome |
@@ -50,7 +50,7 @@ Version 1 encodes only what the boards show or say; a rule the boards never touc
 | Digital twin (BIM) cutaway | B5R-04 | Deferred until a real deal, an evidence contract or a calibration need |
 | DTLA Test Cell 01, number 408 | B5R-51, B5R-45, B5R-22, GOV-16 | The test cell moves to Fresno. DTLA stays desk research. 408 is a number in a render, not a site, and a test cell is never an employer's building |
 | 29 Palms "Execute Sandbox" | LET-01, TRI-03, B5R-14 | Eon Labs, for physical testing. "Execute" is the decision call's word; Twentynine Palms has no verified lead |
-| HB "Lifestyle Density" | B5R-12, B5R-52 | Huntington Beach is a concept archetype, not a research market; adding it needs the owner |
+| HB "Lifestyle Density" | B5R-12, B5R-52 | Stays a concept archetype, not a research market (owner, 11 Nov) |
 | No Fresno or Kern in the locational examples | B5R-22, LET-02 | Transect (Kern and Fresno) added: it is where the pilots start |
 | Sidewalk delivery robot | ROB-06, ROB-04 | Removed: robots stay bench-only |
 | "Living Units" window with a furnished bedroom; "unit preview" | B5R-48 | Model or consented interiors only, never live units |
@@ -60,13 +60,11 @@ Version 1 encodes only what the boards show or say; a rule the boards never touc
 | "Healthier tenants and systems" | GOV-29 | Building systems only |
 | Labels and text generated in the image ("TRI/ADIC", "SAMPLES" over "(EXAMPLES)") | GOV-23, VIS-08 | Labels on a separate vector layer |
 
-## For the owner
+## Owner decisions, 11 Nov 2026
 
-These are not canon questions, so the check does not decide them:
-
-1. **The lens figures.** The boards use a bearded "Odin", a one-eyed ogre, an eye in a pyramid and a crowned, fanged figure with a trident. The trident figure resembles Hindu deity iconography. Version 2 keeps every figure off the building, which B5R-46 already requires. Whether they stay on brand boards is your call. A living faith's deity as a product mascot may put off residents and partners of that faith.
-2. **The name.** "Ocular" and "OS that sees" sit awkwardly next to GOV-27 (sensors before cameras). If the name stays, the copy should say the building sees through measured data, not through cameras.
-3. **Huntington Beach.** It appears here and in B5R-52 as an archetype. Making it a research market needs your approval (B5R-12).
+1. **The lens figures: on hold.** The bearded "Odin", the one-eyed ogre, the eye in a pyramid and the crowned trident figure stay where they are until you decide. Two things hold either way. They stay off the building (B5R-46: resident art is opt-in and resident-led; version 2 already does this). And AIMV-101 stays a concept with no publication approval.
+2. **The name stays: AIM-OCULAR, Ocular Intelligence OS.** GOV-27 still applies, so the copy says the building sees through measured data (sensors first), not through cameras.
+3. **Huntington Beach stays a concept archetype.** It is not a research market, and B5R-12's five markets are unchanged.
 
 ## Files
 
