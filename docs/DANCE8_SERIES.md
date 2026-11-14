@@ -183,7 +183,7 @@ rendered on 11 Nov 2026.
 | 7 | Chord-state display on harmony changes | D8-25 draws only verified chord changes; none is verified for EDO yet | Needs a chord chart per song |
 | 8 | "8th Street Bravados" | The owner's earlier wording is "8 Street Bravado"; the EDO V3 shot list says "Bravados"; the on-screen spelling is an open decision | The owner picks one spelling for titles, walls and prompts |
 | 9 | TIME AND SOUND "eight-billion-address concept" | Not in canon or the repo | Needs its source before it appears anywhere |
-| 10 | A "WORLD CIRCUIT" wall pack; "STUTTR / C.L.O.Y.N.E." on the boards | Neither is an album in canon or the Album Desk | The owner confirms both names |
+| 10 | A "WORLD CIRCUIT" wall pack; "STUTTR / C.L.O.Y.N.E." on the boards | Neither is an album in canon or the Album Desk | C.L.O.Y.N.E. defined by the owner on 13 Nov (below); WORLD CIRCUIT still needs confirming |
 | 11 | CapCut for review | Not in [security/VENDORS.md](security/VENDORS.md); Suno is not listed either | Add both before clips or masters go there |
 | 12 | "3,022 frames at 24 frames/second, which gives seconds" | The number was missing | 125.92 seconds |
 | 13 | "help.suno.com +2" for the tool claims | Unchecked as received | Checked above, with dates |
@@ -222,11 +222,14 @@ What the boards add, as proposals for the series:
 
 What needs the owner or a fix:
 
-- **The trio.** The boards give the trio rapper roles (lead rapper, melodic
-  counterpoint, hook leader) and flags (Brazil for IARA IARA, Germany and
-  Greece for NIKA NIKA). D8-22 gives voice parts and colours only, so keeping
-  roles or nationalities is an owner decision and a D8-22 change. IARA IARA
-  stays gold.
+- **The trio.** The boards' rapper roles and flags already match canon: D8-22
+  and `KIRTLED_TRIO` (decided 10 Nov) make EDO EDO BOY the lead rapper and
+  rhythmic architect from Nigeria, NIKA NIKA the melodic counterpoint and
+  precision rapper from Germany and Greece, and IARA IARA the rhythmic hook
+  leader and improvisational rapper from Brazil. The owner confirmed them on
+  13 Nov; no canon change. Two differences remain: IARA IARA is drawn green,
+  where canon makes her gold, and EDO EDO BOY carries a microphone where the
+  other two carry flags.
 - **"The KIRTLED core" (AIMV-104)** reads AIM as intelligence, EDO as
   expression, Triadic as movement and Genome as adaptation. AIM is never
   expanded (TRI-14), EDO and Triadic always name their namespace (TRI-03), and
@@ -250,6 +253,29 @@ What needs the owner or a fix:
   picture (GOV-23). That is fine for internal reference; production stills
   carry text on a separate layer.
 
+**STUTTR / C.L.O.Y.N.E.** (owner, 13 Nov): the wall mode refers to Stuttr, the
+rap artist, and the Cloyne music of the Kirtled Dance8 centre.
+
+### Regenerating AIMV-105 and 106
+
+The owner approved new versions of both building boards on 13 Nov. They are
+made by editing the originals in the image tool, keeping everything that is
+not listed here, and are registered as new archive entries derived from 105
+and 106 when they arrive.
+
+| Change | AIMV-105 (Form into Facility) | AIMV-106 (Skid Row Facility) |
+|---|---|---|
+| Street number 527 | Removed | Removed |
+| Tents on the sidewalk | Removed; a clear sidewalk with street trees and a few people | Removed, on both sides |
+| AIM-B5R branding | Removed from the banner and title; the core becomes a Dance8 control core (review, archive, render queue); the AIM mark stays | The same, including the title, the core in the diagram and the L3 floor |
+| The owner's name and residence | Not shown | Removed: the overview calls it a fictional set, and L4 becomes creator studios |
+| Map pin | A district map with nothing marked: "Fictional set: no site selected" | The same |
+| Claims | "Not a concept only", "buildable", "compliant" and "code" wording removed; the "ARMG" typo fixed; the three rooms are connected spaces, not instrument arms | "Compliance", "feasible" and "code limits" wording removed |
+| Footer | "Concept board for a fictional music-video set. Not a site, building proposal or AIM-B5R project." | The same |
+
+The "Skid Row DTLA" location label stays until the facility is named
+(decision 2).
+
 ## Owner decisions
 
 1. The slate order, starting with EDO V3, the Kirtled introduction and the trio
@@ -261,9 +287,12 @@ What needs the owner or a fix:
 5. Whether CapCut joins the vendor register.
 6. Whether the Cypher may draw verified move words (an implementation change
    under D8-25, which stays SPEC until the EDO proof passes review).
-7. The trio's roles and nationalities from the boards (IARA IARA stays gold
-   unless D8-22 changes).
-8. What STUTTR / C.L.O.Y.N.E. is.
-9. Whether to regenerate AIMV-105 and 106 without the AIM-B5R core, the street
-   number, the map pin, the tents and the owner's residence, or keep them as
-   internal room references only.
+
+Decided on 13 Nov:
+
+- The trio keep the boards' rapper roles and flags, which already match canon
+  (D8-22). IARA IARA stays gold.
+- STUTTR / C.L.O.Y.N.E. is Stuttr, the rap artist, and the Cloyne music of the
+  Kirtled Dance8 centre.
+- AIMV-105 and 106 are regenerated without the street number, tents, AIM-B5R
+  branding and the owner's residence (above).

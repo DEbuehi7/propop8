@@ -56,7 +56,8 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
   and album media wall (104), and two Skid Row building boards (105, 106). 103
   and 104 can guide the fictional set once fixed; 105 and 106 present a real
   building with an AIM-B5R core, a street number and, on 106, the owner's
-  residence, so they are reference for rooms only. The check is in
+  residence, so they are reference for rooms only; the owner approved
+  regenerated versions on 13 Nov. The check is in
   `docs/DANCE8_SERIES.md`.
 
 Duplicates and derivatives:
