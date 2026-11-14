@@ -26,7 +26,7 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
-102 images are indexed:
+106 images are indexed:
 
 - AIMV-001 to 046: received 7 to 9 Oct.
 - AIMV-047 to 072: received 11 Oct, daytime. Triadic Planet boards, EDO robots,
@@ -51,6 +51,13 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
   (screens across a historic façade); the full check is
   `docs/aim-b5r/AIM_OCULAR.md`. Rows already in the register are skipped by
   `--append`, so earlier uploads need not be present.
+- AIMV-103 to 106: received 13 Nov. Four Dance8 virtual-facility boards
+  (MED-01, outside AIM-B5R scope): facility value and workflow (103), the hall
+  and album media wall (104), and two Skid Row building boards (105, 106). 103
+  and 104 can guide the fictional set once fixed; 105 and 106 present a real
+  building with an AIM-B5R core, a street number and, on 106, the owner's
+  residence, so they are reference for rooms only. The check is in
+  `docs/DANCE8_SERIES.md`.
 
 Duplicates and derivatives:
 
