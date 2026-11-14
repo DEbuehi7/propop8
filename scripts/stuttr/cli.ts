@@ -14,6 +14,8 @@
  *   npm run stuttr -- approve-master cloyne        (after listening; or: reject-master)
  *   npm run stuttr -- mouth cloyne Stuttr          (Dance8 mouth track, approved takes only)
  *   npm run stuttr -- analyze cloyne               (tempo, bars, sung phrases, chords for Dance8)
+ *   npm run stuttr -- visual-features ~/Music/edo-master.wav --out ~/Music/edo.features.json --fps 24 --id edo
+ *                                                  (energy per video frame for Dance8's reaction layer, D8-25)
  *
  * Shouts and harmonies in several voices: prep the backing stem once, convert
  * it in ElevenLabs once per voice, add each take, then mix; every backing take
@@ -83,7 +85,7 @@
  * lead voice); --dry, --format mp3_44100_192|mp3_44100_128 (convert).
  */
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import {
   addSong, addVoice, analyzeTrack, buildMaster, castCommand, convertCast, convertVoices, describeSong, loadManifest, mixCast, mixVoice, mouthTrack, prepVoice,
   setMasterStatus, setVoiceStatus, type Ctx,
@@ -92,6 +94,7 @@ import { describeTrack } from "../../lib/stuttr/library";
 import { albumAdd, albumCommand, albumOrder, albumRemove, albumsCommand, albumVoices, voicesCommand } from "../../lib/stuttr/albumCommands";
 import { mediaVaultCommand } from "../../lib/stuttr/mediaVault";
 import { audiobookCommand } from "../../lib/stuttr/audiobookCommands";
+import { parseFps, writeVisualFeatures } from "../../lib/stuttr/visualFeaturesFile";
 import { albumClips, albumImport, albumPlanVideos, albumPreview, albumProcess, albumResolve, albumResume, albumStatus } from "../../lib/stuttr/desk/desk";
 
 const argv = process.argv.slice(2);
@@ -100,7 +103,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file", "manifest", "album", "stage", "approved-plan", "short", "only", "note", "key", "aspect"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file", "manifest", "album", "stage", "approved-plan", "short", "only", "note", "key", "aspect", "fps", "out"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -130,6 +133,7 @@ const usage = `Stuttr song library (${ctx.library})
   convert <trackId> --cast [--dry]
   convert <trackId> <voice> --redo              (again, for a take you rejected)
   analyze <trackId>
+  visual-features <audio file> --out <features.json> [--fps 24] [--id <trackId>]   (energy per video frame for Dance8's reaction layer, D8-25)
   album <name> [--title "Name"]                 (makes it the first time; shows the board)
   album-add <album> <trackId> [more ids] [--at N] [--mode solo|crew|cast] [--lead Stuttr] [--title "Song"]
   album-order <album> <trackId> <trackId> ...   (every song on the album, in the new order)
@@ -255,6 +259,12 @@ async function main(): Promise<void> {
       if (!a1) throw new Error("analyze needs a track id");
       analyzeTrack(ctx, a1);
       break;
+    case "visual-features": {
+      if (!a1 || !flag("out")) throw new Error("visual-features needs an audio file and --out <features.json>");
+      const t = writeVisualFeatures(expand(a1), expand(flag("out")!), parseFps(flag("fps") ?? "24"), flag("id") ?? basename(a1).replace(/\.[^.]+$/, ""));
+      console.log(`${t.frames} frames at ${t.fps.num}/${t.fps.den} fps from ${t.source.file} (sha256 ${t.source.sha256.slice(0, 12)}…)\n  ${expand(flag("out")!)}\n  energy and spectrum only: not beats, chords, notes or moves`);
+      break;
+    }
     case "convert":
       if (a1 && has("cast")) {
         await convertCast(ctx, { trackId: a1, format: flag("format"), dry: has("dry") });

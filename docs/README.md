@@ -69,6 +69,8 @@ Status words:
 |---|---|---|
 | [PLATE8_SPEC.md](PLATE8_SPEC.md) | Plate8 canonical spec | Reference |
 | [DANCE8_SPEC.md](DANCE8_SPEC.md) | Dance8 motion spec | Reference |
+| [DANCE8_REACTION_LAYER.md](DANCE8_REACTION_LAYER.md) | Dance8 visual reaction layer: Genome Loom, Algorithmic Cypher, Resonance Chamber overlays from Stuttr's feature track | Current (canon D8-25, SPEC) |
+| [DANCE8_SERIES.md](DANCE8_SERIES.md) | The next six music videos: slate, what every film keeps, the virtual facility, album wall packs, checked against canon | Current (proposal of 13 Nov 2026, not canon) |
 | [MEDIA_WORKFLOW.md](MEDIA_WORKFLOW.md) | Kling cards, zips, credits, CHOIR8, helper videos | Current |
 | [MEDIA_VAULT.md](MEDIA_VAULT.md) | Read-only index over the private Stuttr library | Reference |
 | [ALBUM_DESK.md](ALBUM_DESK.md) | Stuttr Album Desk: a Suno album in one command, holds, paid-voice plans, Kling clips, drafts | Current |
