@@ -439,6 +439,10 @@ export function ingestClips(c: Ctx, trackId: string, folder: string): VisualClip
   const names = readdirSync(folder).filter((n) => VIDEO_EXT.has(extname(n).toLowerCase())).sort();
   let skipped = 0;
   for (const name of names) {
+    if (/\.test([-_ ]\(?\d{1,3}\)?)?$/i.test(basename(name, extname(name)).trim())) {
+      log(`${name}: a test clip (kling --test); it checks the look and never covers a shot, so it stays out of the library`);
+      continue;
+    }
     const b = briefForFile(name, briefs);
     if (!b) { skipped++; continue; }
     const src = join(folder, name);

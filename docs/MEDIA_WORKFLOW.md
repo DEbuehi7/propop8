@@ -67,6 +67,14 @@ same steps per album): [ALBUM_DESK.md](ALBUM_DESK.md).
    - `scene.txt` takes `place:`, `light:`, `hidden:` (what b-roll shows while
      someone sings), `dancer:`, `skater:`, `cast:` (such as
      `Stuttr=brick-built-stuttr`) and `props:` (such as `equus-x`).
+   - For b-roll only, a set can also say what happens there (`action:`, in
+     place of the generic gentle movement), reword a camera for that set
+     (`tracking:`, `orbit:`, `close:`, `medium:`, `wide:`, `drone_wide:`, such
+     as a slow lateral move past someone seated) without changing any shot id,
+     and choose `mouths: closed` when its master shows faces that are not
+     singing: the people stay in view with mouths closed and still, instead of
+     the default rule that keeps every face out (`hidden:` then says who they
+     are). Lip-sync shots keep their own action and camera.
    - `~/StuttrLibrary/refs/props/<prop>/` holds `prop.png` (a vehicle or object
      on its own) and `prop.txt` (`name:`, `look:`). A set's props go into its
      b-roll and trick prompts and uploads, never into lip sync.
@@ -97,6 +105,16 @@ same steps per album): [ALBUM_DESK.md](ALBUM_DESK.md).
      image, lip-sync cut and motion video they upload, linked inside the zip.
      AirDrop it to the phone, open index.html, generate, and bring the
      downloads back for `clips`. Cards that wait stay out of it.
+
+   Every card keeps three times apart: the song time the shot is placed on,
+   the final clip that covers it (generator, length, resolution) and the test
+   that only checks its look (Kling 4.0 Flash, 720p, at most 5 s).
+   `--test <shot>,<shot> --zip` makes just those tests in
+   `<song>/dance8/kling/test/` (and `<song>-kling-test.zip`), with the same
+   prompts and references, a lip-sync cut of the test's own length and
+   downloads named `<shot>.test.mp4`. `clips` never takes a test as a shot's
+   footage, and the main pack is left as it was. Check each test four separate
+   ways: identity, geometry, performance and sync.
 
    Rates come from `~/StuttrLibrary/kling-rates.json` when you add one (credits
    per second, as Kling shows on its Generate button), such as

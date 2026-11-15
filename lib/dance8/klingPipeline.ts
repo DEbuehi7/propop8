@@ -23,11 +23,11 @@ import { GENERATORS } from "./authoring/generators";
 import { mergeRates, parseRates, planCredits, RATES_FILE, summarize, type Rates } from "./authoring/klingCredits";
 import {
   CHARACTER_TEXT, compileCard, IMAGE_EXTS, isPlaceholderScene, packHtml, parseCast, parseFields, parseProps, promptsText, PROP_TEXT, SCENE_TEXT, sortCards,
-  type CharacterRefs, type PropRefs, type RefIndex, type SceneRefs, type UploadCard,
+  testSpecOf, type CharacterRefs, type ClipSpec, type PropRefs, type RefIndex, type SceneRefs, type UploadCard,
 } from "./authoring/klingPack";
 import type { ShotBrief } from "./authoring/shotBriefs";
 import { zipStore, type ZipEntry } from "./authoring/zipStore";
-import type { CueMap, VisualClipLibrary } from "./contracts/scene";
+import type { CameraShot, CueMap, VisualClipLibrary } from "./contracts/scene";
 import { STAND_IN_CLIP_ID } from "./authoring/plan";
 import { songPaths } from "./pipeline";
 
@@ -68,6 +68,10 @@ function sceneStarter(id: string, trackId: string, placeholder: boolean): string
     "# skater: the refs/cast folder of the skater, for trick shots (optional).",
     "# cast: who plays a voice here when it isn't the voice's own folder, like Stuttr=brick-built-stuttr.",
     "# props: refs/props folders that appear in b-roll and trick shots here, like equus-x (comma-separated).",
+    "# action: what happens in this set's b-roll (otherwise: gentle movement in the set).",
+    "# mouths: hidden (default) keeps faces out of b-roll while someone sings; closed keeps the people the",
+    "#   master shows in view with mouths closed and still (say who they are in hidden:).",
+    "# tracking: / orbit: / close: / medium: / wide: / drone_wide: this set's own words for that camera in b-roll.",
     "# Images in this folder: master.png (the set's first frame), dancer.png (optional: the dancer in the set).",
     "place:",
     "light:",
@@ -103,13 +107,22 @@ function characterStarter(slug: string, name: string): string {
   ].join("\n");
 }
 
+const CAMERA_KEYS: CameraShot[] = ["drone_wide", "wide", "medium", "close", "tracking", "orbit"];
+
 function loadScene(dir: string, id: string): SceneRefs {
   const text = join(dir, SCENE_TEXT);
-  const { fields, issues } = existsSync(text) ? parseFields(readFileSync(text, "utf8")) : { fields: {}, issues: [] };
+  const parsed = existsSync(text) ? parseFields(readFileSync(text, "utf8")) : { fields: {} as Record<string, string>, issues: [] as string[] };
+  const fields: Record<string, string> = parsed.fields;
+  const issues = [...parsed.issues];
+  const cameras: Partial<Record<CameraShot, string>> = {};
+  for (const k of CAMERA_KEYS) if (fields[k]) cameras[k] = fields[k];
+  const m = fields.mouths?.toLowerCase();
+  if (m && m !== "hidden" && m !== "closed") issues.push(`"mouths: ${fields.mouths}" is neither hidden nor closed`);
   return {
     id, dir, issues,
     place: fields.place ?? null, light: fields.light ?? null, hidden: fields.hidden ?? null,
     cast: parseCast(fields.cast), dancer: fields.dancer ?? null, skater: fields.skater ?? null, props: parseProps(fields.props),
+    action: fields.action ?? null, cameras, mouths: m === "closed" ? "closed" : "hidden",
     master: imageIn(dir, "master"), dancerImage: imageIn(dir, "dancer"),
   };
 }
@@ -201,6 +214,11 @@ export interface KlingOptions {
   model?: string;
   /** Also write <song>-kling.zip: this batch's cards with every file they upload, to carry to a phone or another computer. */
   zip?: boolean;
+  /**
+   * Test only these shots: short Kling 4.0 Flash clips at 720p saved as <shot>.test.mp4, in kling/test/
+   * (and <song>-kling-test.zip with zip). The main pack is left as it is, and a test never covers a shot.
+   */
+  test?: string[];
 }
 
 /** Where a file goes inside the zip: the pack's own files as they are, library files by their library path. */
@@ -219,7 +237,7 @@ function zipPathOf(c: Ctx, dir: string, abs: string): string {
  * out, so the zip holds only what is worth paying for now.
  */
 export function writeKlingZip(
-  c: Ctx, o: { trackId: string; title: string; dir: string; cards: UploadCard[]; rates: Rates; budget?: number; ratesFile: string; downloads: string; clipsCommand: string },
+  c: Ctx, o: { trackId: string; title: string; dir: string; cards: UploadCard[]; rates: Rates; budget?: number; ratesFile: string; downloads: string; clipsCommand: string; test?: boolean },
 ): { path: string; shots: number; files: number; bytes: number } | null {
   const batch = o.cards.filter((x) => x.ready && (x.credit?.batch ?? "now") === "now");
   if (!batch.length) return null;
@@ -235,7 +253,17 @@ export function writeKlingZip(
   if (missing.length) throw new Error(`can't zip: ${missing.length} file(s) the cards upload are missing, first ${missing[0]}`);
   const summary = summarize(cards, o.rates);
   const html = packHtml(cards, { title: o.title, trackId: o.trackId, downloads: o.downloads, clipsCommand: o.clipsCommand, href: (z) => z, credits: { summary, budget: o.budget, ratesFile: o.ratesFile } });
-  const readme = [
+  const readme = (o.test ? [
+    `${o.title}: Kling tests (${cards.length} shot${cards.length === 1 ? "" : "s"}${summary.nowKnown ? `, about ${summary.nowCredits} credits` : ""})`,
+    "",
+    "1. Unzip it and open index.html (on a phone: in the Files app, then Share > Open in Safari, or on a computer).",
+    "2. Each card is a short, cheap test: Kling 4.0 Flash at 720p. Native audio stays off.",
+    "3. Save every download as its card says (the shot id, then .test.mp4). Clips never takes a test as the shot's footage.",
+    "4. Check each test four separate ways: identity (face, costume), geometry (the set, the instrument), performance (natural,",
+    "   real-time movement) and sync. Passing one says nothing about the others.",
+    "5. Fix the references or words a test shows up, then make the finals from the main pack at their own lengths.",
+    "",
+  ] : [
     `${o.title}: Kling batch (${cards.length} shot${cards.length === 1 ? "" : "s"}${summary.nowKnown ? `, about ${summary.nowCredits} credits` : ""})`,
     "",
     "1. Unzip it and open index.html (on a phone: in the Files app, then Share > Open in Safari, or on a computer).",
@@ -244,7 +272,7 @@ export function writeKlingZip(
     `4. Then run: ${o.clipsCommand}`,
     "5. Approve the clips, run kling again, and the next batch is what's left.",
     "",
-  ].join("\n");
+  ]).join("\n");
   const entries: ZipEntry[] = [
     { name: "README.txt", data: Buffer.from(readme) },
     { name: "index.html", data: Buffer.from(html) },
@@ -254,7 +282,7 @@ export function writeKlingZip(
   ];
   const now = c.now ? new Date(c.now()) : new Date();
   const buf = zipStore(entries, now);
-  const path = join(o.dir, `${o.trackId}-kling.zip`);
+  const path = join(o.dir, `${o.trackId}-kling${o.test ? "-test" : ""}.zip`);
   writeFileSync(path, buf);
   return { path, shots: cards.length, files: files.size, bytes: buf.length };
 }
@@ -272,7 +300,7 @@ export function takeFor(t: LibraryTrack, voice: string, a: number, b: number): V
 }
 
 /** Cuts the shot's song time from the singer's approved take: only that voice, for Kling's lip sync. */
-function cutAudio(c: Ctx, t: LibraryTrack, b: ShotBrief, outDir: string): { path: string | null; problem: string | null } {
+function cutAudio(c: Ctx, t: LibraryTrack, b: ShotBrief, outDir: string, name = b.id): { path: string | null; problem: string | null } {
   const voice = b.voice ?? "";
   if (!voice || voice === "Lead" || voice === "Backing" || voice.includes("+")) return { path: null, problem: null };
   const take = takeFor(t, voice, b.songStartSec, b.songEndSec);
@@ -282,7 +310,7 @@ function cutAudio(c: Ctx, t: LibraryTrack, b: ShotBrief, outDir: string): { path
   }
   if (!hasFfmpeg()) return { path: null, problem: "ffmpeg is not installed (brew install ffmpeg)" };
   mkdirSync(outDir, { recursive: true });
-  const out = join(outDir, `${b.id}.wav`);
+  const out = join(outDir, `${name}.wav`);
   const from = Math.max(0, b.songStartSec - (take.startSec ?? 0));
   const r = spawnSync("ffmpeg", [
     "-v", "error", "-y", "-ss", from.toFixed(3), "-t", (b.songEndSec - b.songStartSec).toFixed(3), "-i", join(c.library, take.path),
@@ -308,6 +336,9 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   const p = songPaths(c, trackId);
   if (!existsSync(p.briefs)) throw new Error(`no shot list yet; run: npm run dance8 -- plan ${trackId}`);
   const kept: string[] = [];
+  const planned = new Map(readJson<ShotBrief[]>(p.briefs).map((b) => [b.id, {
+    generator: b.generator, tool: GENERATORS[b.generator]?.label ?? b.generator, lengthSec: b.generateSec, resolution: b.resolution,
+  } satisfies ClipSpec]));
   const briefs = readJson<ShotBrief[]>(p.briefs).map((b) => (b.motionRef ? {
     ...b, motionRef: { ...b.motionRef, refFile: b.motionRef.refFile && existsSync(join(p.dir, b.motionRef.refFile)) ? join(p.dir, b.motionRef.refFile) : null },
   } : b)).map((b) => {
@@ -318,6 +349,7 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   const mapFile = existsSync(p.castCuemap) ? p.castCuemap : p.cuemap;
   const sceneOrder = existsSync(mapFile) ? [...new Set(readJson<CueMap>(mapFile).cues.map((q) => q.sceneId))] : [];
   const { refs, made } = indexRefs(c, trackId, briefs);
+  if (o.test) return testPack(c, t, briefs, planned, refs, made, sceneOrder, o);
   const dir = klingDir(c, trackId);
   mkdirSync(dir, { recursive: true });
   const downloads = downloadsFor(trackId);
@@ -325,7 +357,7 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   const compiled = sortCards(briefs.map((b) => compileCard(b, refs, {
     tool: GENERATORS[b.generator]?.label ?? b.generator,
     audio: b.kind === "lip_sync" ? cutAudio(c, t, b, join(dir, "audio")) : undefined,
-    downloads,
+    downloads, final: planned.get(b.id),
   })), sceneOrder);
   const cards = planCredits(compiled, rates, { budget: o.budget, testedScenes: testedScenes(p.clips) });
   const summary = summarize(cards, rates);
@@ -364,5 +396,59 @@ export function klingPack(c: Ctx, trackId: string, o: KlingOptions = {}): { card
   if (todo.length > 12) log(`  ...and ${todo.length - 12} more (the page lists them per shot)`);
   log(`open it: open "${join(dir, "index.html")}"`);
   log(`downloads: mkdir -p ${downloads}, save each clip there as its shot id, then: ${clipsCommand}`);
+  return { cards, dir, made };
+}
+
+/**
+ * kling --test: short, cheap test clips for the named shots, in kling/test/. Each keeps its shot's prompt
+ * and references, runs on Kling 4.0 Flash at 720p for at most TEST_SEC, and saves as <shot>.test.mp4;
+ * lip-sync tests get their own audio cut, so the shot's own lip-sync audio is never touched.
+ */
+function testPack(
+  c: Ctx, t: LibraryTrack, briefs: ShotBrief[], planned: Map<string, ClipSpec>, refs: RefIndex, made: string[], sceneOrder: string[], o: KlingOptions,
+): { cards: UploadCard[]; dir: string; made: string[] } {
+  const log = logOf(c);
+  const ids = [...new Set(o.test!.map((x) => x.trim()).filter(Boolean))];
+  if (!ids.length) throw new Error("--test takes shot ids, comma-separated");
+  const unknown = ids.filter((id) => !briefs.some((b) => b.id === id));
+  if (unknown.length) throw new Error(`--test: no shot ${unknown.map((x) => `"${x}"`).join(", ")} in the plan`);
+  const dir = join(klingDir(c, t.trackId), "test");
+  mkdirSync(dir, { recursive: true });
+  const downloads = downloadsFor(t.trackId);
+  const { rates, issues, file: ratesFile } = loadRates(c);
+  const compiled = ids.map((id) => {
+    const b = briefs.find((x) => x.id === id)!;
+    const spec = testSpecOf(b);
+    const end = Math.min(b.songEndSec, b.songStartSec + spec.lengthSec);
+    const tb: ShotBrief = b.kind === "dance" ? b : {
+      ...b, generator: spec.generator, resolution: spec.resolution, generateSec: spec.lengthSec, songEndSec: end,
+      keyframesSec: b.keyframesSec.filter((k) => k < spec.lengthSec),
+    };
+    return compileCard(tb, refs, {
+      tool: spec.tool, downloads, testRun: true, final: planned.get(b.id), interval: { startSec: b.songStartSec, endSec: b.songEndSec },
+      audio: b.kind === "lip_sync" ? cutAudio(c, t, tb, join(dir, "audio"), `${b.id}.test`) : undefined,
+    });
+  });
+  // Every test stands alone: no covers, no waiting for another set's test.
+  const cards = sortCards(compiled, sceneOrder).map((x) => {
+    const [n] = planCredits([x], rates, { testedScenes: new Set() });
+    return { ...n, credit: n.credit ? { ...n.credit, batch: x.ready ? ("now" as const) : ("not_ready" as const), testFirst: false, covers: [], coveredBy: null } : n.credit };
+  });
+  const summary = summarize(cards, rates);
+  const clipsCommand = `npm run dance8 -- clips ${t.trackId} ${downloads}`;
+  const title = `${t.title} (tests)`;
+  writeFileSync(join(dir, "cards.json"), JSON.stringify(cards, null, 2) + "\n");
+  writeFileSync(join(dir, "prompts.txt"), promptsText(title, cards));
+  writeFileSync(join(dir, "index.html"), packHtml(cards, { title, trackId: `${t.trackId}-test`, downloads, clipsCommand, href: (abs) => relative(dir, abs), credits: { summary, ratesFile } }));
+  log(`kling tests: ${join(dir, "index.html")}`);
+  log(`${cards.length} test(s): ${cards.filter((x) => x.ready).length} ready; each saves as <shot>.test.mp4 and never covers its shot`);
+  for (const i of issues) log(`note: ${i}`);
+  for (const x of cards) if (!x.ready) for (const m of x.missing) log(`  to do (${x.shotId}): ${m}`);
+  if (o.zip) {
+    const z = writeKlingZip(c, { trackId: t.trackId, title, dir, cards, rates, ratesFile, downloads, clipsCommand, test: true });
+    if (!z) log("zip: no test is ready, so no zip");
+    else log(`zip: ${z.path} (${z.shots} test(s), ${z.files} file(s) to upload, ${(z.bytes / 1e6).toFixed(1)} MB)`);
+  }
+  for (const d of made) log(`made ${d} (put its images there and fill in its .txt)`);
   return { cards, dir, made };
 }

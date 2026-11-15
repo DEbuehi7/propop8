@@ -158,9 +158,11 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
     mk(`${lip.id}.mp4`, lip.generateSec);
     mk(`${broll.id}-2.mp4`, broll.generateSec);
     mk("kling_unnamed.mp4", 3);
+    mk(`${lip.id}.test.mp4`, 3);
     lines.length = 0;
     const added = ingestClips(c, "synthetic-song", dl);
-    assert.equal(added.length, 2);
+    assert.equal(added.length, 2, "a .test clip never comes in as a shot's footage");
+    assert.ok(lines.some((l) => l.startsWith(`${lip.id}.test.mp4: a test clip`)));
     const lipClip = added.find((x) => x.id === lip.id)!;
     assert.deepEqual([lipClip.approvalStatus, lipClip.mouthVisible, lipClip.lipSync], ["draft", true, { voice: lip.voice, songStartSec: lip.songStartSec }]);
     assert.equal(lipClip.aspect, "9:16");
