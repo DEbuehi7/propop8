@@ -23,7 +23,7 @@ import {
 } from "./library";
 import { buildMouthTrack, frameLoudnessDb } from "../dance8/authoring/mouthTrack";
 import type { MouthTrack } from "../dance8/contracts/mouth";
-import { analyzeSong as analyzeSongAudio, ANALYSIS_SR, groupOfStem, type PartGroup, type SongAnalysis } from "./analysis";
+import { analyzeSong as analyzeSongAudio, ANALYSIS_SR, groupOfStem, verifiedGridProblem, type PartGroup, type SongAnalysis, type VerifiedGrid } from "./analysis";
 import { convertSpeech, KEY_ENV, listVoices, matchVoice, OUTPUT_FORMATS, type Fetch, type OutputFormat } from "./elevenlabs";
 import {
   analysisRel, castRel, castRuns, cuemapRel, runLines, starterCast, SUNO_BACKING, validateCast,
@@ -187,6 +187,7 @@ export function decodeFloat(path: string, rate = ANALYSIS_SR): Float32Array {
  */
 export function analyzeFiles(
   trackId: string, files: { path: string; group: PartGroup | "grid_fallback" | "harmony_fallback"; sha256: string; libPath?: string }[], durationSec?: number,
+  grid?: VerifiedGrid,
 ): SongAnalysis {
   const sums: Partial<Record<PartGroup | "grid_fallback" | "harmony_fallback", Float32Array>> = {};
   for (const f of files) {
@@ -208,16 +209,42 @@ export function analyzeFiles(
     parts,
     gridFallback: grid_fallback,
     harmonyFallback: harmony_fallback,
+    grid,
   });
+}
+
+export interface AnalyzeOptions {
+  /** A tempo verified by ear, with --downbeat: used instead of the beat tracker's. */
+  bpm?: number;
+  /** Song time of bar 1 in seconds, with --bpm. */
+  downbeatSec?: number;
+  /** Drop a verified grid kept from an earlier analysis and use the tracker's again. */
+  tracked?: boolean;
 }
 
 /**
  * analyze: tempo, downbeats, part levels, sung eighths and chords from the
  * song's stems, saved to <id>/analysis/<id>.analysis.json for Dance8.
  */
-export function analyzeTrack(c: Ctx, trackId: string): string {
+export function analyzeTrack(c: Ctx, trackId: string, o: AnalyzeOptions = {}): string {
   if (!hasFfmpeg()) throw new Error(NO_FFMPEG);
   const t = trackOrThrow(loadManifest(c), trackId);
+  if ((o.bpm === undefined) !== (o.downbeatSec === undefined)) throw new Error("give --bpm and --downbeat together (the tempo and the song time of bar 1)");
+  if (o.tracked && o.bpm !== undefined) throw new Error("--tracked uses the beat tracker's grid; leave out --bpm and --downbeat");
+  const rel = `${trackId}/analysis/${trackId}.analysis.json`;
+  // A grid someone verified stays until they set another or ask for the tracker's (--tracked).
+  let grid: VerifiedGrid | undefined;
+  if (o.bpm !== undefined) {
+    grid = { bpm: o.bpm, firstDownbeatSec: o.downbeatSec!, by: "the owner (stuttr analyze --bpm)", at: nowOf(c) };
+    const problem = verifiedGridProblem(grid);
+    if (problem) throw new Error(problem);
+  } else if (!o.tracked && existsSync(join(c.library, rel))) {
+    const prior = (JSON.parse(readFileSync(join(c.library, rel), "utf8")) as SongAnalysis).gridVerified;
+    if (prior) {
+      grid = { bpm: prior.bpm, firstDownbeatSec: prior.firstDownbeatSec, by: prior.by, at: prior.at };
+      logOf(c)(`keeping the verified grid (${prior.bpm} BPM, bar 1 at ${prior.firstDownbeatSec} s); --tracked uses the beat tracker's instead`);
+    }
+  }
   const pick: Parameters<typeof analyzeFiles>[1] = [];
   for (const f of t.files) {
     const group = f.role === "vocals" ? "lead" : f.role === "backing_vocals" ? "backing" : f.role === "stem" ? groupOfStem(f.stemName) : null;
@@ -227,8 +254,7 @@ export function analyzeTrack(c: Ctx, trackId: string): string {
   if (!pick.some((p) => p.group === "drums") && fallback) pick.push({ path: join(c.library, fallback.path), group: "grid_fallback", sha256: fallback.sha256, libPath: fallback.path });
   if (!pick.some((p) => p.group === "harmony") && fallback) pick.push({ path: join(c.library, fallback.path), group: "harmony_fallback", sha256: fallback.sha256, libPath: fallback.path });
   const full = t.files.find((f) => f.role === "full_mix")?.audio?.durationSec ?? undefined;
-  const a = analyzeFiles(trackId, pick, full);
-  const rel = `${trackId}/analysis/${trackId}.analysis.json`;
+  const a = analyzeFiles(trackId, pick, full, grid);
   mkdirSync(join(c.library, trackId, "analysis"), { recursive: true });
   writeFileSync(join(c.library, rel), JSON.stringify(a, null, 1) + "\n");
   const unsure = a.chords.filter((x) => x.fit < 0.75).length;

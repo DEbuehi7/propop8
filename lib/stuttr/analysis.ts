@@ -65,7 +65,23 @@ export interface SongAnalysis {
    * analyses made before 19 Oct 2026; run analyze again to add it.
    */
   sync?: SyncFingerprint;
+  /**
+   * Present when a person checked the beat by ear and set it (analyze --bpm
+   * --downbeat): the grid above is theirs, not the beat tracker's. A contested
+   * tracker tempo is never adopted silently.
+   */
+  gridVerified?: VerifiedGrid & { trackedBpm: number };
   warnings: string[];
+}
+
+/** A beat grid a person verified by ear: the tempo and where bar 1 starts. */
+export interface VerifiedGrid {
+  bpm: number;
+  /** Song time of the first downbeat (bar 0), in seconds. */
+  firstDownbeatSec: number;
+  /** Who checked it, and when (ISO time). */
+  by: string;
+  at: string;
 }
 
 /** Onset strength per frame, square-rooted and scaled to 0-255 at its 99.5th percentile, as base64. */
@@ -417,6 +433,15 @@ export function bestTriad(c: ArrayLike<number>): { chord: string; fit: number } 
 
 // ---------- Whole song ----------
 
+/** Why a verified grid can't be used, or null when it can. */
+export function verifiedGridProblem(g: Pick<VerifiedGrid, "bpm" | "firstDownbeatSec">, durationSec?: number): string | null {
+  if (!(Number.isFinite(g.bpm) && g.bpm >= 30 && g.bpm <= 300)) return "--bpm must be a tempo from 30 to 300";
+  if (!(Number.isFinite(g.firstDownbeatSec) && g.firstDownbeatSec >= 0)) return "--downbeat must be the song time of bar 1 in seconds, 0 or more";
+  if (g.firstDownbeatSec >= (4 * 60) / g.bpm) return `--downbeat must fall inside the first bar (under ${r3((4 * 60) / g.bpm)} s at ${g.bpm} BPM)`;
+  if (durationSec !== undefined && g.firstDownbeatSec >= durationSec) return "--downbeat is past the end of the song";
+  return null;
+}
+
 export interface AnalysisInput {
   trackId: string;
   durationSec: number;
@@ -427,6 +452,8 @@ export interface AnalysisInput {
   gridFallback?: Float32Array;
   /** Used for chords when there are no harmony stems. */
   harmonyFallback?: Float32Array;
+  /** A grid a person verified by ear; used instead of the beat tracker's. */
+  grid?: VerifiedGrid;
   warnings?: string[];
 }
 
@@ -435,19 +462,34 @@ export function analyzeSong(inp: AnalysisInput): SongAnalysis {
   const frameSec = ONSET_HOP / ANALYSIS_SR;
   const gridSrc = inp.parts.drums ?? inp.gridFallback;
   if (!gridSrc) throw new Error("no drums stem and no instrumental or full mix to find the beat in");
-  if (!inp.parts.drums) warnings.push("no drum stem: the beat grid comes from the mix, check it by ear");
   const env = onsetEnvelope(gridSrc);
   const kick = onsetEnvelope(gridSrc, ANALYSIS_SR, [30, 150]);
-  const grid = trackBeats(env, beatGrid(env, frameSec).beatSec, frameSec);
-  const beats: number[] = [];
-  for (let t = grid.firstBeatSec; t < inp.durationSec - 1e-9; t += grid.beatSec) beats.push(t);
-  const bassEnv = inp.parts.bass ? onsetEnvelope(inp.parts.bass) : null;
-  const db = downbeatPhase(beats, kick, bassEnv, frameSec);
-  const firstDownbeatSec = r3(grid.firstBeatSec + db.phase * grid.beatSec);
+  const tracked = trackBeats(env, beatGrid(env, frameSec).beatSec, frameSec);
+  let grid = tracked;
+  let db: { phase: number; scores: number[] };
+  let firstDownbeatSec: number;
+  if (inp.grid) {
+    const problem = verifiedGridProblem(inp.grid, inp.durationSec);
+    if (problem) throw new Error(problem);
+    // The person's grid; the tracker, seeded with their tempo, only reports how steady the beat is.
+    const beatSec = 60 / inp.grid.bpm;
+    const steady = trackBeats(env, beatSec, frameSec);
+    grid = { ...steady, bpm: r3(inp.grid.bpm), beatSec: r6(beatSec), firstBeatSec: r3(inp.grid.firstDownbeatSec) };
+    db = { phase: 0, scores: [] };
+    firstDownbeatSec = r3(inp.grid.firstDownbeatSec);
+    warnings.push(`beat grid verified by ${inp.grid.by} (${inp.grid.at.slice(0, 10)}): ${grid.bpm} BPM, bar 1 at ${firstDownbeatSec} s; the beat tracker heard ${tracked.bpm} BPM`);
+  } else {
+    if (!inp.parts.drums) warnings.push("no drum stem: the beat grid comes from the mix, check it by ear");
+    const beats: number[] = [];
+    for (let t = grid.firstBeatSec; t < inp.durationSec - 1e-9; t += grid.beatSec) beats.push(t);
+    const bassEnv = inp.parts.bass ? onsetEnvelope(inp.parts.bass) : null;
+    db = downbeatPhase(beats, kick, bassEnv, frameSec);
+    firstDownbeatSec = r3(grid.firstBeatSec + db.phase * grid.beatSec);
+  }
   const barSec = 4 * grid.beatSec;
   const bars = Math.max(0, Math.floor((inp.durationSec - firstDownbeatSec) / barSec + 1e-9));
   warnings.push("4/4 time is assumed");
-  if (grid.bpm < 70 || grid.bpm > 170) warnings.push(`${grid.bpm} BPM is unusual; it may be half or double the felt tempo`);
+  if (!inp.grid && (grid.bpm < 70 || grid.bpm > 170)) warnings.push(`${grid.bpm} BPM is unusual; it may be half or double the felt tempo`);
 
   const barStart = (b: number) => firstDownbeatSec + b * barSec;
   const perBar = (x?: Float32Array) => (x ? Array.from({ length: bars }, (_, b) => rmsDb(x, barStart(b), barStart(b + 1))) : null);
@@ -494,6 +536,7 @@ export function analyzeSong(inp: AnalysisInput): SongAnalysis {
     eighthDb: { lead: perEighth(inp.parts.lead), backing: perEighth(inp.parts.backing) },
     chords,
     ...(mix ? { sync: syncFingerprint(mix) } : {}),
+    ...(inp.grid ? { gridVerified: { ...inp.grid, bpm: grid.bpm, firstDownbeatSec, trackedBpm: tracked.bpm } } : {}),
     warnings,
   };
 }

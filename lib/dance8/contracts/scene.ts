@@ -8,6 +8,7 @@
 // footage). Dance8 never generates pixels; it plans cuts against the music.
 // Same cue map + same clip library -> same cut plan, every time.
 
+import type { InstrumentCamera } from "./instrument";
 import type { MusicSection } from "./signal";
 
 export type SceneId = string;
@@ -93,6 +94,24 @@ export interface VisualClip {
    * keeps the owner's timing. Also usable as free footage elsewhere in its scene.
    */
   danceLock?: DanceLock;
+  /**
+   * The one principal (performer, instrument or object, contracts/instrument.ts)
+   * this clip shows on its own: its independent view. Before a grid is
+   * approved, every principal of the song needs an approved clip like this.
+   */
+  isolates?: string;
+  /**
+   * Present on Kirtled instrument footage (CAM-KIR-01 or CAM-KIR-02): the
+   * playing follows the event map `eventMapId`, and frame 0 matches
+   * songStartSec, so the hands land on their chords. Isolates "kirtled".
+   */
+  instrument?: InstrumentLock;
+}
+
+export interface InstrumentLock {
+  camera: InstrumentCamera;
+  eventMapId: string;
+  songStartSec: number;
 }
 
 export interface TrickLock {

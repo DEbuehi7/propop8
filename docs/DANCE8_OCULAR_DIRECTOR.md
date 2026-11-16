@@ -117,7 +117,7 @@ card when the module that fills them is built.
 
 ## Timing at EDO's tempo
 
-At 94 BPM (pending the owner's confirmation) a beat is 0.638 s and a bar
+At 94 BPM (confirmed by the owner on 15 Nov) a beat is 0.638 s and a bar
 2.553 s. At 24 fps that is 15.32 frames a beat, not a whole number, so frames
 are computed from song time, as Dance8 already does. The study's 16-second,
 eight-bar template becomes 20.4 s:
@@ -197,16 +197,184 @@ voice master (never the Suno master, D8-14), and beside it a manifest listing
 every block, cell, warning, the audio's hash and the checks (frame count and
 pulse rate).
 
-Not built yet: animated transitions between layouts (a layout change is a cut
-on the bar line), cell labels (GOV-23 keeps them a separate approved layer),
-and the glasses view: Stuttr's approved clear gold-rimmed glasses, with the
-display drawn in editing.
+### Views and transitions
+
+Added on 15 Nov 2026, after the owner asked for lyrics, the Kirtled view and
+smooth switching. A cell can show a view instead of a clip:
+
+```json
+{ "startBar": 11, "endBar": 13, "layout": "three", "primary": 0,
+  "cells": [{ "view": "kirtled" }, { "clipId": "v3-15" }, { "view": "lyrics" }] }
+```
+
+- **`lyrics`** shows the line being sung, large, with the next line small
+  under it. A line stays up until the next one starts, or two seconds after
+  it ends. It reads `<song>/dance8/<song>.lyrics.json`:
+
+  ```json
+  { "status": "draft",
+    "lines": [{ "section": "Verse 1", "text": "The first line of verse 1",
+                "start": 9.4, "end": 11.51, "timing": "aligned" }] }
+  ```
+
+  Times are song seconds. `timing` says how a line was timed (`aligned` to
+  the vocal, or `estimated`). A draft can show draft timing and says so; a
+  final (`--approved`) refuses anything but `"status": "approved"`, because
+  on-screen text is a separate, approved layer (GOV-23). The words are the
+  owner's lyric sheet, exactly as written.
+- **`kirtled`** is the Kirtled *pattern*: the instrument drawn from canon
+  D8-21 (a Y of three equal arms at 120 degrees, each a strip of eight
+  triangles, no buttons), with the hub warming on each downbeat and a pulse
+  running from the hub to the tips over the bar, on the verified beat grid.
+  It is the beat's light, not a camera, and nothing is played on it.
+- **`instrument`** with `"camera": "CAM-KIR-01"` or `"CAM-KIR-02"` is one of
+  the Kirtled instrument cameras (next section). It can be any cell,
+  including the primary.
+- A block shows each view, and each instrument camera, at most once; a view
+  cell takes no `clipId`.
+- **Transitions.** `"transition": { "kind": "fade", "beats": 0.5 }` (the
+  default) dissolves into each block over the half beat before its bar line,
+  so the new layout is fully in on the bar line. Each clip starts that much
+  early (or holds its first frame where it has nothing earlier), so nothing
+  jumps. `"kind": "cut"` gives hard cuts.
+
+Not built yet: cell labels (GOV-23 keeps them a separate approved layer), the
+dancer diagram (it needs the dance take read as poses with `dance8 moves`),
+instrument footage (it waits for the approved Kirtled still, the player's
+identity under D8-24 and the go-ahead for new footage), and the glasses view:
+Stuttr's approved clear gold-rimmed glasses, with the display drawn in
+editing.
+
+### The playable page
+
+The same rules run live in a private page for the owner (not in this public
+repo, because it carries the song and the footage). It plays the song and
+switches between one view, a mix of three or nine, and an auto director that
+picks a layout for each two-bar phrase from the measured energy and the sung
+lines. Every change, including the viewer's, lands on the next bar line with a
+half-beat glide. Each viewing gets a new variation; the time of day picks a
+night or day cut; from the third visit the grid opens more often. The page's
+auto director keeps the rejected V3 instrument shots (6 and 17) off screen.
+
+## Instrument cameras
+
+Added on 15 Nov 2026 at the owner's direction. Version 2 of the study had a
+Kirtled studio camera showing performers and geometric patterns, but no
+camera on the instrument alone being played, so Kirtled could disappear
+behind the dance, the grid and the architecture. The instrument is a
+principal performer, not a prop, and has two cameras of its own, independent
+of the studio cameras, either of which can lead a grid
+(`lib/dance8/contracts/instrument.ts`):
+
+| Camera | View | Shows | Status |
+|---|---|---|---|
+| CAM-KIR-01 | Instrument isolation, overhead | The whole instrument in its fixed geometry and the hands playing it | Mandatory |
+| CAM-KIR-02 | Performance detail, close | Finger movements, single triangles and their light response | Wanted |
+
+Both keep the canon geometry (D8-21): three arms at 120 degrees, eight
+triangles (triads) to an arm, no buttons. Footage that shows a different
+instrument is rejected, as V3 shots 6 and 17 were.
+
+**Where the picture comes from.** Instrument footage is a clip with an
+`instrument` lock: `{ "camera": "CAM-KIR-01", "eventMapId": "edo-kirtled-events",
+"songStartSec": 28.2 }`. It plays only where it lines up with the song, like
+lip-synced clips, and a final takes it only when it was made to the song's
+approved event map. Until such footage exists, a draft draws a stand-in from
+the canon geometry: overhead, the whole instrument at rest, with the chord's
+triangles lighting and a ring marking each hand (cyan left, magenta right) on
+the triangle it plays; close, the same view held on the triangle the block's
+first event plays. A final never uses the stand-in, because it shows no hands.
+
+**A sequence in grid terms** (bars are illustrative):
+
+```json
+[
+  { "startBar": 38, "endBar": 40, "layout": "one", "primary": 0,
+    "cells": [{ "view": "instrument", "camera": "CAM-KIR-01" }] },
+  { "startBar": 40, "endBar": 42, "layout": "three", "primary": 0,
+    "cells": [{ "view": "instrument", "camera": "CAM-KIR-01" }, { "clipId": "stuttr-playing" }, { "clipId": "dancers" }] },
+  { "startBar": 42, "endBar": 44, "layout": "nine", "primary": 4,
+    "cells": [{ "view": "instrument", "camera": "CAM-KIR-02" }, { "clipId": "hands" }, { "clipId": "stuttr-playing" },
+              { "clipId": "dancers" }, { "clipId": "footwork" }, { "clipId": "floor" },
+              { "clipId": "audience" }, { "clipId": "building" }, { "clipId": "street" }] },
+  { "startBar": 44, "endBar": 46, "layout": "one", "primary": 0,
+    "cells": [{ "view": "instrument", "camera": "CAM-KIR-02" }] }
+]
+```
+
+The instrument plays a phrase full screen; the grid opens to the instrument,
+the player and the dancers; then to nine views (detail, hands, player,
+dancers, footwork, floor, audience, building, street); at the breakdown every
+other cell closes back to the instrument alone; and the last accent, an
+event with a camera move on the next bar line, starts the next change.
+
+### The event map
+
+What the instrument does on screen comes from an event map
+(`<song>/dance8/<song>.kirtled-events.json`), never from the picture. The
+song is prerecorded, so the map is authored and approved by a person, and the
+video never claims the instrument made the recording (the harmony contract's
+`sounding: false`; D8-25). Each event records four things:
+
+```json
+{ "id": "k007", "bar": 38, "beat": 0,
+  "play":   { "triangle": "A2", "hand": "left" },
+  "music":  { "harmonyEventId": "h31", "chord": "Am" },
+  "visual": { "lights": ["A2"], "dancers": "step" },
+  "camera": { "action": "switch", "to": "CAM-KIR-02" } }
+```
+
+1. **The playing:** which triangle (`A1` next to the hub to `A8` at the tip of
+   arm A, likewise B and C), when, and which hand.
+2. **The musical event:** the chord change of the song's harmony timeline that
+   it stands for.
+3. **The answer on screen:** the lights, and whether the dancers step.
+4. **The camera:** hold, enlarge, or switch to the other instrument camera.
+
+`checkEventMap` (`lib/dance8/harmony/eventMap.ts`) holds every event to the
+rule that a finger never triggers an unrelated note or light:
+
+- the event plays the triangle of the chord sounding at that moment (its
+  anchor), and names that chord;
+- it lights that chord's own triangles and nothing else (one, or two that
+  share a side for a seventh, as `readChord` reads them);
+- a camera move lands on a bar line;
+- one hand plays one triangle at a time, and events stay in time order;
+- a chord no person has verified holds: the event is kept but nothing is
+  drawn, and a final refuses it (D8-25). An unapproved chord timeline holds
+  them all.
+
+`npm run dance8 -- kirtled-events <song>` drafts a map once from the harmony
+timeline (one event per chord change, on the chord's triangle; the left hand
+takes the left branch, arm B, the right hand the right branch, arm C, and the
+stem, arm A, goes to the hand that did not play last; the camera holds), then
+checks it on every run. The draft is for the owner to edit and approve.
+
+### The completeness rule
+
+Every principal performer, instrument and significant object of a song has
+an approved view of its own before a multi-camera composition is approved.
+The song lists them in `<song>/dance8/<song>.principals.json`:
+
+```json
+{ "schemaVersion": 1, "trackId": "edo",
+  "principals": [{ "id": "stuttr", "kind": "performer", "name": "Stuttr" },
+                 { "id": "kirtled", "kind": "instrument", "name": "Kirtled" }] }
+```
+
+A final (`grid --approved`) refuses to render without the list, or when a
+principal has no approved clip that shows it on its own (`"isolates":
+"<id>"` on the clip). For Kirtled, that clip is CAM-KIR-01 footage;
+CAM-KIR-02 is wanted and its absence is a warning. A plan that shows Kirtled
+anywhere must name it as a principal. A draft lists the same gaps as
+warnings. The rule is built into Dance8; adding it to the canon register
+waits for the owner (it changes the canon lock and its version).
 
 ## The EDO proof
 
 Rendered 15 Nov 2026 from a scratch copy of the library, not the owner's:
 bars 22 to 34 of EDO (song 56.25 to 86.89 s, 30.67 s, 736 frames at 24 fps),
-on the 94 BPM grid that still waits for the owner's confirmation. The cells
+on the 94 BPM grid, which the owner confirmed after watching it. The cells
 are EDO V3 shots, used as drafts. The Kirtled instrument close-ups (V3 shots
 6 and 17) stay out, because V4.1 replaces that instrument.
 
@@ -223,6 +391,19 @@ Checked: 736 of 736 frames; layouts change only on two-bar lines; the border
 pulses on each beat (1.57 a second) and is dark between beats. The 5-second youth
 shot holds its last frame for 2 or 3 frames in the three blocks that use it.
 
+The full-length views draft followed the same day: all 49 bars in 16 blocks,
+with lyrics cells in six blocks, the Kirtled view in four (it leads the
+second instrument passage; both passages show other shots instead of the
+rejected close-ups) and half-beat dissolves. Checked: 3003 of 3003
+frames, pulse at most three a second, lyric timing marked draft.
+
+Lyric timing found while aligning the sheet to the vocal: verse 1 runs 0:09
+to 0:29, the hook 0:30 to 0:41 (estimated; it does not align to the written
+words), verse 2 0:50 to 1:04, the spoken bridge 1:10 to 1:23 and the outro
+from 1:43. So the passage at 1:16 that the V4 plan calls the hook in the gold
+hall is the bridge. The sheet's "8th Street Bavados" is shown as
+"8th Street Bravados", the decided name.
+
 ## Owner decisions
 
 Decided on 15 Nov:
@@ -236,3 +417,9 @@ Decided on 15 Nov:
 4. The grid compositor is built now, before the EDO re-plan.
 5. Gemini joins the vendor register
    ([security/VENDORS.md](security/VENDORS.md)).
+6. Kirtled gets two cameras of its own: CAM-KIR-01 (instrument isolation,
+   overhead, mandatory) and CAM-KIR-02 (performance detail), each selectable
+   as the dominant cell; instrument sequences follow an approved event map;
+   and every principal performer, instrument and significant object needs a
+   view of its own before a multi-camera composition is approved. See
+   [Instrument cameras](#instrument-cameras).

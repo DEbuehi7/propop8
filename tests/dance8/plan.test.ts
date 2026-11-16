@@ -226,6 +226,39 @@ test("end to end: analyze, plan (kept on rerun), clips by name, approve with a d
       "Synthetic Song\nA test tone learns to dance.\n\nTwo verses and a hook.\n\nAll characters are fictional and AI-generated. Music and vocals made with Suno.\n");
     planTrack(c, "synthetic-song", { key: "C" });
     assert.match(readFileSync(p.readme, "utf8"), /^Synthetic Song: Dance8 files .*\nA test tone learns to dance\.\n\nTwo verses and a hook\.\n\n/);
+
+    // A tempo verified by ear (stuttr analyze --bpm --downbeat) replaces the tracker's and is kept on later runs.
+    assert.throws(() => analyzeTrack(c, "synthetic-song", { bpm: 96 }), /give --bpm and --downbeat together/);
+    assert.throws(() => planTrack(c, "synthetic-song", { regrid: true }), /already on the analysis's grid/);
+    const before = JSON.parse(readFileSync(p.cuemap, "utf8")) as CueMap;
+    const oldLip = (JSON.parse(readFileSync(p.briefs, "utf8")) as ShotBrief[]).filter((b) => b.kind === "lip_sync").map((b) => b.id);
+    analyzeTrack(c, "synthetic-song", { bpm: 96, downbeatSec: 0.04 });
+    const v = JSON.parse(readFileSync(p.analysis, "utf8")) as SongAnalysis;
+    assert.deepEqual([v.bpm, v.firstDownbeatSec, v.gridVerified!.by], [96, 0.04, "the owner (stuttr analyze --bpm)"]);
+    lines.length = 0;
+    analyzeTrack(c, "synthetic-song");
+    assert.ok(lines.includes("keeping the verified grid (96 BPM, bar 1 at 0.04 s); --tracked uses the beat tracker's instead"));
+    assert.equal((JSON.parse(readFileSync(p.analysis, "utf8")) as SongAnalysis).bpm, 96);
+
+    // --regrid: the sections keep their ids and scenes and move by song time; the files before are kept beside them.
+    assert.throws(() => planTrack(c, "synthetic-song", { regrid: true, replace: true }), /leave out --replace/);
+    lines.length = 0;
+    planTrack(c, "synthetic-song", { key: "C", regrid: true });
+    const after = JSON.parse(readFileSync(p.cuemap, "utf8")) as CueMap;
+    assert.deepEqual(after.tempo, [{ startBar: 0, bpm: 96, beatsPerBar: 4 }]);
+    assert.deepEqual(after.cues.map((q) => [q.id, q.sceneId]), before.cues.map((q) => [q.id, q.sceneId]));
+    assert.ok(after.cues.some((q, i) => q.startBar !== before.cues[i].startBar), "bars changed");
+    const rg = JSON.parse(readFileSync(join(p.dir, "synthetic-song.regrid.json"), "utf8")) as { cues: unknown[]; shots: { renamed: [string, string][] }; kept: string[] };
+    assert.equal(rg.cues.length, before.cues.length);
+    assert.ok(rg.kept.some((f) => /^synthetic-song\.cuemap\.before-regrid-.*\.json$/.test(f)));
+    for (const f of rg.kept) assert.ok(existsSync(join(p.dir, f)), f);
+    const newLip = (JSON.parse(readFileSync(p.briefs, "utf8")) as ShotBrief[]).filter((b) => b.kind === "lip_sync").map((b) => b.id);
+    for (const [a, b] of rg.shots.renamed) assert.ok(oldLip.includes(a) && newLip.includes(b), `${a} -> ${b}`);
+    assert.ok(lines.some((l) => /^moved from 1(19|20)(\.\d+)? BPM to 96 BPM: \d+ of 5 sections changed bars; \d+ shot\(s\) renamed/.test(l)), lines.join("\n"));
+    assert.match(readFileSync(p.readme, "utf8"), /synthetic-song\.regrid\.json {3}moved from/);
+    // --tracked drops the verified grid.
+    analyzeTrack(c, "synthetic-song", { tracked: true });
+    assert.ok(Math.abs((JSON.parse(readFileSync(p.analysis, "utf8")) as SongAnalysis).bpm - 120) < 0.2);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

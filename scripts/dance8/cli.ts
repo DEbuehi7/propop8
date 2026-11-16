@@ -4,6 +4,7 @@
  *   npm run stuttr -- analyze cloyne        (Stuttr measures the stems first)
  *   npm run dance8 -- plan cloyne --key Eb
  *   npm run dance8 -- plan cloyne --key Eb --skate breakyard_plaza   (skaters play Kirtled, canon D8-16)
+ *   npm run dance8 -- plan edo --regrid                       (after stuttr analyze --bpm: your sections move onto the corrected grid)
  *   npm run dance8 -- kling cloyne                            (the upload pack: files and a prompt per shot)
  *   npm run dance8 -- kling cloyne --budget 600               (only what fits 600 credits, most important first)
  *   npm run dance8 -- kling cloyne --model kling-3.0-720p     (b-roll, lip sync and tricks on Kling 3.0 at 720p)
@@ -30,6 +31,9 @@
  *   npm run dance8 -- grid edo ~/StuttrLibrary/edo/dance8/grids/proof.json
  *     The Ocular Director grid (docs/DANCE8_OCULAR_DIRECTOR.md): one, three or nine approved clips
  *     on screen at once, one primary, layouts changing on bar lines, over the voice master.
+ *   npm run dance8 -- kirtled-events edo                      (the Kirtled event map: which triangle, hand, chord, light
+ *                                                            and camera move for each played event; drafted once from the
+ *                                                            chord timeline for you to edit and approve, checked every run)
  *
  * plan writes <id>/dance8/: cue map, harmony, Kirtled plan, clip library, shot
  * list, mouth tracks and README. It keeps a cue map, harmony or clip library
@@ -54,6 +58,7 @@ import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
 import { albumPreview } from "../../lib/stuttr/desk/desk";
 import { reactionInputsExist, renderReaction } from "../../lib/dance8/reactionPipeline";
 import { gridRender } from "../../lib/dance8/gridPipeline";
+import { kirtledEvents } from "../../lib/dance8/instrumentPipeline";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -61,14 +66,14 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha", "performer"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
 const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
-  plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
+  plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace] [--regrid]
   kling <trackId> [--budget <credits>] [--model <generator>] [--zip] [--test <shot,shot>]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/; --test: short Flash tests in kling/test/)
   clips <trackId> <folder>
   choir <trackId> [--variation N]                    (CHOIR8 count sheet, in <song>/dance8/choir/; N picks another set of beat choices)
@@ -80,7 +85,8 @@ const usage = `Dance8 (${ctx.library})
   render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]
   album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)
   react <features.json> --windows <windows.csv|json> --out <folder> [--base <footage.mp4>] [--events <verified.json>] [--song <id>] [--expect-sha <audio sha256>]
-  grid <trackId> <plan.json> [--approved] [--master en|suno] [--fps 24]   (camera grid: 1, 3 or 9 clips on bar lines, in <song>/dance8/renders/)`;
+  grid <trackId> <plan.json> [--approved] [--master en|suno] [--fps 24]   (camera grid: 1, 3 or 9 clips on bar lines, in <song>/dance8/renders/)
+  kirtled-events <trackId> [--performer <castId>] [--replace]   (the Kirtled event map: drafted from the chords once, then checked)`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -152,7 +158,7 @@ async function main() {
       const crew = flag("crew");
       if (crew !== undefined && !(Number.isInteger(Number(crew)) && Number(crew) >= 1)) throw new Error("--crew must be a whole number of skaters");
       planTrack(ctx, a1, {
-        key: flag("key"), aspect, final: has("final"), replace: has("replace"), skate: flag("skate"),
+        key: flag("key"), aspect, final: has("final"), replace: has("replace"), regrid: has("regrid"), skate: flag("skate"),
         dance: flag("dance")?.split(",").map((x) => x.trim()).filter(Boolean), crew: crew === undefined ? undefined : Number(crew),
       });
       break;
@@ -225,7 +231,13 @@ async function main() {
       if (!a1 || !a2) throw new Error("grid needs a track id and a grid plan file");
       const f = flag("fps");
       if (f !== undefined && !(Number.isInteger(Number(f)) && Number(f) > 0)) throw new Error("--fps must be a whole number");
-      gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
+      await gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
+      break;
+    }
+    case "kirtled-events": {
+      if (!a1) throw new Error("kirtled-events needs a track id");
+      const r = kirtledEvents(ctx, a1, { performer: flag("performer"), replace: has("replace") });
+      if (!r.check.ok) process.exitCode = 1;
       break;
     }
     default:
