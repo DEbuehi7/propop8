@@ -213,7 +213,7 @@ smooth switching. A cell can show a view instead of a clip:
 
   ```json
   { "status": "draft",
-    "lines": [{ "section": "Verse 1", "text": "B-B-Boats lost in the night tide",
+    "lines": [{ "section": "Verse 1", "text": "The first line of verse 1",
                 "start": 9.4, "end": 11.51, "timing": "aligned" }] }
   ```
 
