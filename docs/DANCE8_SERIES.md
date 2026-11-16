@@ -183,19 +183,116 @@ rendered on 11 Nov 2026.
 | 7 | Chord-state display on harmony changes | D8-25 draws only verified chord changes; none is verified for EDO yet | Needs a chord chart per song |
 | 8 | "8th Street Bravados" | The owner's earlier wording is "8 Street Bravado"; the EDO V3 shot list says "Bravados"; the on-screen spelling is an open decision | The owner picks one spelling for titles, walls and prompts |
 | 9 | TIME AND SOUND "eight-billion-address concept" | Not in canon or the repo | Needs its source before it appears anywhere |
-| 10 | A "WORLD CIRCUIT" wall pack | Not an album in canon or the Album Desk | The owner confirms the name |
+| 10 | A "WORLD CIRCUIT" wall pack; "STUTTR / C.L.O.Y.N.E." on the boards | Neither is an album in canon or the Album Desk | C.L.O.Y.N.E. defined by the owner on 13 Nov (below); WORLD CIRCUIT still needs confirming |
 | 11 | CapCut for review | Not in [security/VENDORS.md](security/VENDORS.md); Suno is not listed either | Add both before clips or masters go there |
 | 12 | "3,022 frames at 24 frames/second, which gives seconds" | The number was missing | 125.92 seconds |
 | 13 | "help.suno.com +2" for the tool claims | Unchecked as received | Checked above, with dates |
-| 14 | "Images above" as visual references | No images came with the handoff | The approved master images stay the reference |
+| 14 | "Images above" as visual references | They arrived on 13 Nov | Registered as AIMV-103 to 106 and checked below; the approved master images stay the reference for performers |
+
+## Reference boards (AIMV-103 to 106)
+
+The four boards behind the strategy arrived on 13 Nov 2026. They are in the
+concept archive as MED-01, outside AIM-B5R scope
+([visual-archive/README.md](aim-b5r/visual-archive/README.md)); the images are
+not committed, and none is evidence.
+
+| Board | What it shows | Use it for | Fix first |
+|---|---|---|---|
+| AIMV-103, Virtual Facility Value | The facility at night, a Dance8 interface mockup, a seven-step workflow placed on four floors, a nine-family clip matrix, AIM digital walls | The workflow, the clip families, per-album walls | Drop the AIM-B5R branding (GOV-15). Call it a virtual set, not a "digital twin" of a building that does not exist (B5R-04). Songs 10-14, a 192+ clip library and "v1.4.0" are invented (GOV-17) |
+| AIMV-104, Hall + Album Media Wall | The hall, the trio, stage geometry, camera lanes, wall modes, performance modes, key specs | Camera lanes, wall modes, the three performance modes, the Movement Hall | IARA IARA in gold, not green (D8-22). Remove "the KIRTLED core" meanings. Label the specs illustrative |
+| AIMV-105, Form into Facility | A real-looking Skid Row building turned into a live-work production facility around an AIM-B5R core | Room programs only: song lab, a dance hall with skate, floorwork and standing zones, stage with edit and render | Not a building proposal (B5R-33, GOV-30, GOV-15). Remove the street number 527, the map pin and the tents. No "buildable", "compliant" or "not a concept" claims (VIS-05) |
+| AIMV-106, Skid Row Facility | The same building, captioned as the owner's, with his residence on L4 | The clip-family strip | As AIMV-105, and remove the owner's name and residence before anyone else sees it |
+
+What the boards add, as proposals for the series:
+
+- **Camera lanes:** A for hero and wide shots, B orbiting, C close detail, a
+  dolly ring and an overhead view. As a fixed preset they make shots
+  repeatable across albums.
+- **Performance modes:** solo, trio and skate-break on one floor (D8-16).
+- **Wall modes:** STUTTR, KIRTLED, AIM album, Triadic world and EDO textile,
+  which line up with the album wall packs above.
+- **A seven-step Dance8 workflow:** song intake, movement analysis, pattern
+  planning, clip generation, review and approval, render, archive and reuse.
+  It matches the pipeline above. "Remix" in the last step means scenes and
+  presets; audio is never remixed (D8-25).
+- **Nine clip families:** performance hero shots, abstract pattern worlds,
+  transformation layers, narrative spaces, archival and character scenes,
+  media-installation logic, triadic realms, wardrobe reveals and interface
+  visualisers.
+
+What needs the owner or a fix:
+
+- **The trio.** The boards' rapper roles and flags already match canon: D8-22
+  and `KIRTLED_TRIO` (decided 10 Nov) make EDO EDO BOY the lead rapper and
+  rhythmic architect from Nigeria, NIKA NIKA the melodic counterpoint and
+  precision rapper from Germany and Greece, and IARA IARA the rhythmic hook
+  leader and improvisational rapper from Brazil. The owner confirmed them on
+  13 Nov; no canon change. Two differences remain: IARA IARA is drawn green,
+  where canon makes her gold, and EDO EDO BOY carries a microphone where the
+  other two carry flags.
+- **"The KIRTLED core" (AIMV-104)** reads AIM as intelligence, EDO as
+  expression, Triadic as movement and Genome as adaptation. AIM is never
+  expanded (TRI-14), EDO and Triadic always name their namespace (TRI-03), and
+  Genome is a design grammar (TRI-13): the same drift the AIM-OCULAR boards
+  had. Use the DANCE8.TRIAD words (Signal, Movement, Environment), or the
+  G.A.T.E.S. words with no meanings attached.
+- **Figures.** Hall about 1,200 m² (12,900 ft²), performance ring 18 m
+  (59 ft), a 270-degree media band about 60 m (197 ft), motion capture for "up
+  to 24+" performers. The conversions agree, but there is no site, so they are
+  illustrative (GOV-17). The boards' faster, cheaper and higher-quality claims
+  are unmeasured (D8-05).
+- **Boards 105 and 106 as buildings.** Read as a building proposal, they leave
+  out two rules that can never be waived, GOV-15 and B5R-33, and the
+  continuity check (GOV-31) stops any proposal that does (KILL). A real
+  building, if ever wanted, starts as an AIM-B5R proposal with a lot
+  (GOV-30), outside Dance8.
+- **Tents.** Boards 105 and 106 show tents along the sidewalk: residents of a
+  real neighbourhood used as backdrop. Leave them out of any regenerated
+  board.
+- **Text in the image.** All four bake titles, labels and figures into the
+  picture (GOV-23). That is fine for internal reference; production stills
+  carry text on a separate layer.
+
+**STUTTR / C.L.O.Y.N.E.** (owner, 13 Nov): the wall mode refers to Stuttr, the
+rap artist, and the Cloyne music of the Kirtled Dance8 centre.
+
+### Regenerating AIMV-105 and 106
+
+The owner approved new versions of both building boards on 13 Nov. They are
+made by editing the originals in the image tool, keeping everything that is
+not listed here, and are registered as new archive entries derived from 105
+and 106 when they arrive.
+
+| Change | AIMV-105 (Form into Facility) | AIMV-106 (Skid Row Facility) |
+|---|---|---|
+| Street number 527 | Removed | Removed |
+| Tents on the sidewalk | Removed; a clear sidewalk with street trees and a few people | Removed, on both sides |
+| AIM-B5R branding | Removed from the banner and title; the core becomes a Dance8 control core (review, archive, render queue); the AIM mark stays | The same, including the title, the core in the diagram and the L3 floor |
+| The owner's name and residence | Not shown | Removed: the overview calls it a fictional set, and L4 becomes creator studios |
+| Map pin | A district map with nothing marked: "Fictional set: no site selected" | The same |
+| Claims | "Not a concept only", "buildable", "compliant" and "code" wording removed; the "ARMG" typo fixed; the three rooms are connected spaces, not instrument arms | "Compliance", "feasible" and "code limits" wording removed |
+| Footer | "Concept board for a fictional music-video set. Not a site, building proposal or AIM-B5R project." | The same |
+
+The "Skid Row DTLA" location label stays until the facility is named
+(decision 2).
 
 ## Owner decisions
 
 1. The slate order, starting with EDO V3, the Kirtled introduction and the trio
    film.
-2. The facility's name.
+2. The facility's name, and its spaces' names: Signal Lab, Movement Hall and
+   Environment Studio, or the boards' Song Lab, Dance Hall and Stage.
 3. Bravado or Bravados, and whether "8" or "8th Street" is part of it.
 4. Where the TIME AND SOUND address idea comes from.
 5. Whether CapCut joins the vendor register.
 6. Whether the Cypher may draw verified move words (an implementation change
    under D8-25, which stays SPEC until the EDO proof passes review).
+
+Decided on 13 Nov:
+
+- The trio keep the boards' rapper roles and flags, which already match canon
+  (D8-22). IARA IARA stays gold.
+- STUTTR / C.L.O.Y.N.E. is Stuttr, the rap artist, and the Cloyne music of the
+  Kirtled Dance8 centre.
+- AIMV-105 and 106 are regenerated without the street number, tents, AIM-B5R
+  branding and the owner's residence (above).
