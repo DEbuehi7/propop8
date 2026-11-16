@@ -197,10 +197,58 @@ voice master (never the Suno master, D8-14), and beside it a manifest listing
 every block, cell, warning, the audio's hash and the checks (frame count and
 pulse rate).
 
-Not built yet: animated transitions between layouts (a layout change is a cut
-on the bar line), cell labels (GOV-23 keeps them a separate approved layer),
+### Views and transitions
+
+Added on 15 Nov 2026, after the owner asked for lyrics, the Kirtled view and
+smooth switching. A cell can show a view instead of a clip:
+
+```json
+{ "startBar": 11, "endBar": 13, "layout": "three", "primary": 0,
+  "cells": [{ "view": "kirtled" }, { "clipId": "v3-15" }, { "view": "lyrics" }] }
+```
+
+- **`lyrics`** shows the line being sung, large, with the next line small
+  under it. A line stays up until the next one starts, or two seconds after
+  it ends. It reads `<song>/dance8/<song>.lyrics.json`:
+
+  ```json
+  { "status": "draft",
+    "lines": [{ "section": "Verse 1", "text": "B-B-Boats lost in the night tide",
+                "start": 9.4, "end": 11.51, "timing": "aligned" }] }
+  ```
+
+  Times are song seconds. `timing` says how a line was timed (`aligned` to
+  the vocal, or `estimated`). A draft can show draft timing and says so; a
+  final (`--approved`) refuses anything but `"status": "approved"`, because
+  on-screen text is a separate, approved layer (GOV-23). The words are the
+  owner's lyric sheet, exactly as written.
+- **`kirtled`** draws the instrument from canon D8-21: a Y of three equal arms
+  at 120 degrees, each a strip of eight triangles, no buttons. The hub warms
+  on each downbeat and a pulse runs from the hub to the tips over the bar, on
+  the verified beat grid. Chord lights stay off until a person has checked the
+  song's chords (D8-25).
+- A block shows each view at most once, and a view cell takes no `clipId`.
+- **Transitions.** `"transition": { "kind": "fade", "beats": 0.5 }` (the
+  default) dissolves into each block over the half beat before its bar line,
+  so the new layout is fully in on the bar line. Each clip starts that much
+  early (or holds its first frame where it has nothing earlier), so nothing
+  jumps. `"kind": "cut"` gives hard cuts.
+
+Not built yet: cell labels (GOV-23 keeps them a separate approved layer), the
+dancer diagram (it needs the dance take read as poses with `dance8 moves`),
 and the glasses view: Stuttr's approved clear gold-rimmed glasses, with the
 display drawn in editing.
+
+### The playable page
+
+The same rules run live in a private page for the owner (not in this public
+repo, because it carries the song and the footage). It plays the song and
+switches between one view, a mix of three or nine, and an auto director that
+picks a layout for each two-bar phrase from the measured energy and the sung
+lines. Every change, including the viewer's, lands on the next bar line with a
+half-beat glide. Each viewing gets a new variation; the time of day picks a
+night or day cut; from the third visit the grid opens more often. The page's
+auto director keeps the rejected V3 instrument shots (6 and 17) off screen.
 
 ## The EDO proof
 
@@ -222,6 +270,19 @@ are EDO V3 shots, used as drafts. The Kirtled instrument close-ups (V3 shots
 Checked: 736 of 736 frames; layouts change only on two-bar lines; the border
 pulses on each beat (1.57 a second) and is dark between beats. The 5-second youth
 shot holds its last frame for 2 or 3 frames in the three blocks that use it.
+
+The full-length views draft followed the same day: all 49 bars in 16 blocks,
+with lyrics cells in six blocks, the Kirtled view in four (it leads the
+second instrument passage; both passages show other shots instead of the
+rejected close-ups) and half-beat dissolves. Checked: 3003 of 3003
+frames, pulse at most three a second, lyric timing marked draft.
+
+Lyric timing found while aligning the sheet to the vocal: verse 1 runs 0:09
+to 0:29, the hook 0:30 to 0:41 (estimated; it does not align to the written
+words), verse 2 0:50 to 1:04, the spoken bridge 1:10 to 1:23 and the outro
+from 1:43. So the passage at 1:16 that the V4 plan calls the hook in the gold
+hall is the bridge. The sheet's "8th Street Bavados" is shown as
+"8th Street Bravados", the decided name.
 
 ## Owner decisions
 

@@ -226,7 +226,7 @@ async function main() {
       if (!a1 || !a2) throw new Error("grid needs a track id and a grid plan file");
       const f = flag("fps");
       if (f !== undefined && !(Number.isInteger(Number(f)) && Number(f) > 0)) throw new Error("--fps must be a whole number");
-      gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
+      await gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
       break;
     }
     default:

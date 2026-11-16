@@ -9,7 +9,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { FRAME_SIZE, type AspectRatio, type CueMap, type VisualClip, type VisualClipLibrary } from "../../lib/dance8/contracts/scene";
-import { gridBlockArgs, gridMuxArgs, layoutRects, pulsePeriodSec, resolveGrid, type GridLayout, type GridPlan, type Rect } from "../../lib/dance8/render/grid";
+import { gridBlockArgs, gridJoinArgs, gridMuxArgs, layoutRects, lyricsCellArgs, pulsePeriodSec, resolveGrid, type GridLayout, type GridPlan, type LyricTiming, type Rect } from "../../lib/dance8/render/grid";
+import { createHash } from "node:crypto";
+import { kirtledFrames, kirtledGeometry } from "../../lib/dance8/render/kirtledView";
 import { gridRender } from "../../lib/dance8/gridPipeline";
 import { songPaths } from "../../lib/dance8/pipeline";
 import { addSong, buildMaster, type Ctx } from "../../lib/stuttr/commands";
@@ -156,7 +158,7 @@ test("ffmpeg arguments: one input per cell, the primary bordered and pulsing, he
     { startBar: 4, endBar: 6, layout: "nine", primary: 4, cells: nine },
   ], { style: { primaryBorder: "#112233" } }), map, library, { fps: 24 });
   assert.equal(r.ok, true);
-  const argsOf = (i: number) => gridBlockArgs(r.blocks[i], { width: r.width, height: r.height, fps: 24, style: { primaryBorder: "#112233" }, clipPath: (id) => `/clips/${id}.mp4`, outPath: `/out/${i}.mp4` });
+  const argsOf = (i: number) => gridBlockArgs(r.blocks[i], { width: r.width, height: r.height, fps: 24, style: { primaryBorder: "#112233" }, cellPath: (c) => `/clips/${c.clipId}.mp4`, outPath: `/out/${i}.mp4` });
   const one = argsOf(0);
   assert.equal(one.filter((x) => x === "-i").length, 1);
   assert.ok(!one[one.indexOf("-filter_complex") + 1].includes("drawbox"), "no border on a single view");
@@ -166,17 +168,19 @@ test("ffmpeg arguments: one input per cell, the primary bordered and pulsing, he
   assert.equal(three.filter((x) => x === "-i").length, 3);
   assert.match(fg, /tpad=stop_mode=clone:stop=72/, "the 1 s clip holds its last frame for the other 72");
   assert.match(fg, /drawbox=[^;]*color=0x112233:t=4/);
-  assert.match(fg, /enable='lt\(mod\(t\\,0\.500000\)\\,0\.120\)'/);
+  assert.match(fg, /enable='gte\(t\\,0\.250000\)\*lt\(mod\(t-0\.250000\\,0\.500000\)\\,0\.120\)'/, "the pulse counts from the bar line, after the dissolve's pre-roll");
+  assert.equal(three[three.indexOf("-frames:v") + 1], String(96 + 6), "a half-beat dissolve (6 frames at 120 BPM) into this block");
+  assert.match(fg, /tpad=start_mode=clone:start=6/, "a clip with no earlier frames waits on its first frame through the pre-roll");
   assert.match(fg, /\[c0\]overlay=x=\d+:y=\d+/);
   assert.ok(fg.includes("eq=brightness=-0.060"), "context cells are a little darker");
   const nineArgs = argsOf(2);
   assert.equal(nineArgs.filter((x) => x === "-i").length, 9);
 
-  const mux = gridMuxArgs({ listPath: "/w/list.txt", audioPath: "/a.wav", audioOffsetSec: 0.5, totalFrames: 288, fps: 24, outPath: "/o.mp4" });
+  const mux = gridMuxArgs({ picturePath: "/w/picture.mp4", audioPath: "/a.wav", audioOffsetSec: 0.5, totalFrames: 288, fps: 24, outPath: "/o.mp4" });
   assert.deepEqual(mux.slice(mux.indexOf("-ss"), mux.indexOf("-ss") + 2), ["-ss", "0.500000"]);
   assert.equal(mux[mux.indexOf("-frames:v") + 1], "288");
   assert.ok(mux.includes("copy"), "no caption: the picture is copied, not re-encoded");
-  const fin = gridMuxArgs({ listPath: "/w/list.txt", audioPath: "/a.wav", audioOffsetSec: 0, totalFrames: 288, fps: 24, outPath: "/o.mp4", caption: { text: "All characters are fictional and AI-generated.", fontFile: "/f.ttf", seconds: 4 } });
+  const fin = gridMuxArgs({ picturePath: "/w/picture.mp4", audioPath: "/a.wav", audioOffsetSec: 0, totalFrames: 288, fps: 24, outPath: "/o.mp4", caption: { text: "All characters are fictional and AI-generated.", fontFile: "/f.ttf", seconds: 4 } });
   assert.ok(!fin.includes("-ss"));
   assert.match(fin[fin.indexOf("-filter_complex") + 1], /drawtext=fontfile='\/f\.ttf':text='All characters are fictional and AI-generated\.'/);
 });
@@ -195,7 +199,7 @@ function wavOf(sec: number, f: (t: number) => number): Buffer {
   return Buffer.concat([h, data]);
 }
 
-test("end to end: a grid renders over the voice master, frame-exact, with a manifest", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+test("end to end: a grid renders over the voice master, frame-exact, with a manifest", { skip: !hasFfmpeg && "ffmpeg not installed" }, async () => {
   const root = mkdtempSync(join(tmpdir(), "dance8-grid-"));
   const lines: string[] = [];
   const c: Ctx = { library: join(root, "library"), now: () => "2026-11-15T00:00:00.000Z", log: (l) => lines.push(l) };
@@ -221,20 +225,22 @@ test("end to end: a grid renders over the voice master, frame-exact, with a mani
     writeFileSync(p.clips, JSON.stringify(library));
     colours.forEach((col, i) => assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", `color=c=${col}:s=320x180:r=24:d=3`, "-c:v", "libx264", "-pix_fmt", "yuv420p", join(p.clipDir, `g${i}.mp4`)]).status, 0));
 
+    const lyrics: LyricTiming = { status: "draft", lines: [{ text: "first line", start: 2.3, end: 3.4 }, { text: "second line", start: 3.6, end: 4.2 }] };
+    writeFileSync(join(p.dir, "grid-song.lyrics.json"), JSON.stringify(lyrics));
     const planFile = join(root, "proof.json");
     writeFileSync(planFile, JSON.stringify(plan([
       { startBar: 0, endBar: 1, layout: "one", primary: 0, cells: cells("g0") },
-      { startBar: 1, endBar: 2, layout: "three", primary: 0, cells: cells("g1", "g2", "g3") },
+      { startBar: 1, endBar: 2, layout: "three", primary: 0, cells: [{ clipId: "g1" }, { view: "lyrics" }, { view: "kirtled" }] },
       { startBar: 2, endBar: 3, layout: "nine", primary: 4, cells: cells(...colours.map((_, i) => `g${i}`)) },
     ], { id: "proof", trackId: "grid-song" })));
 
-    assert.throws(() => gridRender(c, "grid-song", planFile), /no voice master yet/);
+    await assert.rejects(() => gridRender(c, "grid-song", planFile), /no voice master yet/);
     buildMaster(c, { trackId: "grid-song", suno: true });
     const bad = join(root, "bad.json");
     writeFileSync(bad, JSON.stringify(plan([{ startBar: 0, endBar: 1, layout: "three", primary: 0, cells: cells("g1") }], { id: "bad", trackId: "grid-song" })));
-    assert.throws(() => gridRender(c, "grid-song", bad), /the grid plan does not check out:\n {2}blocks\[0\]\.cells: a "three" layout has 3 cells/);
+    await assert.rejects(() => gridRender(c, "grid-song", bad), /the grid plan does not check out:\n {2}blocks\[0\]\.cells: a "three" layout has 3 cells/);
 
-    const r = gridRender(c, "grid-song", planFile);
+    const r = await gridRender(c, "grid-song", planFile);
     assert.equal(r.out, join(p.dir, "renders", "grid-song-grid-proof-draft.mp4"));
     assert.equal(r.fps, 24, "the clips' own rate");
     assert.equal(r.totalFrames, 144, "three bars of 2 s at 24 fps");
@@ -262,4 +268,69 @@ test("end to end: a grid renders over the voice master, frame-exact, with a mani
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("the Kirtled view: three equal arms of eight triangles; the pulse travels out over the bar; the same bytes every time", () => {
+  const g = kirtledGeometry(640, 360);
+  assert.equal(g.arms.length, 3);
+  for (const arm of g.arms) assert.equal(arm.length, 8);
+  assert.deepEqual(g.angles, [90, 210, 330], "120 degrees apart, the stem down");
+  const pts = [...g.hub, ...g.arms.flat(2)];
+  for (const [x, y] of pts) assert.ok(x >= 0 && x <= 640 && y >= 0 && y <= 360, `point ${x},${y} inside`);
+  // Arm A's first triangle touches the hub's lower side; its last is the farthest out.
+  const dist = (t: readonly (readonly [number, number])[]) => Math.hypot(t.reduce((a, p) => a + p[0], 0) / 3 - 320, t.reduce((a, p) => a + p[1], 0) / 3 - g.hub.reduce((a, p) => a + p[1], 0) / 3);
+  assert.ok(dist(g.arms[0][7]) > dist(g.arms[0][0]) * 4);
+  const run = () => [...kirtledFrames({ width: 320, height: 180, fps: 24, startSec: 0, frames: 48, bpm: 120, beatsPerBar: 4 })];
+  const a = run();
+  assert.equal(a.length, 48);
+  assert.equal(a[0].length, 320 * 180 * 3);
+  const hash = (fs: Uint8Array[]) => createHash("sha256").update(Buffer.concat(fs)).digest("hex");
+  assert.equal(hash(a), hash(run()));
+  // Brightness near the hub vs near the tip of the stem, early and late in the bar.
+  const gs = kirtledGeometry(320, 180);
+  const lum = (f: Uint8Array, t: readonly (readonly [number, number])[]) => {
+    const cx = Math.round(t.reduce((s, p) => s + p[0], 0) / 3); const cy = Math.round(t.reduce((s, p) => s + p[1], 0) / 3);
+    let v = 0;
+    for (let y = cy - 6; y <= cy + 6; y++) for (let x = cx - 6; x <= cx + 6; x++) { const i = (y * 320 + x) * 3; v += f[i] + f[i + 1] + f[i + 2]; }
+    return v;
+  };
+  const early = a[3], late = a[44]; // 0.125 s and 1.83 s into a 2 s bar
+  assert.ok(lum(early, gs.arms[0][0]) > lum(late, gs.arms[0][0]), "near the hub: bright early");
+  assert.ok(lum(late, gs.arms[0][7]) > lum(early, gs.arms[0][7]), "at the tip: bright late");
+});
+
+test("lyrics and Kirtled cells: lyrics need a timing file, finals need it approved, one of each per block", () => {
+  const { map, library } = fixture();
+  const lyrics: LyricTiming = { status: "draft", lines: [{ text: "a line", start: 1, end: 3 }] };
+  const three = (cells: GridPlan["blocks"][number]["cells"]) => plan([{ startBar: 0, endBar: 2, layout: "three", primary: 0, cells }]);
+  const errs = (p: GridPlan, o: { approved?: boolean; lyrics?: LyricTiming | null } = {}) => resolveGrid(p, map, library, { fps: 24, ...o }).errors.map((e) => e.message);
+  assert.deepEqual(errs(three([{ clipId: "a" }, { view: "lyrics" }, { view: "kirtled" }])), ["no lyric timing for this song yet (<song>/dance8/<song>.lyrics.json)"]);
+  const ok = resolveGrid(three([{ clipId: "a" }, { view: "lyrics" }, { view: "kirtled" }]), map, library, { fps: 24, lyrics });
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.blocks[0].cells.map((c) => [c.view, c.clipId, c.inSec]), [["clip", "a", 0], ["lyrics", "lyrics", 0.5], ["kirtled", "kirtled", 0.5]], "views carry the block's song time");
+  assert.ok(ok.warnings.some((w) => w.message === "the lyric timing is a draft (fine for a draft)"));
+  assert.deepEqual(errs(three([{ clipId: "a" }, { view: "lyrics" }, { view: "kirtled" }]), { approved: true, lyrics }).filter((m) => m.includes("lyric")),
+    ["the lyric timing is a draft; a final shows approved lyrics only (GOV-23)"]);
+  assert.deepEqual(errs(three([{ clipId: "a" }, { view: "kirtled", clipId: "b" }, { view: "kirtled" }]), { lyrics }), ["a kirtled cell shows no clip; leave out clipId"]);
+  assert.deepEqual(errs(three([{ clipId: "a" }, { view: "kirtled" }, { view: "kirtled" }]), { lyrics }), ["shows the kirtled view in more than one cell"]);
+  assert.deepEqual(errs(three([{ clipId: "a" }, {}, { view: "kirtled" }]), { lyrics }), ["a clip cell needs a clipId"]);
+  assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: cells("a") }], { transition: { kind: "fade", beats: 3 } })), ["must be more than 0 and at most 2 beats"]);
+});
+
+test("lyrics view: the sung line large with the next one under it, on its own times; dissolves end on the bar line", () => {
+  const lyrics: LyricTiming = { status: "approved", lines: [{ text: "first: it's here", start: 10, end: 11.5 }, { text: "second", start: 12, end: 13 }, { text: "later", start: 40, end: 41 }] };
+  const args = lyricsCellArgs({ lyrics, width: 640, height: 360, fps: 24, frames: 96, fromSec: 9, fontFile: "/f.ttf", outPath: "/o.mp4" });
+  const vf = args[args.indexOf("-vf") + 1];
+  assert.match(vf, /text='first\\: it\u2019s here':fontsize=\d+:fontcolor=0xF4E3B5:[^,]*enable='between\(t\\,1\.000\\,3\.000\)'/);
+  assert.match(vf, /text='second':fontsize=\d+:fontcolor=0x8C8577/, "the next line, small and dim");
+  assert.match(vf, /text='second':fontsize=\d+:fontcolor=0xF4E3B5:[^,]*enable='between\(t\\,3\.000\\,6\.000\)'/, "up until two seconds after it ends");
+  assert.ok(!/text='later':fontsize=\d+:fontcolor=0xF4E3B5/.test(vf), "a line outside the block is never shown large");
+  assert.equal(args[args.indexOf("-frames:v") + 1], "96");
+
+  const join = gridJoinArgs({ parts: ["/a.mp4", "/b.mp4", "/c.mp4"], frames: [48, 48, 48], fade: 6, fps: 24, outPath: "/p.mp4" });
+  const fc = join[join.indexOf("-filter_complex") + 1];
+  assert.equal(fc, "[0:v][1:v]xfade=transition=fade:duration=0.250000:offset=1.750000[x1];[x1][2:v]xfade=transition=fade:duration=0.250000:offset=3.750000[v]");
+  assert.equal(join[join.indexOf("-frames:v") + 1], "144");
+  const cut = gridJoinArgs({ parts: ["/a.mp4", "/b.mp4"], frames: [48, 48], fade: 0, fps: 24, outPath: "/p.mp4" });
+  assert.equal(cut[cut.indexOf("-filter_complex") + 1], "[0:v][1:v]concat=n=2:v=1:a=0[v]");
 });
