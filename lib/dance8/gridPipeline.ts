@@ -12,7 +12,10 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { basename, join, resolve } from "node:path";
 import { castDrift, loadManifest, type Ctx } from "../stuttr/commands";
 import { pickMaster } from "../stuttr/library";
+import type { HarmonyTimeline } from "./contracts/harmony";
+import type { KirtledEventMap, PrincipalList } from "./contracts/instrument";
 import type { CueMap, VisualClipLibrary } from "./contracts/scene";
+import { checkEventMap, type PlayedHit } from "./harmony/eventMap";
 import { songPaths, withCast } from "./pipeline";
 import { AI_DISCLOSURE } from "./render/disclosure";
 import { chooseRenderFps, parseRate } from "./render/fps";
@@ -89,7 +92,9 @@ export async function gridRender(c: Ctx, trackId: string, planPath: string, r: G
   const library = readJson<VisualClipLibrary>(p.clips);
 
   // The clips' own frame rate, measured (render/fps.ts), unless overridden.
-  const used = [...new Set((plan.blocks ?? []).flatMap((b) => (b.cells ?? []).flatMap((x) => (x.clipId === undefined ? [] : [x.clipId]))))];
+  const cams = new Set((plan.blocks ?? []).flatMap((b) => (b.cells ?? []).flatMap((x) => (x.view === "instrument" && x.camera ? [x.camera] : []))));
+  const instrumentClips = library.clips.filter((x) => x.instrument && cams.has(x.instrument.camera)).map((x) => x.id);
+  const used = [...new Set([...(plan.blocks ?? []).flatMap((b) => (b.cells ?? []).flatMap((x) => (x.clipId === undefined ? [] : [x.clipId]))), ...instrumentClips])];
   const files = new Map(library.clips.map((x) => [x.id, join(p.clipDir, x.file)]));
   const missing = used.filter((id) => files.has(id) && !existsSync(files.get(id)!));
   if (missing.length) throw new Error(`clip file(s) missing in ${p.clipDir}: ${missing.map((id) => basename(files.get(id)!)).join(", ")}`);
@@ -102,7 +107,23 @@ export async function gridRender(c: Ctx, trackId: string, planPath: string, r: G
 
   const lyricsFile = join(p.dir, `${trackId}.lyrics.json`);
   const lyrics = existsSync(lyricsFile) ? readJson<LyricTiming>(lyricsFile) : null;
-  const res = resolveGrid(plan, map, library, { fps, approved: !!r.approved, lyrics });
+  // Who must have a view of its own, and the instrument's event map (checked against the chords).
+  const principalsFile = join(p.dir, `${trackId}.principals.json`);
+  const principals = existsSync(principalsFile) ? readJson<PrincipalList>(principalsFile) : null;
+  const eventsFile = join(p.dir, `${trackId}.kirtled-events.json`);
+  const eventMap = existsSync(eventsFile) ? readJson<KirtledEventMap>(eventsFile) : null;
+  let hits: PlayedHit[] = [];
+  if (eventMap) {
+    const timeline = existsSync(p.harmony) ? readJson<HarmonyTimeline>(p.harmony) : null;
+    const ev = checkEventMap(eventMap, map, timeline, { final: !!r.approved });
+    if (!ev.ok) throw new Error(`the Kirtled event map does not check out:\n${ev.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n")}`);
+    for (const w of ev.warnings) log(`warning: event map: ${w.path}: ${w.message}`);
+    hits = ev.hits;
+  }
+  const res = resolveGrid(plan, map, library, {
+    fps, approved: !!r.approved, lyrics, principals,
+    eventMap: eventMap ? { id: eventMap.id, approved: eventMap.status === "approved" && !!eventMap.approvedBy } : null,
+  });
   if (!res.ok) throw new Error(`the grid plan does not check out:\n${res.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n")}`);
   for (const w of res.warnings) log(`warning: ${w.path}: ${w.message}`);
 
@@ -134,13 +155,15 @@ export async function gridRender(c: Ctx, trackId: string, planPath: string, r: G
       const views = new Map<number, string>();
       for (const [i, cell] of b.cells.entries()) {
         if (cell.view === "clip") continue;
-        const file = join(work, `block-${tag}-${cell.view}.mp4`);
+        const file = join(work, `block-${tag}-${cell.view}${cell.camera ? `-${cell.camera}` : ""}.mp4`);
         const fromSec = cell.inSec - b.prerollFrames / fps;
         if (cell.view === "lyrics") {
           ffmpeg(lyricsCellArgs({ lyrics: lyrics!, width: cell.rect.w, height: cell.rect.h, fps, frames: total, fromSec, fontFile: font!, outPath: file }));
         } else {
+          // The Kirtled pattern, or the drawn stand-in for an instrument camera that has no footage yet.
           const seg = [...map.tempo].reverse().find((t) => t.startBar <= b.startBar) ?? map.tempo[0];
-          await encodeFrames(kirtledFrames({ width: cell.rect.w, height: cell.rect.h, fps, startSec: b.startSec - b.prerollFrames / fps, frames: total, bpm: seg.bpm, beatsPerBar: seg.beatsPerBar }),
+          const view = cell.view === "instrument" ? (cell.camera === "CAM-KIR-02" ? "detail" : "overhead") : "pattern";
+          await encodeFrames(kirtledFrames({ width: cell.rect.w, height: cell.rect.h, fps, startSec: b.startSec - b.prerollFrames / fps, frames: total, bpm: seg.bpm, beatsPerBar: seg.beatsPerBar, view, hits }),
             { width: cell.rect.w, height: cell.rect.h, fps, outPath: file });
         }
         views.set(i, file);
@@ -167,12 +190,14 @@ export async function gridRender(c: Ctx, trackId: string, planPath: string, r: G
     plan: { id: plan.id, file: planFile, sha256: sha256File(planFile) },
     trackId, final: !!r.approved, fps, width: res.width, height: res.height, transitionFrames: res.transitionFrames,
     lyrics: lyrics ? { file: basename(lyricsFile), status: lyrics.status, sha256: sha256File(lyricsFile) } : null,
+    principals: principals ? { file: basename(principalsFile), ids: principals.principals.map((x) => x.id), sha256: sha256File(principalsFile) } : null,
+    kirtledEvents: eventMap ? { file: basename(eventsFile), id: eventMap.id, status: eventMap.status, drawn: hits.length, of: eventMap.events.length, sha256: sha256File(eventsFile) } : null,
     audio: { master: master.key, status: master.status, sha256: master.sha256, offsetSec: res.audioOffsetSec },
     tempo: map.tempo, firstDownbeatSec: map.firstDownbeatSec ?? 0,
     totalFrames: res.totalFrames,
     blocks: res.blocks.map((b) => ({
       bars: [b.startBar, b.endBar], layout: b.layout, startSec: b.startSec, endSec: b.endSec, frames: b.frames, pulseEverySec: b.pulseEverySec,
-      cells: b.cells.map((x) => ({ view: x.view, clipId: x.clipId, primary: x.primary, time: x.time, inSec: x.inSec, holdFrames: x.holdFrames, rect: x.rect })),
+      cells: b.cells.map((x) => ({ view: x.view, clipId: x.clipId, ...(x.camera ? { camera: x.camera } : {}), primary: x.primary, time: x.time, inSec: x.inSec, holdFrames: x.holdFrames, rect: x.rect })),
     })),
     warnings: res.warnings, checks, output: { file: basename(out), sha256: sha256File(out) },
   }, null, 2) + "\n");

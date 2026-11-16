@@ -10,12 +10,18 @@
 // that ends exactly on the bar line.
 //
 // A cell shows an approved clip, the lyrics (from a timing file a person
-// approves, GOV-23) or the Kirtled instrument (D8-21, drawn by
-// kirtledView.ts). Nothing here generates footage.
+// approves, GOV-23), the Kirtled pattern (D8-21, drawn by kirtledView.ts), or
+// one of the two Kirtled instrument cameras (contracts/instrument.ts):
+// CAM-KIR-01 overhead and CAM-KIR-02 close, from instrument footage made to an
+// approved event map, or in a draft a drawn stand-in. Before a final, every
+// principal performer, instrument and significant object of the song must
+// have an approved view of its own (the completeness rule). Nothing here
+// generates footage.
 //
 // Pure: validates a plan and returns ffmpeg arguments, never runs anything.
 // Same plan, same clips -> the same frames in the same cells.
 
+import { INSTRUMENT_CAMERAS, KIRTLED_PRINCIPAL, type InstrumentCamera, type PrincipalList } from "../contracts/instrument";
 import type { AspectRatio, CueMap, VisualClip, VisualClipLibrary } from "../contracts/scene";
 import { FRAME_SIZE } from "../contracts/scene";
 import { barToSec } from "../authoring/validateCueMap";
@@ -36,13 +42,18 @@ export const MAX_PULSES_PER_SEC = 3;
  */
 export type CellTime = "now" | "replay" | "memory" | "future";
 
-/** What a cell shows: a clip (the default), the lyrics, or the Kirtled instrument. */
-export type CellView = "clip" | "lyrics" | "kirtled";
+/**
+ * What a cell shows: a clip (the default), the lyrics, the Kirtled pattern
+ * (the beat's light on the instrument; not a camera), or an instrument camera.
+ */
+export type CellView = "clip" | "lyrics" | "kirtled" | "instrument";
 
 export interface GridCell {
   /** The clip, for a clip cell. */
   clipId?: string;
   view?: CellView;
+  /** For an instrument cell: CAM-KIR-01 (overhead) or CAM-KIR-02 (close). */
+  camera?: InstrumentCamera;
   /** Where in the clip this cell starts (default 0). Locked clips set their own. */
   inSec?: number;
   time?: CellTime;
@@ -102,8 +113,10 @@ export interface Rect { x: number; y: number; w: number; h: number }
 
 export interface ResolvedCell {
   view: CellView;
-  /** The clip for a clip cell; "lyrics" or "kirtled" for the others. */
+  /** The clip for a clip cell (instrument footage included); "lyrics", "kirtled" or the camera for a drawn view. */
   clipId: string;
+  /** The instrument camera this cell shows, footage or stand-in. */
+  camera?: InstrumentCamera;
   rect: Rect;
   primary: boolean;
   time: CellTime;
@@ -202,6 +215,61 @@ function segmentAt(tempo: CueMap["tempo"], bar: number) {
 }
 
 /**
+ * Instrument footage for `camera` that covers song seconds [fromSec, toSec):
+ * approved before draft, then by id, so the choice never changes between runs.
+ */
+export function instrumentClipFor(library: VisualClipLibrary, camera: InstrumentCamera, fromSec: number, toSec: number): VisualClip | undefined {
+  return library.clips
+    .filter((c) => c.instrument?.camera === camera && c.approvalStatus !== "retired")
+    .filter((c) => c.instrument!.songStartSec <= fromSec + EPS && c.instrument!.songStartSec + c.durationSec >= toSec - EPS)
+    .sort((a, b) => Number(b.approvalStatus === "approved") - Number(a.approvalStatus === "approved") || a.id.localeCompare(b.id))[0];
+}
+
+/** The principal a clip shows on its own, if any: instrument footage always isolates Kirtled. */
+const isolatedBy = (c: VisualClip): string | undefined => (c.instrument ? KIRTLED_PRINCIPAL : c.isolates);
+
+/**
+ * The completeness rule: every principal performer, instrument and
+ * significant object of the song has an approved view of its own before a
+ * multi-camera composition is approved, so nothing important (Kirtled above
+ * all) disappears behind the dance and the grid. For Kirtled that view is
+ * CAM-KIR-01; CAM-KIR-02 is wanted too. A draft lists what is missing.
+ */
+function checkCompleteness(
+  plan: GridPlan, library: VisualClipLibrary, maxDrift: number,
+  o: { approved?: boolean; principals?: PrincipalList | null },
+  err: (path: string, message: string) => void, warn: (path: string, message: string) => void,
+): void {
+  const miss = o.approved ? err : warn;
+  const tail = o.approved ? "" : " (fine for a draft)";
+  const list = o.principals;
+  if (!list) {
+    miss("principals", `the song has no principal list (<song>/dance8/<song>.principals.json); each principal needs a view of its own before a final${tail}`);
+    return;
+  }
+  if (list.schemaVersion !== 1 || list.trackId !== plan.trackId || !Array.isArray(list.principals)) {
+    err("principals", `the principal list must be schemaVersion 1 for "${plan.trackId}" with a principals list`);
+    return;
+  }
+  const ok = (c: VisualClip) => c.approvalStatus === "approved" && c.drift.status === "known" && c.drift.driftScore !== null && c.drift.driftScore <= maxDrift + EPS;
+  const ids = new Set(list.principals.map((x) => x.id));
+  const showsKirtled = plan.blocks.some((b) => (b.cells ?? []).some((c) => c.view === "kirtled" || c.view === "instrument" || library.clips.find((x) => x.id === c.clipId)?.instrument));
+  if (showsKirtled && !ids.has(KIRTLED_PRINCIPAL)) err("principals", `the plan shows Kirtled, so the principal list must name it ("${KIRTLED_PRINCIPAL}", an instrument)`);
+  for (const pr of list.principals) {
+    if (pr.id === KIRTLED_PRINCIPAL) {
+      for (const [cam, info] of Object.entries(INSTRUMENT_CAMERAS)) {
+        if (library.clips.some((c) => c.instrument?.camera === cam && ok(c))) continue;
+        const msg = `Kirtled has no approved ${cam} footage (${info.name.toLowerCase()})`;
+        if (info.required) miss(`principals.${pr.id}`, `${msg}${tail}`);
+        else warn(`principals.${pr.id}`, `${msg}; wanted beside ${Object.keys(INSTRUMENT_CAMERAS)[0]}`);
+      }
+    } else if (!library.clips.some((c) => isolatedBy(c) === pr.id && ok(c))) {
+      miss(`principals.${pr.id}`, `${pr.name} has no approved clip of its own (a clip with isolates: "${pr.id}")${tail}`);
+    }
+  }
+}
+
+/**
  * Checks a plan against the song's cue map, clip library and lyric timing and
  * works out every block's time, frames and cells. Final (approved) renders
  * refuse draft or unmeasured clips and draft lyric timing; drafts allow them
@@ -211,7 +279,15 @@ export function resolveGrid(
   plan: GridPlan,
   map: Pick<CueMap, "trackId" | "tempo" | "firstDownbeatSec" | "maxDriftScore" | "vocals" | "cues">,
   library: VisualClipLibrary,
-  o: { fps: number; approved?: boolean; lyrics?: LyricTiming | null },
+  o: {
+    fps: number;
+    approved?: boolean;
+    lyrics?: LyricTiming | null;
+    /** <song>/dance8/<song>.principals.json; a final needs it. */
+    principals?: PrincipalList | null;
+    /** The song's event map, once checked: its id and whether it is approved. */
+    eventMap?: { id: string; approved: boolean } | null;
+  },
 ): GridResolution {
   const errors: GridIssue[] = [];
   const warnings: GridIssue[] = [];
@@ -278,11 +354,29 @@ export function resolveGrid(
     b.cells.forEach((cell, ci) => {
       const cp = `${p}.cells[${ci}]`;
       const view: CellView = cell.view ?? "clip";
-      if (!["clip", "lyrics", "kirtled"].includes(view)) { err(`${cp}.view`, "must be clip, lyrics or kirtled"); return; }
+      if (!["clip", "lyrics", "kirtled", "instrument"].includes(view)) { err(`${cp}.view`, "must be clip, lyrics, kirtled or instrument"); return; }
+      if (view !== "instrument" && cell.camera !== undefined) { err(`${cp}.camera`, "only an instrument cell names a camera"); return; }
       const time: CellTime = cell.time ?? "now";
       if (!["now", "replay", "memory", "future"].includes(time)) { err(`${cp}.time`, "must be now, replay, memory or future"); return; }
       const base = { rect: rects[slotOf(ci)], primary: ci === b.primary, time };
-      if (view !== "clip") {
+      let footage: VisualClip | undefined;
+      if (view === "instrument") {
+        if (cell.clipId !== undefined) { err(cp, "an instrument cell finds its own footage; leave out clipId"); return; }
+        const cam = cell.camera;
+        if (!cam || !(cam in INSTRUMENT_CAMERAS)) { err(`${cp}.camera`, "must be CAM-KIR-01 (overhead) or CAM-KIR-02 (close)"); return; }
+        footage = instrumentClipFor(library, cam, startSec + origin, endSec + origin);
+        if (!footage) {
+          if (o.approved) { err(cp, `${cam} has no instrument footage covering bars ${b.startBar}-${b.endBar}; a final shows the instrument itself, not the drawn stand-in`); return; }
+          warn(cp, `${cam} has no footage here yet: a drawn stand-in of the canon instrument (fine for a draft)`);
+          cells.push({ ...base, view, camera: cam, clipId: cam, inSec: round6(startSec + origin), playFrames: frames, holdFrames: 0 });
+          return;
+        }
+        if (o.approved && !(o.eventMap?.approved && footage.instrument!.eventMapId === o.eventMap.id)) {
+          err(cp, `${footage.id} shows the instrument played to event map "${footage.instrument!.eventMapId}"; a final needs footage played to the song's approved event map`);
+          return;
+        }
+      }
+      if (view !== "clip" && view !== "instrument") {
         if (cell.clipId !== undefined) { err(cp, `a ${view} cell shows no clip; leave out clipId`); return; }
         if (view === "lyrics") {
           if (!o.lyrics) { err(cp, "no lyric timing for this song yet (<song>/dance8/<song>.lyrics.json)"); return; }
@@ -294,7 +388,7 @@ export function resolveGrid(
         cells.push({ ...base, view, clipId: view, inSec: round6(startSec + origin), playFrames: frames, holdFrames: 0 });
         return;
       }
-      const clip: VisualClip | undefined = cell.clipId === undefined ? undefined : byId.get(cell.clipId);
+      const clip: VisualClip | undefined = footage ?? (cell.clipId === undefined ? undefined : byId.get(cell.clipId));
       if (!clip) { err(`${cp}.clipId`, cell.clipId === undefined ? "a clip cell needs a clipId" : `no clip "${cell.clipId}" in the clip library`); return; }
       if (time === "now") nowCount.set(clip.id, (nowCount.get(clip.id) ?? 0) + 1);
       if (clip.approvalStatus === "retired") err(cp, `${clip.id} is retired`);
@@ -308,7 +402,7 @@ export function resolveGrid(
       if (sung && clip.mouthVisible && !clip.lipSync) err(cp, `${clip.id} shows a singer's mouth during a sung line without a lip-sync lock`);
 
       // Song-locked clips play where they line up with the song.
-      const lock = clip.lipSync?.songStartSec ?? clip.danceLock?.songStartSec;
+      const lock = clip.lipSync?.songStartSec ?? clip.danceLock?.songStartSec ?? clip.instrument?.songStartSec;
       let inSec = cell.inSec ?? 0;
       if (lock !== undefined) {
         const locked = round6(startSec - (lock - origin));
@@ -324,16 +418,19 @@ export function resolveGrid(
       const playFrames = Math.max(0, Math.min(frames, clipFrames - inFrame));
       const holdFrames = frames - playFrames;
       if (holdFrames > 0 && lock === undefined) warn(cp, `${clip.id} runs out ${(holdFrames / o.fps).toFixed(2)} s early and holds its last frame`);
-      cells.push({ ...base, view: "clip", clipId: clip.id, inSec: round6(Math.max(0, inSec)), playFrames, holdFrames });
+      cells.push({ ...base, view: "clip", clipId: clip.id, ...(clip.instrument ? { camera: clip.instrument.camera } : {}), inSec: round6(Math.max(0, inSec)), playFrames, holdFrames });
     });
     for (const [id, n] of nowCount) if (n > 1) err(`${p}.cells`, `shows ${id} in ${n} cells at once; mark all but one as replay, memory or future`);
     for (const v of ["lyrics", "kirtled"] as const) if (cells.filter((c) => c.view === v).length > 1) err(`${p}.cells`, `shows the ${v} view in more than one cell`);
+    for (const cam of Object.keys(INSTRUMENT_CAMERAS)) if (cells.filter((c) => c.camera === cam).length > 1) err(`${p}.cells`, `shows ${cam} in more than one cell`);
 
     const seg = segmentAt(map.tempo, b.startBar);
     const pulse = (plan.beatPulse ?? true) && b.layout !== "one" ? pulsePeriodSec(seg.bpm) : null;
     blocks.push({ index: i, startBar: b.startBar, endBar: b.endBar, layout: b.layout, startSec, endSec, frames, prerollFrames: preroll, cells, pulseEverySec: pulse });
   });
 
+  // Listed with the block problems, so a final's report is complete in one run.
+  checkCompleteness(plan, library, map.maxDriftScore, o, err, warn);
   if (errors.length) return fail();
   const totalFrames = blocks.reduce((n, b) => n + b.frames, 0);
   return { ok: true, errors, warnings, blocks, width, height, fps: o.fps, totalFrames, transitionFrames: fadeFrames, audioOffsetSec: round6(blocks[0].startSec + origin) };

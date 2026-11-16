@@ -13,6 +13,8 @@ import { gridBlockArgs, gridJoinArgs, gridMuxArgs, layoutRects, lyricsCellArgs, 
 import { createHash } from "node:crypto";
 import { kirtledFrames, kirtledGeometry } from "../../lib/dance8/render/kirtledView";
 import { gridRender } from "../../lib/dance8/gridPipeline";
+import { kirtledEvents } from "../../lib/dance8/instrumentPipeline";
+import type { HarmonyTimeline } from "../../lib/dance8/contracts/harmony";
 import { songPaths } from "../../lib/dance8/pipeline";
 import { addSong, buildMaster, type Ctx } from "../../lib/stuttr/commands";
 
@@ -125,8 +127,10 @@ test("resolve refuses broken plans and says where", () => {
     ["blocks[0].cells[0]: tr is a skate-trick clip; tricks land on their chord change and are never free footage (D8-16)"]);
   assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: [{ clipId: "a", inSec: 6 }] }])),
     ["blocks[0].cells[0].inSec: must be from 0 to under 6 s, the clip's length"]);
-  assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: cells("d") }]), { approved: true }),
-    ["blocks[0].cells[0]: d is not approved; a final uses approved clips only"]);
+  assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: cells("d") }]), { approved: true }), [
+    "blocks[0].cells[0]: d is not approved; a final uses approved clips only",
+    "principals: the song has no principal list (<song>/dance8/<song>.principals.json); each principal needs a view of its own before a final",
+  ], "a final also lists the completeness gaps in the same run");
   assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: cells("d") }])), [], "a draft may use a draft clip");
   assert.deepEqual(errs(plan([{ startBar: 0, endBar: 2, layout: "one", primary: 0, cells: cells("a") }], { aspect: "3:2" as AspectRatio })), [
     "aspect: must be one of 9:16, 16:9, 4:5, 1:1, 21:9",
@@ -229,7 +233,7 @@ test("end to end: a grid renders over the voice master, frame-exact, with a mani
     writeFileSync(join(p.dir, "grid-song.lyrics.json"), JSON.stringify(lyrics));
     const planFile = join(root, "proof.json");
     writeFileSync(planFile, JSON.stringify(plan([
-      { startBar: 0, endBar: 1, layout: "one", primary: 0, cells: cells("g0") },
+      { startBar: 0, endBar: 1, layout: "one", primary: 0, cells: [{ view: "instrument", camera: "CAM-KIR-01" }] },
       { startBar: 1, endBar: 2, layout: "three", primary: 0, cells: [{ clipId: "g1" }, { view: "lyrics" }, { view: "kirtled" }] },
       { startBar: 2, endBar: 3, layout: "nine", primary: 4, cells: cells(...colours.map((_, i) => `g${i}`)) },
     ], { id: "proof", trackId: "grid-song" })));
@@ -240,8 +244,22 @@ test("end to end: a grid renders over the voice master, frame-exact, with a mani
     writeFileSync(bad, JSON.stringify(plan([{ startBar: 0, endBar: 1, layout: "three", primary: 0, cells: cells("g1") }], { id: "bad", trackId: "grid-song" })));
     await assert.rejects(() => gridRender(c, "grid-song", bad), /the grid plan does not check out:\n {2}blocks\[0\]\.cells: a "three" layout has 3 cells/);
 
+    // The instrument's event map, drafted from an approved chord timeline: C then Am, both drawn.
+    const chords: HarmonyTimeline = {
+      id: "grid-song-chords", schemaVersion: 1, trackId: "grid-song", analysisProfileId: "synthetic",
+      events: [{ id: "h1", startBar: 0, startBeat: 0, symbol: "C" }, { id: "h2", startBar: 1, startBeat: 0, symbol: "Am" }],
+      approvalStatus: "approved", approvedBy: "the owner", approvedAt: "2026-11-15T00:00:00Z",
+    };
+    writeFileSync(p.harmony, JSON.stringify(chords));
+    const ev = kirtledEvents(c, "grid-song");
+    assert.ok(ev.drafted && ev.check.ok);
+    assert.deepEqual(ev.check.hits.map((h) => [h.triangle, h.sec]), [["A1", 0], ["A2", 2]]);
+    assert.ok(lines.some((l) => l.startsWith("grid-song.kirtled-events.json: 2 of 2 events drawn")));
+    assert.equal(kirtledEvents(c, "grid-song").drafted, false, "an existing map is yours to edit; it is only checked");
+
     const r = await gridRender(c, "grid-song", planFile);
     assert.equal(r.out, join(p.dir, "renders", "grid-song-grid-proof-draft.mp4"));
+    assert.ok(r.warnings.some((w) => /CAM-KIR-01 has no footage here yet/.test(w.message)), "the overhead camera is a drawn stand-in");
     assert.equal(r.fps, 24, "the clips' own rate");
     assert.equal(r.totalFrames, 144, "three bars of 2 s at 24 fps");
     const probe = spawnSync("ffprobe", ["-v", "error", "-count_packets", "-show_entries", "stream=codec_type,width,height,nb_read_packets", "-of", "json", r.out], { encoding: "utf8" });
@@ -249,8 +267,13 @@ test("end to end: a grid renders over the voice master, frame-exact, with a mani
     const v = streams.find((s) => s.codec_type === "video")!;
     assert.deepEqual([v.width, v.height, Number(v.nb_read_packets)], [1920, 1080, 144]);
     assert.ok(streams.some((s) => s.codec_type === "audio"), "the voice master plays under the grid");
-    const m = JSON.parse(readFileSync(r.manifest, "utf8")) as { audio: { master: string; offsetSec: number }; checks: { pass: boolean }[]; blocks: { layout: string; frames: number }[] };
+    const m = JSON.parse(readFileSync(r.manifest, "utf8")) as {
+      audio: { master: string; offsetSec: number }; checks: { pass: boolean }[]; blocks: { layout: string; frames: number; cells: { view: string; camera?: string }[] }[];
+      kirtledEvents: { drawn: number; of: number; status: string } | null;
+    };
     assert.deepEqual([m.audio.master, m.audio.offsetSec], ["suno", 0.25]);
+    assert.deepEqual(m.kirtledEvents && [m.kirtledEvents.drawn, m.kirtledEvents.of, m.kirtledEvents.status], [2, 2, "draft"]);
+    assert.deepEqual(m.blocks[0].cells.map((x) => [x.view, x.camera]), [["instrument", "CAM-KIR-01"]]);
     assert.ok(m.checks.every((x) => x.pass));
     assert.deepEqual(m.blocks.map((b) => [b.layout, b.frames]), [["one", 48], ["three", 48], ["nine", 48]]);
     assert.ok(lines.includes("warning: draft audio: the Suno vocals master isn't approved yet"));
