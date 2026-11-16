@@ -14,6 +14,9 @@
  *   npm run stuttr -- approve-master cloyne        (after listening; or: reject-master)
  *   npm run stuttr -- mouth cloyne Stuttr          (Dance8 mouth track, approved takes only)
  *   npm run stuttr -- analyze cloyne               (tempo, bars, sung phrases, chords for Dance8)
+ *   npm run stuttr -- analyze edo --bpm 93.995 --downbeat 0.075
+ *                                                  (a tempo you checked by ear, and the song time of bar 1;
+ *                                                  kept on later runs until --tracked)
  *   npm run stuttr -- visual-features ~/Music/edo-master.wav --out ~/Music/edo.features.json --fps 24 --id edo
  *                                                  (energy per video frame for Dance8's reaction layer, D8-25)
  *
@@ -103,7 +106,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file", "manifest", "album", "stage", "approved-plan", "short", "only", "note", "key", "aspect", "fps", "out"];
+const VALUE_FLAGS = ["library", "id", "title", "suno-plan", "lang", "from", "format", "section", "lead", "at", "mode", "preset", "max-credits", "upload", "more", "file", "manifest", "album", "stage", "approved-plan", "short", "only", "note", "key", "aspect", "fps", "out", "bpm", "downbeat"];
 const takesValue = (a: string) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && takesValue(argv[i - 1])));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
@@ -132,7 +135,7 @@ const usage = `Stuttr song library (${ctx.library})
   convert <trackId> <voice> [more voices] [--from backing_vocals] [--lang en] [--full] [--dry]
   convert <trackId> --cast [--dry]
   convert <trackId> <voice> --redo              (again, for a take you rejected)
-  analyze <trackId>
+  analyze <trackId> [--bpm <tempo> --downbeat <sec>] [--tracked]
   visual-features <audio file> --out <features.json> [--fps 24] [--id <trackId>]   (energy per video frame for Dance8's reaction layer, D8-25)
   album <name> [--title "Name"]                 (makes it the first time; shows the board)
   album-add <album> <trackId> [more ids] [--at N] [--mode solo|crew|cast] [--lead Stuttr] [--title "Song"]
@@ -257,7 +260,15 @@ async function main(): Promise<void> {
       break;
     case "analyze":
       if (!a1) throw new Error("analyze needs a track id");
-      analyzeTrack(ctx, a1);
+      {
+        const num = (name: string) => {
+          const v = flag(name);
+          if (v === undefined) return undefined;
+          if (!Number.isFinite(Number(v))) throw new Error(`--${name} must be a number`);
+          return Number(v);
+        };
+        analyzeTrack(ctx, a1, { bpm: num("bpm"), downbeatSec: num("downbeat"), tracked: has("tracked") });
+      }
       break;
     case "visual-features": {
       if (!a1 || !flag("out")) throw new Error("visual-features needs an audio file and --out <features.json>");

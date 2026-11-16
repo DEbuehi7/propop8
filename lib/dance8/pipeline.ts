@@ -30,6 +30,7 @@ import { danceGenerator, GENERATORS } from "./authoring/generators";
 import { parseKey, planSong, STAND_IN_CLIP_ID } from "./authoring/plan";
 import { shotBriefs, type ShotBrief } from "./authoring/shotBriefs";
 import { validateCueMap } from "./authoring/validateCueMap";
+import { regridCueMap, shotRenames, type RegridReport } from "./authoring/regrid";
 import type { HarmonyTimeline } from "./contracts/harmony";
 import { FRAME_SIZE, type AspectRatio, type CueMap, type VisualClip, type VisualClipLibrary } from "./contracts/scene";
 import { planKirtled } from "./harmony/pathSolver";
@@ -104,6 +105,13 @@ export interface PlanOptions {
   dance?: string[];
   /** How many skaters the crew has (canon D8-18; default eight, D8-11). */
   crew?: number;
+  /**
+   * Move the kept cue map onto the analysis's grid (after stuttr analyze with
+   * a corrected tempo): sections, scenes and cameras stay, their bars follow
+   * song time; the harmony is read again on the new grid. The files before
+   * the move are kept beside them, and <id>.regrid.json lists every change.
+   */
+  regrid?: boolean;
 }
 
 type TrickIn = { trick: string; atSec: number; version?: string; crew?: "solo" | "half" | "all"; crewCount?: number; carve?: Carve };
@@ -204,6 +212,30 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   });
   mkdirSync(p.clipDir, { recursive: true });
 
+  // --regrid: the kept cue map moves onto the analysis's grid by song time.
+  let regrid: { report: RegridReport; before: ShotBrief[]; backups: string[] } | null = null;
+  if (o.regrid) {
+    if (o.replace) throw new Error("--regrid keeps your cue map and moves it onto the new grid; leave out --replace");
+    if (!existsSync(p.cuemap)) throw new Error("there is no cue map to move yet; run plan without --regrid");
+    const old = readJson<CueMap>(p.cuemap);
+    const same = old.tempo.length === 1 && Math.abs(old.tempo[0].bpm - analysis.bpm) < 1e-6 && Math.abs((old.firstDownbeatSec ?? 0) - analysis.firstDownbeatSec) < 1e-6;
+    if (same) throw new Error(`the cue map is already on the analysis's grid (${analysis.bpm} BPM, bar 1 at ${analysis.firstDownbeatSec} s); nothing to move`);
+    const stamp = nowOf(c).replace(/[:.]/g, "-");
+    const backups: string[] = [];
+    for (const f of [p.cuemap, p.harmony, p.briefs]) {
+      if (!existsSync(f)) continue;
+      const to = f.replace(/\.json$/, `.before-regrid-${stamp}.json`);
+      copyFileSync(f, to);
+      backups.push(basename(to));
+    }
+    const before = existsSync(p.briefs) ? readJson<ShotBrief[]>(p.briefs) : [];
+    const r = regridCueMap(old, { bpm: analysis.bpm, beatsPerBar: analysis.beatsPerBar, firstDownbeatSec: analysis.firstDownbeatSec, bars: analysis.bars }, draft.map.vocals ?? []);
+    writeJson(p.cuemap, r.map);
+    // The chords were read bar by bar on the old grid; read them again on the new one.
+    writeJson(p.harmony, draft.harmony);
+    regrid = { report: r.report, before, backups };
+  }
+
   const kept: string[] = [];
   const keepOr = <T>(path: string, fresh: T): T => {
     if (existsSync(path) && !o.replace) { kept.push(basename(path)); return readJson<T>(path); }
@@ -260,6 +292,17 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     }
   }
   writeJson(p.briefs, briefs);
+  let regridNote: string | null = null;
+  if (regrid) {
+    const names = shotRenames(regrid.before, briefs);
+    const file = join(p.dir, `${trackId}.regrid.json`);
+    writeJson(file, { ...regrid.report, at: nowOf(c), analysis: basename(p.analysis), shots: names, kept: regrid.backups });
+    const fmt = (x: [number, number]) => `${x[0]}-${x[1]}`;
+    const from = regrid.report.from.tempo.map((t) => t.bpm).join("/");
+    regridNote = `moved from ${from} BPM to ${regrid.report.to.bpm} BPM: ${regrid.report.cues.filter((q) => fmt(q.oldBars) !== fmt(q.newBars)).length} of ${regrid.report.cues.length} sections changed bars; ${names.renamed.length} shot(s) renamed, ${names.gone.length} gone, ${names.added.length} new (${basename(file)})`;
+    for (const [a, b] of names.renamed) log(`renamed: ${a} -> ${b}`);
+    for (const n of regrid.report.notes) log(`note: ${n}`);
+  }
   // Your dance against the Kirtled plan, its floor lights, and your motion rules.
   let kirtledNote: string | null = null;
   if (takes.length && kirtled.plan) {
@@ -314,6 +357,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
     ...(danceNote ? [`  moves/refs/   ${danceNote}`] : []),
     ...(kirtledNote ? [`  ${basename(p.kirtledDance)}   ${kirtledNote}`] : []),
     ...(rulesNote ? [`  ${basename(p.rules)}   ${rulesNote}`] : []),
+    ...(regridNote ? [`  ${trackId}.regrid.json   ${regridNote}`] : []),
     "",
     "Check by ear",
     ...notes.map((n) => `  - ${n}`),
@@ -337,6 +381,7 @@ export function planTrack(c: Ctx, trackId: string, o: PlanOptions = {}): SongPat
   if (danceNote) log(danceNote);
   if (kirtledNote) log(kirtledNote);
   if (rulesNote) log(rulesNote);
+  if (regridNote) log(regridNote);
   log(`${briefs.length} shots still to generate (${lyricIdx} lip sync, ${briefs.filter((b) => b.kind === "trick").length} tricks, ${briefs.filter((b) => b.kind === "dance").length} dance, ${briefs.filter((b) => b.kind === "broll").length} b-roll)`);
   if (kept.length) log(`kept your ${kept.join(", ")} (use --replace to rebuild ${kept.length > 1 ? "them" : "it"})`);
   if (issues.length) log(`warning: the cue map has ${issues.length} problem(s); see README.txt`);

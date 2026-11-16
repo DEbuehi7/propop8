@@ -48,6 +48,21 @@ same steps per album): [ALBUM_DESK.md](ALBUM_DESK.md).
 
 ## Dance8: from shot list to video
 
+0. **Check the beat by ear first.** `npm run stuttr -- analyze <song>` finds
+   the tempo with a beat tracker, which can be wrong without drums (EDO was
+   tracked at 119.476 BPM; it is 94). When you have checked the real tempo,
+   give it with the song time of bar 1:
+   `npm run stuttr -- analyze edo --bpm 93.995 --downbeat 0.075`. The analysis
+   then uses your grid, says who set it and what the tracker heard, and keeps
+   it on later runs until `--tracked`. If the song already has a plan, move it
+   onto the new grid with `npm run dance8 -- plan <song> --regrid`. Your
+   sections, scenes and cameras stay. Their bars follow song time, and the sung
+   phrases take the vocal stem's runs on the new grid. The chords are read
+   again on the new grid. The old files stay beside the new ones as
+   `*.before-regrid-<time>.json`, and `<song>.regrid.json` lists every section
+   and phrase before and after, plus the renamed shots. B-roll ids stay;
+   lip-sync ids end in their bar, so they change with it. Run `kling` again
+   after a regrid.
 1. `npm run dance8 -- plan <song>`. The song's `dance8/README.txt` lists the
    shots to generate, each with an id and a length.
 2. `npm run dance8 -- kling <song>` writes the upload pack,

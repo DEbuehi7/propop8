@@ -4,6 +4,7 @@
  *   npm run stuttr -- analyze cloyne        (Stuttr measures the stems first)
  *   npm run dance8 -- plan cloyne --key Eb
  *   npm run dance8 -- plan cloyne --key Eb --skate breakyard_plaza   (skaters play Kirtled, canon D8-16)
+ *   npm run dance8 -- plan edo --regrid                       (after stuttr analyze --bpm: your sections move onto the corrected grid)
  *   npm run dance8 -- kling cloyne                            (the upload pack: files and a prompt per shot)
  *   npm run dance8 -- kling cloyne --budget 600               (only what fits 600 credits, most important first)
  *   npm run dance8 -- kling cloyne --model kling-3.0-720p     (b-roll, lip sync and tricks on Kling 3.0 at 720p)
@@ -68,7 +69,7 @@ const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY
 const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
-  plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
+  plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace] [--regrid]
   kling <trackId> [--budget <credits>] [--model <generator>] [--zip] [--test <shot,shot>]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/; --test: short Flash tests in kling/test/)
   clips <trackId> <folder>
   choir <trackId> [--variation N]                    (CHOIR8 count sheet, in <song>/dance8/choir/; N picks another set of beat choices)
@@ -152,7 +153,7 @@ async function main() {
       const crew = flag("crew");
       if (crew !== undefined && !(Number.isInteger(Number(crew)) && Number(crew) >= 1)) throw new Error("--crew must be a whole number of skaters");
       planTrack(ctx, a1, {
-        key: flag("key"), aspect, final: has("final"), replace: has("replace"), skate: flag("skate"),
+        key: flag("key"), aspect, final: has("final"), replace: has("replace"), regrid: has("regrid"), skate: flag("skate"),
         dance: flag("dance")?.split(",").map((x) => x.trim()).filter(Boolean), crew: crew === undefined ? undefined : Number(crew),
       });
       break;

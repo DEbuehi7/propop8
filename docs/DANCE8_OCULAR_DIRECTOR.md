@@ -117,7 +117,7 @@ card when the module that fills them is built.
 
 ## Timing at EDO's tempo
 
-At 94 BPM (pending the owner's confirmation) a beat is 0.638 s and a bar
+At 94 BPM (confirmed by the owner on 15 Nov) a beat is 0.638 s and a bar
 2.553 s. At 24 fps that is 15.32 frames a beat, not a whole number, so frames
 are computed from song time, as Dance8 already does. The study's 16-second,
 eight-bar template becomes 20.4 s:
@@ -206,7 +206,7 @@ display drawn in editing.
 
 Rendered 15 Nov 2026 from a scratch copy of the library, not the owner's:
 bars 22 to 34 of EDO (song 56.25 to 86.89 s, 30.67 s, 736 frames at 24 fps),
-on the 94 BPM grid that still waits for the owner's confirmation. The cells
+on the 94 BPM grid, which the owner confirmed after watching it. The cells
 are EDO V3 shots, used as drafts. The Kirtled instrument close-ups (V3 shots
 6 and 17) stay out, because V4.1 replaces that instrument.
 

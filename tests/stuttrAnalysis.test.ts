@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ANALYSIS_SR, analyzeSong, beatGrid, bestTriad, chromaFrames, fft, onsetEnvelope, ONSET_HOP, trackBeats,
+  ANALYSIS_SR, analyzeSong, beatGrid, bestTriad, chromaFrames, fft, onsetEnvelope, ONSET_HOP, trackBeats, verifiedGridProblem,
 } from "../lib/stuttr/analysis";
 
 const SR = ANALYSIS_SR;
@@ -108,4 +108,36 @@ test("whole song: grid, downbeat, bars, part levels, sung eighths and chords", (
   assert.ok(a.chords.filter((c) => c.bar >= 8).every((c) => c.chord === "Am" && c.fit > 0.9));
   assert.ok(a.barDb.lead![3] > -20 && a.barDb.lead![0] < -100);
   assert.deepEqual(analyzeSong({ trackId: "synthetic", durationSec: dur, sources: [], parts: { drums, bass, harmony: keys, lead } }), a, "deterministic");
+});
+
+test("a grid verified by ear replaces the tracker's, and says what the tracker heard", () => {
+  const dur = 33;
+  const beat = 0.5;
+  const drums = new Float32Array(SR * dur);
+  const lead = new Float32Array(SR * dur);
+  for (let k = 0; k * beat < 32; k++) burst(drums, k * beat, 60, k % 4 === 0 ? 0.9 : 0.5, 400, 4000);
+  tones(lead, 4, 12, [hz(69)], 0.3);
+  const by = "the owner (test)";
+  const at = "2026-11-15T00:00:00.000Z";
+  // The person says 100 BPM with bar 1 at 0.3 s; the drums say 120. The person's grid wins, and the analysis says so.
+  const a = analyzeSong({ trackId: "synthetic", durationSec: dur, sources: [], parts: { drums, lead }, grid: { bpm: 100, firstDownbeatSec: 0.3, by, at } });
+  assert.equal(a.bpm, 100);
+  assert.equal(a.beatSec, 0.6);
+  assert.equal(a.firstDownbeatSec, 0.3);
+  assert.equal(a.downbeatPhase, 0);
+  assert.equal(a.bars, Math.floor((dur - 0.3) / 2.4));
+  assert.equal(a.eighthDb.lead!.length, a.bars * 8, "sung eighths are measured on the verified grid");
+  assert.equal(a.gridVerified!.by, by);
+  assert.ok(Math.abs(a.gridVerified!.trackedBpm - 120) < 0.2, `tracker heard ${a.gridVerified!.trackedBpm}`);
+  assert.ok(a.warnings.some((w) => /^beat grid verified by the owner \(test\) \(2026-11-15\): 100 BPM, bar 1 at 0\.3 s; the beat tracker heard 1(19|20)\.\d+ BPM$/.test(w)), a.warnings.join("; "));
+  assert.ok(!a.warnings.some((w) => w.startsWith("no drum stem")));
+  const tracked = analyzeSong({ trackId: "synthetic", durationSec: dur, sources: [], parts: { drums, lead } });
+  assert.equal(tracked.gridVerified, undefined);
+  assert.ok(Math.abs(tracked.bpm - 120) < 0.2);
+
+  assert.equal(verifiedGridProblem({ bpm: 93.995, firstDownbeatSec: 0.075 }), null);
+  assert.equal(verifiedGridProblem({ bpm: 10, firstDownbeatSec: 0 }), "--bpm must be a tempo from 30 to 300");
+  assert.equal(verifiedGridProblem({ bpm: 120, firstDownbeatSec: -1 }), "--downbeat must be the song time of bar 1 in seconds, 0 or more");
+  assert.equal(verifiedGridProblem({ bpm: 120, firstDownbeatSec: 2 }), "--downbeat must fall inside the first bar (under 2 s at 120 BPM)");
+  assert.throws(() => analyzeSong({ trackId: "synthetic", durationSec: dur, sources: [], parts: { drums }, grid: { bpm: 500, firstDownbeatSec: 0, by, at } }), /--bpm must be a tempo from 30 to 300/);
 });
