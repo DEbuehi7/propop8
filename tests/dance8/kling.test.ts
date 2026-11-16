@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  compileCard, isPlaceholderScene, KLING_PROMPT_MAX, packHtml, parseCast, parseFields, parseProps, promptsText, sortCards, type RefIndex, type SceneRefs,
+  compileCard, isPlaceholderScene, KLING_PROMPT_MAX, packHtml, parseCast, parseFields, parseProps, promptsText, sortCards, testSpecOf, timingText, type RefIndex, type SceneRefs,
 } from "../../lib/dance8/authoring/klingPack";
 import { mergeRates, parseRates, planCredits, summarize } from "../../lib/dance8/authoring/klingCredits";
 import { crc32, readZip, zipStore } from "../../lib/dance8/authoring/zipStore";
@@ -66,7 +66,7 @@ test("lip sync card: the singer's face, the set, the cut audio and a fixed-templ
   assert.deepEqual(c.uploads.map((u) => [u.role, u.path]), [
     ["Singer's face (reference)", "/lib/refs/cast/stuttr/face.png"],
     ["The set (reference)", "/lib/refs/scenes/rooftop/master.png"],
-    ["Lip-sync audio (Stuttr, song 0:12.5 to 0:17.7)", "/lib/s1/dance8/kling/audio/lip.wav"],
+    ["Lip-sync audio, for Kling's lip sync after generating (Stuttr, song 0:12.5 to 0:17.7)", "/lib/s1/dance8/kling/audio/lip.wav"],
   ]);
   assert.equal(c.download, "lip_sync-verse-1-close-Stuttr-b4.mp4");
   assert.match(c.steps.at(-1)!, /rename it lip_sync-verse-1-close-Stuttr-b4\.mp4 exactly .* save it in ~\/Downloads\/s1/);
@@ -124,7 +124,7 @@ test("b-roll, trick and dance cards", () => {
 
 test("pack: cards by scene, then kind and song time; the page escapes text and links files relative to itself", () => {
   const a = compileCard(brief({ id: "b2", sceneId: "street", songStartSec: 30 }), refs(), opts);
-  const b = compileCard(brief({ id: "b1", sceneId: "rooftop", songStartSec: 40 }), refs(), opts);
+  const b = compileCard(brief({ id: "b1", sceneId: "rooftop", songStartSec: 40, songEndSec: 45.2 }), refs(), opts);
   const l = compileCard(brief({ id: "l1", kind: "lip_sync", voice: "Stuttr", sceneId: "rooftop", songStartSec: 5 }), refs(), opts);
   assert.deepEqual(sortCards([a, l, b], ["rooftop", "street"]).map((c) => c.shotId), ["b1", "l1", "b2"]);
   const html = packHtml([{ ...b, prompt: "SUBJECT: <script>alert(1)</script>" }], {
@@ -133,7 +133,7 @@ test("pack: cards by scene, then kind and song time; the page escapes text and l
   assert.ok(html.includes("SUBJECT: &lt;script&gt;alert(1)&lt;/script&gt;") && !html.includes("<script>alert"));
   assert.ok(html.includes('<img src="../../../refs/scenes/rooftop/master.png"'));
   assert.ok(html.includes("<title>Song &amp; Co · Kling pack</title>"));
-  assert.match(promptsText("Song", [b]), /^Song: Kling prompts, one per shot \(1 of 1 ready\)\n\n#1  b1\.mp4  \(broll, Kling 4\.0 Flash \(fast drafts\), 6 s, 9:16\)\nSUBJECT:/);
+  assert.match(promptsText("Song", [b]), /^Song: Kling prompts, one per shot \(1 of 1 ready\)\n\n#1  b1\.mp4  \(broll, Kling 4\.0 Flash \(fast drafts\), 6 s, 9:16\)  \{song 0:40\.0 to 0:45\.2 \(5\.2 s\); final Kling 4\.0 Flash \(fast drafts\) 6 s 720p; test Kling 4\.0 Flash \(fast drafts\) 5 s 720p\}\nSUBJECT:/);
 });
 
 /** 16-bit mono WAV of a tone. */
@@ -400,6 +400,104 @@ test("kling --zip: only this batch, every upload inside, links inside the zip", 
     klingPack(c, "s3", { zip: true, budget: 1 });
     assert.ok(lines.some((l) => l.startsWith("zip: nothing to generate now")));
     assert.ok(readFileSync(zipFile).equals(before));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("scene controls: a set's own action, camera words and closed mouths reach b-roll only, with the shot id unchanged", () => {
+  const set = { action: "He writes in the notebook, small natural hand and head movements.", cameras: { tracking: "A slow lateral move past the seated writer at desk height." } };
+  const track = compileCard(brief({ id: "broll-v1-room-tracking", camera: "tracking", mouth: "any" }), refs(set), opts);
+  assert.equal(track.shotId, "broll-v1-room-tracking");
+  assert.match(track.prompt, /\nACTION: He writes in the notebook, small natural hand and head movements; no cuts\.\nCAMERA: A slow lateral move past the seated writer at desk height\.\n/);
+  const wide = compileCard(brief({ camera: "wide", mouth: "any" }), refs(set), opts);
+  assert.match(wide.prompt, /\nCAMERA: Wide shot with the whole set/, "a camera the set doesn't reword keeps the template");
+  const lip = compileCard(brief({ id: "l", kind: "lip_sync", camera: "close", voice: "Stuttr", mouth: "lip_sync" }), refs({ ...set, cameras: { close: "Never used" } }), { ...opts, audio: { path: "/a.wav", problem: null } });
+  assert.match(lip.prompt, /ACTION: Sings straight to camera.*\nCAMERA: Close-up of the face, head and shoulders; the camera steady\./, "lip sync keeps its own action and camera");
+
+  const closed = compileCard(brief({}), refs({ hidden: "The men at the harbour wall, as in the start frame", mouths: "closed" }), opts);
+  assert.equal(closed.prompt.split("\n")[0], "SUBJECT: The men at the harbour wall, as in the start frame. Nobody sings or speaks; every mouth stays closed and still.");
+  assert.match(closed.prompt, /AVOID: .*flicker, singing, talking, open mouths$/);
+  const free = compileCard(brief({ mouth: "any" }), refs({ hidden: "The men at the harbour wall, as in the start frame", mouths: "closed" }), opts);
+  assert.equal(free.prompt.split("\n")[0], "SUBJECT: The men at the harbour wall, as in the start frame.", "with no one singing, the set's people stay in view");
+  const noWho = compileCard(brief({}), refs({ mouths: "closed" }), opts);
+  assert.match(noWho.missing[0], /"mouths: closed" needs a "hidden:" line/);
+  assert.match(noWho.prompt, /No face or mouth is visible at any moment/, "without who, the default rule holds");
+});
+
+test("timing: the song time, the final and the test are three separate things on every card", () => {
+  const b = brief({ id: "lip_sync-v1-sing-close-Stuttr-b6", kind: "lip_sync", camera: "close", voice: "Stuttr", mouth: "lip_sync", songStartSec: 12.44, songEndSec: 18.47, generateSec: 7, generator: "kling-4.0", resolution: "1080p" });
+  const c = compileCard(b, refs(), { ...opts, tool: "Kling 4.0 (finals)", audio: { path: "/a.wav", problem: null } });
+  assert.deepEqual(c.interval, { startSec: 12.44, endSec: 18.47, sec: 6.03 });
+  assert.deepEqual(c.final, { generator: "kling-4.0", tool: "Kling 4.0 (finals)", lengthSec: 7, resolution: "1080p" });
+  assert.deepEqual(c.test, { generator: "kling-4.0-flash", tool: "Kling 4.0 Flash (fast drafts)", lengthSec: 5, resolution: "720p" });
+  assert.deepEqual(testSpecOf(brief({ generateSec: 3 })).lengthSec, 3, "never longer than the shot");
+  assert.equal(testSpecOf(brief({ kind: "dance", generator: "kling-3.0-motion-control-720p", generateSec: 9 })).generator, "kling-3.0-motion-control-720p");
+  // kling --model swaps the generator for this pack; the planned final stays on the card.
+  const swapped = compileCard({ ...b, generator: "kling-3.0-720p" }, refs(), { ...opts, tool: "Kling 3.0", audio: { path: "/a.wav", problem: null }, final: c.final });
+  assert.equal(swapped.final!.generator, "kling-4.0");
+  assert.match(timingText(c), /^song 0:12\.4 to 0:18\.5 \(6\.0 s\); final Kling 4\.0 \(finals\) 7 s 1080p; test Kling 4\.0 Flash \(fast drafts\) 5 s 720p$/);
+  assert.ok(packHtml([c], { title: "S", trackId: "s", downloads: "~/D", clipsCommand: "x", href: (p) => p }).includes("final Kling 4.0 (finals) 7 s 1080p"));
+});
+
+test("kling --test: short Flash tests in kling/test/, saved as .test.mp4, with their own audio; the main pack is untouched", { skip: !hasFfmpeg && "ffmpeg not installed" }, () => {
+  const root = mkdtempSync(join(tmpdir(), "dance8-kling-test-"));
+  const lines: string[] = [];
+  const c: Ctx = { library: join(root, "library"), now: () => "2026-11-14T00:00:00.000Z", log: (l) => lines.push(l) };
+  try {
+    mkdirSync(join(c.library, "s4", "voices"), { recursive: true });
+    writeFileSync(join(c.library, "s4", "voices", "stuttr.en.wav"), wav(30));
+    const m = emptyManifest();
+    m.tracks.push({
+      trackId: "s4", title: "Synthetic Four", sunoPlan: "Pro", addedAt: "2026-11-14T00:00:00.000Z", files: [],
+      voices: [{
+        voice: "Stuttr", lang: "en", path: "s4/voices/stuttr.en.wav", originalName: "stuttr.en.wav", sha256: "x", bytes: 1, sourceRole: "vocals", sourceSha256: "y",
+        method: "elevenlabs_voice_changer", durationSec: 30, timingDeltaMs: 0, timingOk: true, status: "approved", addedAt: "2026-11-14T00:00:00.000Z",
+      }],
+    });
+    saveManifest(c, m);
+    const d8 = join(c.library, "s4", "dance8");
+    mkdirSync(d8, { recursive: true });
+    writeFileSync(join(d8, "s4.briefs.json"), JSON.stringify([
+      brief({ id: "broll-v1-room-tracking", sceneId: "room", camera: "tracking", aspect: "16:9", generateSec: 7, songStartSec: 8.43, songEndSec: 12.44, generator: "kling-4.0", resolution: "1080p", keyframesSec: [0, 2, 4] }),
+      brief({ id: "lip_sync-v1-sing-close-Stuttr-b6", kind: "lip_sync", sceneId: "room", camera: "close", voice: "Stuttr", mouth: "lip_sync", aspect: "16:9", generateSec: 7, songStartSec: 12.44, songEndSec: 18.47, generator: "kling-4.0", resolution: "1080p" }),
+    ]));
+    writeFileSync(join(d8, "s4.cuemap.json"), JSON.stringify({ cues: [{ sceneId: "room" }] }));
+    const room = join(c.library, "refs", "scenes", "room");
+    const stuttr = join(c.library, "refs", "cast", "stuttr");
+    mkdirSync(room, { recursive: true }); mkdirSync(stuttr, { recursive: true });
+    writeFileSync(join(room, "scene.txt"), "place: A fictional room by a harbour\nlight: Dusk\ntracking: A slow lateral move past the seated writer.\n");
+    writeFileSync(join(room, "master.png"), Buffer.from("png-room"));
+    writeFileSync(join(stuttr, "face.png"), Buffer.from("png-face"));
+
+    const main = klingPack(c, "s4");
+    const mainAudio = join(main.dir, "audio", "lip_sync-v1-sing-close-Stuttr-b6.wav");
+    const before = readFileSync(mainAudio);
+    const mainCards = readFileSync(join(main.dir, "cards.json"), "utf8");
+
+    assert.throws(() => klingPack(c, "s4", { test: ["nope"] }), /--test: no shot "nope"/);
+    const t = klingPack(c, "s4", { test: ["lip_sync-v1-sing-close-Stuttr-b6", "broll-v1-room-tracking"], zip: true });
+    assert.equal(t.dir, join(main.dir, "test"));
+    assert.deepEqual(t.cards.map((x) => [x.download, x.generator, x.lengthSec, x.resolution, x.testRun, x.credit!.batch]), [
+      ["broll-v1-room-tracking.test.mp4", "kling-4.0-flash", 5, "720p", true, "now"],
+      ["lip_sync-v1-sing-close-Stuttr-b6.test.mp4", "kling-4.0-flash", 5, "720p", true, "now"],
+    ]);
+    const [roll, lip] = t.cards;
+    assert.deepEqual(roll.keyframesSec, [0, 2, 4]);
+    assert.deepEqual(lip.interval, { startSec: 12.44, endSec: 18.47, sec: 6.03 }, "the card keeps the shot's own song time");
+    assert.equal(lip.final!.lengthSec, 7);
+    assert.match(roll.prompt, /CAMERA: A slow lateral move past the seated writer\./);
+    const testAudio = join(t.dir, "audio", "lip_sync-v1-sing-close-Stuttr-b6.test.wav");
+    const len = Number(spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", testAudio], { encoding: "utf8" }).stdout);
+    assert.ok(Math.abs(len - 5) < 0.02, `test audio ${len} s`);
+    assert.ok(readFileSync(mainAudio).equals(before), "the shot's own lip-sync audio is untouched");
+    assert.equal(readFileSync(join(main.dir, "cards.json"), "utf8"), mainCards, "the main pack is untouched");
+    assert.match(lip.steps.join(" "), /never covers the shot's song time/);
+    const entries = readZip(readFileSync(join(t.dir, "s4-kling-test.zip")));
+    assert.ok(entries.some((e) => e.name === "audio/lip_sync-v1-sing-close-Stuttr-b6.test.wav"));
+    assert.match(entries.find((e) => e.name === "README.txt")!.data.toString("utf8"), /four separate ways: identity[\s\S]*geometry[\s\S]*performance[\s\S]*and sync/);
+    const page = entries.find((e) => e.name === "index.html")!.data.toString("utf8");
+    assert.ok(page.includes("&lt;shot&gt;.test.mp4</b>. Tests stay out of the library") && !page.includes("When a batch is done"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

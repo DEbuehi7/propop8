@@ -17,12 +17,15 @@
 //   refs/scenes/<scene>/master.png       the set's first-frame image
 //   refs/scenes/<scene>/dancer.png       optional: the scene's dancer standing in the set
 //   refs/scenes/<scene>/scene.txt        place: ... / light: ... / hidden: ... / dancer: ... / skater: ... / cast: ... / props: ...
+//                                        and, for b-roll only: action: ... / mouths: hidden|closed / one line per camera to reword it
+//                                        (tracking: ..., orbit: ..., close: ...), so the shot ids stay the same
 //   refs/props/<prop>/prop.png           a vehicle or object on its own (b-roll and trick shots)
 //   refs/props/<prop>/prop.txt           name: ... / look: ...
 
 import { voiceKey } from "../../stuttr/library";
 import type { AspectRatio, CameraShot } from "../contracts/scene";
 import type { Batch, CreditNote, CreditSummary } from "./klingCredits";
+import { GENERATORS } from "./generators";
 import type { ShotBrief } from "./shotBriefs";
 
 export const SCENE_TEXT = "scene.txt";
@@ -87,6 +90,16 @@ export interface SceneRefs {
   skater: string | null;
   /** refs/props folders that appear in this set's b-roll and trick shots. */
   props?: string[];
+  /** B-roll only: what happens in this set, instead of the generic "gentle movement" line. */
+  action?: string | null;
+  /** B-roll only: this set's own words for a camera (the shot id keeps the camera's name). */
+  cameras?: Partial<Record<CameraShot, string>>;
+  /**
+   * B-roll while someone sings: "hidden" (the default) keeps every face and mouth out of frame;
+   * "closed" lets the people the start frame shows stay in view with mouths closed and still,
+   * for a set whose master shows faces that are not singing; its other b-roll then shows them too.
+   */
+  mouths?: "hidden" | "closed";
   master: string | null;
   dancerImage: string | null;
   dir: string;
@@ -113,6 +126,27 @@ export interface CardUpload {
   required: boolean;
   /** What the file must show, for when it is missing. */
   need: string;
+}
+
+/** One way to make a shot: the generator, how long a clip to ask for, and at what resolution. */
+export interface ClipSpec {
+  generator: string;
+  tool: string;
+  lengthSec: number;
+  resolution: string;
+}
+
+/** A test checks the look in a short, cheap clip; it never stands in for the shot's final. */
+export const TEST_SEC = 5;
+
+/** The test for a shot: Kling 4.0 Flash at 720p, at most TEST_SEC; a dance test follows its motion video at 720p. */
+export function testSpecOf(b: ShotBrief): ClipSpec {
+  if (b.kind === "dance") {
+    const g = GENERATORS["kling-3.0-motion-control-720p"];
+    return { generator: g.id, tool: g.label, lengthSec: b.generateSec, resolution: g.resolution };
+  }
+  const g = GENERATORS["kling-4.0-flash"];
+  return { generator: g.id, tool: g.label, lengthSec: Math.max(g.minSec, Math.min(TEST_SEC, b.generateSec, g.maxSec)), resolution: g.resolution };
 }
 
 export interface UploadCard {
@@ -143,6 +177,15 @@ export interface UploadCard {
   mouth: ShotBrief["mouth"];
   /** Credits and batch (./klingCredits planCredits); absent until planned. */
   credit?: CreditNote;
+  /**
+   * Three different things, never interchangeable: the song time the shot is placed on, the final clip
+   * that covers it, and the short test that only checks the look. An approved test never covers the shot.
+   */
+  interval?: { startSec: number; endSec: number; sec: number };
+  final?: ClipSpec;
+  test?: ClipSpec;
+  /** This card makes the test, not the final: its download is <shot>.test.mp4. */
+  testRun?: boolean;
 }
 
 const CAMERA_TEXT: Record<CameraShot, string> = {
@@ -187,6 +230,12 @@ export interface CompileInput {
   audio?: { path: string | null; problem: string | null };
   /** Where the downloads go, for the naming step. */
   downloads: string;
+  /** The planned final, when this pack generates with another model (kling --model); defaults to the brief's own. */
+  final?: ClipSpec;
+  /** The shot's own song time, when the brief was shortened for a test. */
+  interval?: { startSec: number; endSec: number };
+  /** Make the test card: short Flash clip, saved as <shot>.test.mp4. */
+  testRun?: boolean;
 }
 
 /**
@@ -215,6 +264,8 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
   let subject: string | null = null;
   let action: string | null = null;
   let camera = CAMERA_TEXT[b.camera];
+  const testRun = o.testRun === true;
+  const download = testRun ? `${b.id}.test.mp4` : `${b.id}.mp4`;
   let avoid = AVOID;
   let continuity = CONTINUITY;
 
@@ -229,22 +280,28 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
     if (slug) {
       need({ role: "Singer's face (reference)", path: c?.face ?? null, required: true, need: `add ${c?.dir ?? `refs/cast/${slug}`}/face.png: ${voice}'s face with the mouth fully visible` });
       need({ role: "The set (reference)", path: scene?.master ?? null, required: false, need: `add ${scene?.dir ?? `refs/scenes/${b.sceneId}`}/master.png to keep the set the same in every shot` });
-      if (o.audio?.path) uploads.push({ role: `Lip-sync audio (${voice}, song ${sec(b.songStartSec)} to ${sec(b.songEndSec)})`, path: o.audio.path, required: true, need: "" });
+      if (o.audio?.path) uploads.push({ role: `Lip-sync audio, for Kling's lip sync after generating (${voice}, song ${sec(b.songStartSec)} to ${sec(b.songEndSec)})`, path: o.audio.path, required: true, need: "" });
       else missing.push(`lip-sync audio: ${o.audio?.problem ?? "not cut"}`);
     }
     subject = `${c ? who(c) : voice}. One singer.`;
     action = "Sings straight to camera with clear, natural mouth movement, head steady, an expressive face.";
     avoid = `${AVOID}, hands, a microphone or hair over the lips`;
-    steps.push(`Lip sync: open the finished clip in Kling's lip sync and upload the lip-sync audio above (only ${voice}'s voice, already cut to this shot).`);
+    steps.push(`Lip sync: open the finished clip in Kling's lip sync and upload the lip-sync audio above (only ${voice}'s voice, already cut to this ${testRun ? "test" : "shot"}). It is never uploaded when generating.`);
   } else if (b.kind === "broll") {
     need({ role: "Start frame", path: scene?.master ?? null, required: true, need: `add ${scene?.dir ?? `refs/scenes/${b.sceneId}`}/master.png: the set's master image` });
-    if (b.mouth === "hidden") {
+    if (b.mouth === "hidden" && scene?.mouths === "closed" && scene.hidden) {
+      subject = `${scene.hidden}. Nobody sings or speaks; every mouth stays closed and still.`;
+      avoid = `${AVOID}, singing, talking, open mouths`;
+    } else if (b.mouth === "hidden") {
+      if (scene?.mouths === "closed") missing.push(`${b.sceneId}/${SCENE_TEXT}: "mouths: closed" needs a "hidden:" line saying who the start frame shows`);
       subject = `${scene?.hidden ?? DEFAULT_HIDDEN}. No face or mouth is visible at any moment.`;
       avoid = `${AVOID}, faces, mouths`;
     } else {
-      subject = "The set and its atmosphere; any people only at a distance.";
+      // A set whose master shows its people keeps them in view; otherwise people stay far away.
+      subject = scene?.mouths === "closed" && scene.hidden ? `${scene.hidden}.` : "The set and its atmosphere; any people only at a distance.";
     }
-    action = "One continuous moment with gentle movement in the set (light, air, people passing); no cuts.";
+    action = scene?.action ? `${scene.action.replace(/[.;\s]+$/, "")}; no cuts.` : "One continuous moment with gentle movement in the set (light, air, people passing); no cuts.";
+    camera = scene?.cameras?.[b.camera] ?? camera;
     continuity = "Keep the set's architecture, materials and light from the start frame.";
   } else if (b.kind === "trick") {
     const slug = scene?.skater ? voiceKey(scene.skater) : null;
@@ -297,12 +354,18 @@ export function compileCard(b: ShotBrief, refs: RefIndex, o: CompileInput): Uplo
   ].filter((x): x is string => x !== null).join("\n");
   if (prompt.length > KLING_PROMPT_MAX) missing.push(`the prompt is ${prompt.length} characters and Kling takes ${KLING_PROMPT_MAX}: shorten the scene's or the character's words`);
 
-  steps.push(`Download it, rename it ${b.id}.mp4 exactly (a take number like -2 is fine) and save it in ${o.downloads}.`);
+  if (testRun) steps.push("This is a test: it checks identity, geometry, performance and sync, each on its own, and never covers the shot's song time; the final is generated at its own length after the test is approved.");
+  steps.push(`Download it, rename it ${download} exactly (a take number like -2 is fine) and save it in ${o.downloads}.`);
+  const start = o.interval?.startSec ?? b.songStartSec;
+  const end = o.interval?.endSec ?? b.songEndSec;
+  const final: ClipSpec = o.final ?? { generator: b.generator, tool: o.tool, lengthSec: b.generateSec, resolution: b.resolution };
   return {
     shotId: b.id, kind: b.kind, sceneId: b.sceneId, section: b.section, camera: b.camera, voice: b.voice,
-    songStartSec: b.songStartSec, songEndSec: b.songEndSec, download: `${b.id}.mp4`,
+    songStartSec: start, songEndSec: end, download,
     generator: b.generator, tool: o.tool, lengthSec: b.generateSec, aspect: b.aspect, cropTo: b.cropTo, resolution: b.resolution, keyframesSec: b.keyframesSec,
     uploads, prompt, steps, missing, ready: missing.length === 0, mouth: b.mouth,
+    interval: { startSec: start, endSec: end, sec: Math.round((end - start) * 1000) / 1000 },
+    final, test: testSpecOf({ ...b, generateSec: final.lengthSec }), ...(testRun ? { testRun: true } : {}),
   };
 }
 
@@ -351,11 +414,21 @@ export function promptsText(title: string, cards: UploadCard[], about?: PackAbou
     "",
     ...cards.flatMap((c, i) => [
       `#${i + 1}  ${c.download}  (${c.kind}, ${c.tool}, ${c.credit?.generateSec ?? c.lengthSec} s, ${c.cropTo ? `${c.aspect} cropped to ${c.cropTo}` : c.aspect})${c.ready ? "" : "  NOT READY"}${
-        c.credit ? `  [${c.credit.testFirst ? "TEST FIRST, " : ""}${BATCH_TEXT[c.credit.batch]}; ${creditText(c, num)}]` : ""}`,
+        c.credit ? `  [${c.testRun ? "TEST, " : c.credit.testFirst ? "TEST FIRST, " : ""}${BATCH_TEXT[c.credit.batch]}; ${creditText(c, num)}]` : ""}${timingText(c) ? `  {${timingText(c)}}` : ""}`,
       c.prompt,
       "",
     ]),
   ].join("\n");
+}
+
+/** "song 0:12.4 to 0:18.5 (6.0 s); final Kling 4.0 (finals) 7 s 1080p; test Kling 4.0 Flash (fast drafts) 5 s 720p". */
+export function timingText(c: UploadCard): string {
+  if (!c.interval) return "";
+  const spec = (s: ClipSpec) => `${s.tool} ${s.lengthSec} s ${s.resolution}`;
+  return [
+    c.kind === "trick" ? "any chord change" : `song ${sec(c.interval.startSec)} to ${sec(c.interval.endSec)} (${c.interval.sec.toFixed(1)} s)`,
+    ...(c.final ? [`final ${spec(c.final)}`] : []), ...(c.test ? [`test ${spec(c.test)}`] : []),
+  ].join("; ");
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -421,10 +494,11 @@ export function packHtml(cards: UploadCard[], m: PackMeta): string {
     const time = c.kind === "trick" ? "any chord change (placed by the edit)" : `song ${sec(c.songStartSec)} to ${sec(c.songEndSec)}`;
     const n = c.credit;
     const secs = n && n.generateSec > c.lengthSec ? `${n.generateSec} s (covers ${n.covers.map((x) => `#${num(x)}`).join(", ")})` : `${c.lengthSec} s`;
-    const badge = n ? `${n.testFirst ? '<span class="tag test">test first</span>' : ""}<span class="tag b-${n.batch}">${esc(BATCH_TEXT[n.batch])}</span><span class="cost">${esc(creditText(c, num))}</span>` : "";
+    const badge = n ? `${c.testRun ? '<span class="tag test">test only</span>' : n.testFirst ? '<span class="tag test">test first</span>' : ""}<span class="tag b-${n.batch}">${esc(BATCH_TEXT[n.batch])}</span><span class="cost">${esc(creditText(c, num))}</span>` : "";
     return `<section class="card ${c.ready ? "ready" : "wait"}${n ? ` b-${n.batch}` : ""}" id="${esc(c.shotId)}">
 <header><label><input type="checkbox" data-shot="${esc(c.shotId)}"> <b>#${i + 1} ${esc(c.download)}</b></label><span class="tag ${esc(c.kind)}">${esc(c.kind.replace("_", " "))}</span>${badge}<span class="state">${c.ready ? "ready" : "needs files"}</span></header>
 <p class="meta">${esc(c.tool)} · ${secs} · ${c.cropTo ? `${esc(c.aspect)} (crop to ${esc(c.cropTo)})` : esc(c.aspect)} · ${esc(c.resolution)} · native audio off · ${esc(time)} · scene <b>${esc(c.sceneId)}</b> · ${esc(c.camera.replace("_", " "))}${c.voice ? ` · ${esc(c.voice)}` : ""}</p>
+${c.interval ? `<p class="meta timing">${esc(timingText(c))}${c.testRun ? ". Checks identity, geometry, performance and sync separately; never covers the song time" : ""}</p>` : ""}
 ${c.missing.length ? `<ul class="missing">${c.missing.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
 <ul class="files">${files}</ul>
 <div class="prompt"><button type="button" data-copy="p${i}">Copy prompt</button><pre id="p${i}">${esc(c.prompt)}</pre></div>
@@ -455,7 +529,9 @@ button{font:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px
 </style></head><body><main>
 <h1>${esc(m.title)}: Kling upload pack</h1>
 ${m.about ? aboutHtml(m.about) : ""}
-<p class="sub">${cards.length} shots, ${ready} ready (${kinds.map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}). Each card: upload its files, paste its prompt, generate, then save the download as <b>${esc(m.downloads)}/&lt;shot&gt;.mp4</b>. When a batch is done: <code>${esc(m.clipsCommand)}</code></p>
+${cards.length && cards.every((c) => c.testRun)
+    ? `<p class="sub">${cards.length} tests, ${ready} ready (${kinds.map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}). Each card: upload its files, paste its prompt, generate, then save the download as <b>${esc(m.downloads)}/&lt;shot&gt;.test.mp4</b>. Tests stay out of the library: check each one four separate ways (identity, geometry, performance, sync), then make the finals from the main pack.</p>`
+    : `<p class="sub">${cards.length} shots, ${ready} ready (${kinds.map(([k, n]) => `${n} ${k.replace("_", " ")}`).join(", ")}). Each card: upload its files, paste its prompt, generate, then save the download as <b>${esc(m.downloads)}/&lt;shot&gt;.mp4</b>. When a batch is done: <code>${esc(m.clipsCommand)}</code></p>`}
 ${m.credits ? creditsHtml(m.credits) : ""}
 ${cards.map(card).join("\n")}
 </main>

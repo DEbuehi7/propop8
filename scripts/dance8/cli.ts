@@ -8,6 +8,7 @@
  *   npm run dance8 -- kling cloyne --budget 600               (only what fits 600 credits, most important first)
  *   npm run dance8 -- kling cloyne --model kling-3.0-720p     (b-roll, lip sync and tricks on Kling 3.0 at 720p)
  *   npm run dance8 -- kling cloyne --zip                      (this batch as one zip, every upload inside, for the phone)
+ *   npm run dance8 -- kling cloyne --test <shot>,<shot> --zip  (short Kling 4.0 Flash tests of those shots, saved as <shot>.test.mp4)
  *   npm run dance8 -- choir cloyne                            (CHOIR8 count sheet: one eight-count grammar for choir, breaker and skater)
  *   npm run dance8 -- choir cloyne --variation 1              (another set of beat choices where the song's rhythm shifts)
  *   npm run dance8 -- clips cloyne ~/Downloads/cloyne
@@ -64,7 +65,7 @@ const [cmd, a1, a2] = positional;
 
 const usage = `Dance8 (${ctx.library})
   plan <trackId> [--key Eb] [--aspect 9:16] [--skate <sceneId>] [--dance <sceneId,...>] [--crew 8] [--final] [--replace]
-  kling <trackId> [--budget <credits>] [--model <generator>] [--zip]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/)
+  kling <trackId> [--budget <credits>] [--model <generator>] [--zip] [--test <shot,shot>]   (upload pack: files, a prompt and credits per shot, in <song>/dance8/kling/; --test: short Flash tests in kling/test/)
   clips <trackId> <folder>
   choir <trackId> [--variation N]                    (CHOIR8 count sheet, in <song>/dance8/choir/; N picks another set of beat choices)
   approve-clip <trackId> <clipId> --drift <0-1> [--landing <sec>]
@@ -153,7 +154,10 @@ async function main() {
     }
     case "kling":
       if (!a1) throw new Error("kling needs a track id");
-      klingPack(ctx, a1, { budget: flag("budget") === undefined ? undefined : Number(flag("budget")), model: flag("model"), zip: has("zip") });
+      klingPack(ctx, a1, {
+        budget: flag("budget") === undefined ? undefined : Number(flag("budget")), model: flag("model"), zip: has("zip"),
+        test: flag("test") === undefined ? undefined : flag("test")!.split(","),
+      });
       break;
     case "choir":
       if (!a1) throw new Error("choir needs a track id");
