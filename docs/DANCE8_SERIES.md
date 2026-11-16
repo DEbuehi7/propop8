@@ -32,12 +32,15 @@ expensive concepts come last.
 
 | # | Film | Story and look | What it shows | Leans on | Needs first |
 |---|---|---|---|---|---|
-| 1 | STUTTR: EDO (The Legacy) | Lagos origins, the Bravados, the present-day narrator, Genome Loom, the Trillionaire Ghost | Measured audio sync, singer continuity, the reaction layer | D8-01 to D8-03, D8-25 | The open EDO V3 decisions (below) |
+| 1 | STUTTR: EDO (The Legacy) | Lagos origins, the 8th Street Bravados, the present-day narrator, Genome Loom, the Trillionaire Ghost | Measured audio sync, singer continuity, the reaction layer | D8-01 to D8-03, D8-25 | The open EDO V3 decisions (below) |
 | 2 | KIRTLED: One Language, Six Moves | A black-and-gold instrument studio becomes a plain dance demonstration | DO, RA, LA, KA, TI and DASH, danced and skated | D8-16, D8-20, D8-21 | A verified chord chart for the chosen song |
 | 3 | EDO EDO BOY × NIKA NIKA × IARA IARA | Three artists in one connected performance world, each with a visual language of their own | Vocal exchanges, three-part formations, multilingual rhythm | D8-22 | Approved voice map entries for all three |
 | 4 | SONTHERAVEIN: Living Frequencies | Surreal biomechanical worlds, flowing vein-like patterns | Music energy driving branching, light and movement | D8-25, Album Desk album `sontheravein` | Owner-approved artwork pack |
 | 5 | KIRTLED: TIME AND SOUND | 1950s nostalgia meets 2050 futurism; one phrase grows through recurring forms | Variation, recursion, key changes, controlled silence | D8-20, D8-23 | Source for the "eight-billion-address" idea (ledger 9) |
-| 6 | Bravados: Street-to-Stage | A street set turns into a Kirtled dance arena | Group choreography, skating, landing on chord changes | D8-16, D8-18, D8-19 | The Bravado(s) spelling (ledger 8) |
+| 6 | 8th Street Bravados: Street-to-Stage | A street set turns into a Kirtled dance arena | Group choreography, skating, landing on chord changes | D8-16, D8-18, D8-19 | The Ocular Director proof on EDO ([DANCE8_OCULAR_DIRECTOR.md](DANCE8_OCULAR_DIRECTOR.md)) |
+
+The Ocular Director camera grammar (adopted 15 Nov) fits film 6 fully and
+film 1 lightly, and is proved on film 1 first: [DANCE8_OCULAR_DIRECTOR.md](DANCE8_OCULAR_DIRECTOR.md).
 
 First cycle: films 1 to 3 (narrative continuity, the instrument explained,
 performer identity, set logic, deterministic picture response). Then 4 to 6.
@@ -144,7 +147,7 @@ animation.
 
 | Album | Wall content |
 |---|---|
-| STUTTR / EDO | Lagos, the Bravados, stutter threads, narrator states |
+| STUTTR / EDO | Lagos, the 8th Street Bravados, stutter threads, narrator states |
 | KIRTLED | Tonnetz views, the six moves, verified chord changes |
 | SONTHERAVEIN | Original organic and biomechanical artwork |
 | TIME AND SOUND | Recursion and phrase variation (the address idea waits for ledger 9) |
@@ -181,7 +184,7 @@ rendered on 11 Nov 2026.
 | 5 | Loom "controlled replay" | D8-25 never alters audio or remixes | Picture-only edits |
 | 6 | Silence or DASH gives "reduced motion" | Reduced motion is D8-25's accessibility version; DASH as an instrument move is performance mode, not built (D8-08) | A verified freeze may hold the overlay; accessibility stays separate |
 | 7 | Chord-state display on harmony changes | D8-25 draws only verified chord changes; none is verified for EDO yet | Needs a chord chart per song |
-| 8 | "8th Street Bravados" | The owner's earlier wording is "8 Street Bravado"; the EDO V3 shot list says "Bravados"; the on-screen spelling is an open decision | The owner picks one spelling for titles, walls and prompts |
+| 8 | "8th Street Bravados" | The owner's earlier wording is "8 Street Bravado"; the EDO V3 shot list says "Bravados"; the on-screen spelling is an open decision | Decided 15 Nov: 8th Street Bravados, for titles, walls and prompts |
 | 9 | TIME AND SOUND "eight-billion-address concept" | Not in canon or the repo | Needs its source before it appears anywhere |
 | 10 | A "WORLD CIRCUIT" wall pack; "STUTTR / C.L.O.Y.N.E." on the boards | Neither is an album in canon or the Album Desk | C.L.O.Y.N.E. defined by the owner on 13 Nov (below); WORLD CIRCUIT still needs confirming |
 | 11 | CapCut for review | Not in [security/VENDORS.md](security/VENDORS.md); Suno is not listed either | Add both before clips or masters go there |
@@ -282,7 +285,7 @@ The "Skid Row DTLA" location label stays until the facility is named
    film.
 2. The facility's name, and its spaces' names: Signal Lab, Movement Hall and
    Environment Studio, or the boards' Song Lab, Dance Hall and Stage.
-3. Bravado or Bravados, and whether "8" or "8th Street" is part of it.
+3. ~~Bravado or Bravados~~: decided 15 Nov, 8th Street Bravados.
 4. Where the TIME AND SOUND address idea comes from.
 5. Whether CapCut joins the vendor register.
 6. Whether the Cypher may draw verified move words (an implementation change
@@ -296,3 +299,9 @@ Decided on 13 Nov:
   Kirtled Dance8 centre.
 - AIMV-105 and 106 are regenerated without the street number, tents, AIM-B5R
   branding and the owner's residence (above).
+
+Decided on 15 Nov:
+
+- The name is 8th Street Bravados (ledger 8).
+- The Ocular Director camera grammar is adopted as an editing layer and proved
+  on EDO first ([DANCE8_OCULAR_DIRECTOR.md](DANCE8_OCULAR_DIRECTOR.md)).

@@ -27,6 +27,9 @@
  *     The visual reaction layer (canon D8-25): silent overlays drawn from Stuttr's saved feature file
  *     (npm run stuttr -- visual-features), a reduced-motion version of each, and with --base the
  *     footage excerpts, Screen-blended composites and preview.html. Offline; nothing is paid for.
+ *   npm run dance8 -- grid edo ~/StuttrLibrary/edo/dance8/grids/proof.json
+ *     The Ocular Director grid (docs/DANCE8_OCULAR_DIRECTOR.md): one, three or nine approved clips
+ *     on screen at once, one primary, layouts changing on bar lines, over the voice master.
  *
  * plan writes <id>/dance8/: cue map, harmony, Kirtled plan, clip library, shot
  * list, mouth tracks and README. It keeps a cue map, harmony or clip library
@@ -50,6 +53,7 @@ import { captureTakes } from "./capture/server";
 import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
 import { albumPreview } from "../../lib/stuttr/desk/desk";
 import { reactionInputsExist, renderReaction } from "../../lib/dance8/reactionPipeline";
+import { gridRender } from "../../lib/dance8/gridPipeline";
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -75,7 +79,8 @@ const usage = `Dance8 (${ctx.library})
   style
   render <trackId> [--short <cueId>] [--approved] [--master en|suno] [--seed N] [--punch 0.05] [--lyrics] [--fps 24] [--edl]
   album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)
-  react <features.json> --windows <windows.csv|json> --out <folder> [--base <footage.mp4>] [--events <verified.json>] [--song <id>] [--expect-sha <audio sha256>]`;
+  react <features.json> --windows <windows.csv|json> --out <folder> [--base <footage.mp4>] [--events <verified.json>] [--song <id>] [--expect-sha <audio sha256>]
+  grid <trackId> <plan.json> [--approved] [--master en|suno] [--fps 24]   (camera grid: 1, 3 or 9 clips on bar lines, in <song>/dance8/renders/)`;
 
 async function checkMoves(trackId: string, ids: string[]) {
   const { lib, clips } = clipsToCheck(ctx, trackId, ids, has("again"));
@@ -214,6 +219,13 @@ async function main() {
         writeFileSync(`${out}.description.txt`, upload.text);
         console.log(`upload text: ${out}.description.txt${upload.described ? "" : ` (no song description yet, so only the title and disclosure; write one with npm run stuttr -- describe ${a1} "One line about the song" and render again, or paste it in)`}`);
       }
+      break;
+    }
+    case "grid": {
+      if (!a1 || !a2) throw new Error("grid needs a track id and a grid plan file");
+      const f = flag("fps");
+      if (f !== undefined && !(Number.isInteger(Number(f)) && Number(f) > 0)) throw new Error("--fps must be a whole number");
+      gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
       break;
     }
     default:
