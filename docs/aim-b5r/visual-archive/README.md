@@ -26,7 +26,7 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
-106 images are indexed:
+110 images are indexed:
 
 - AIMV-001 to 046: received 7 to 9 Oct.
 - AIMV-047 to 072: received 11 Oct, daytime. Triadic Planet boards, EDO robots,
@@ -59,6 +59,12 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
   residence, so they are reference for rooms only; the owner approved
   regenerated versions on 13 Nov. The check is in
   `docs/DANCE8_SERIES.md`.
+- AIMV-107 to 110: received 15 Nov. The Dance8 Ocular Director study's
+  images (MED-01): the nine-cell camera-grid keyframe (107), its animated 1 to
+  3 to 9 to 1 loop, the archive's first GIF (108), the system board (109) and
+  the one-path, five-camera poster (110). Fiction about a music video's
+  cameras, not building surveillance. The check is in
+  `docs/DANCE8_OCULAR_DIRECTOR.md`.
 
 Duplicates and derivatives:
 

@@ -39,6 +39,9 @@ expensive concepts come last.
 | 5 | KIRTLED: TIME AND SOUND | 1950s nostalgia meets 2050 futurism; one phrase grows through recurring forms | Variation, recursion, key changes, controlled silence | D8-20, D8-23 | Source for the "eight-billion-address" idea (ledger 9) |
 | 6 | Bravados: Street-to-Stage | A street set turns into a Kirtled dance arena | Group choreography, skating, landing on chord changes | D8-16, D8-18, D8-19 | The Bravado(s) spelling (ledger 8) |
 
+The Ocular Director study (15 Nov) proposes a camera grammar that fits film 6
+fully and film 1 lightly: [DANCE8_OCULAR_DIRECTOR.md](DANCE8_OCULAR_DIRECTOR.md).
+
 First cycle: films 1 to 3 (narrative continuity, the instrument explained,
 performer identity, set logic, deterministic picture response). Then 4 to 6.
 New Kling footage only for shots the approved library cannot deliver.
