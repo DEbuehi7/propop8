@@ -279,6 +279,56 @@ and 106 when they arrive.
 The "Skid Row DTLA" location label stays until the facility is named
 (decision 2).
 
+## EDO Fusion: six worlds (AIMV-111 to 116)
+
+Six contact sheets and four crew cards arrived on 17 Nov 2026 with a ChatGPT
+proposal: six music-video worlds for a six-album EDO Fusion season (48 songs;
+the owner will share the list). The sheets are in the concept archive as
+AIMV-111 to 116 (MED-01); the images are not committed. The four cards (EDO
+EDO BOY, NIKA NIKA, MEI MEI, SOL SOL) are kept by the owner, like the trio's
+cards (D8-22), and are not registered.
+
+| World | What it proposes | Uses what is built | Fix first |
+|---|---|---|---|
+| 01 IGUN, The Sound Forge | EDO EDO BOY in a Benin metalworking hall; casting turns into percussion; macro, then portrait, then the whole hall | *Bronze*, track 1, "Igun (The Casters)"; the grid layouts | The giant bronze heads draw on Benin royal commemorative heads: Edo cultural review before release (GOV-21) |
+| 02 Four Voices, One Frequency | The four singers in four rooms (Edo percussion, German synth, Chinese erhu, Mexican jarana) that merge on shared phrases | One cell per singer; the one-"now" rule | No four-cell layout yet: the compositor has 1, 3 and 9 |
+| 03 Kirtled, The Living Instrument | The instrument from overhead while it is played, then the hands, then dancers answering | CAM-KIR-01 and CAM-KIR-02 and the event map | None of the six instrument panels follows D8-21: the upper arms splay wider than the stem, each arm is a grid two or three rows deep, and some show studs or square keys. They are not instrument references |
+| 04 Van on 8th | A van in Stuttr's glasses on a lyric cue; EDO EDO BOY's route from street to lobby to corridors to the Kirtled room; 1 to 3 to 9 views | The glasses decision of 15 Nov, the lyric timing file, the grid | No song has a van lyric yet. The 9-view panels put him in nine rooms at once: one cell is "now", the rest are earlier moments (replay or memory) or other cameras on the same moment. Fictional sets and no real street sign (GOV-16, GOV-23) |
+| 05 The Building That Dances | An adaptive-reuse building as a production campus, its rooms shown as a section | Camera lanes and album walls from AIMV-103 and 104 | It continues the Skid Row boards (AIMV-105, 106): a fictional set, not a real building or a live-work proposal (GOV-15, GOV-16, B5R-33). The "residency" banner and floor plan read as property; one banner reads "KRTLED" |
+| 06 Forever EDO, The World Answers | A G.A.T.E.S. city; the four lead a crowd; light grows from one voice to the city and back | The grid; the reaction layer's light from verified events (D8-25) | A speculative city, labelled as concept (GOV-22) |
+
+Across all six sheets:
+
+- "AIM-B5R" heads music media (GOV-15).
+- The triangle-of-four-triangles emblem on the cards and the instrument's hub
+  is not the AIM logo (VIS-11), and it closely resembles a well-known
+  video-game emblem: keep it off anything released.
+- Titles and labels are baked in (GOV-23), and one sheet marks concept art
+  "LIVE POV" (GOV-17).
+- "Signal, Harmony, Movement" and "Human, Machine, Genome" attach meanings to
+  the G.A.T.E.S. words (TRI-03, TRI-13).
+- The man in Stuttr's locs and dark glasses is labelled EDO EDO BOY. They are
+  two characters (owner, 17 Nov): EDO EDO BOY follows his card, and Stuttr
+  keeps his approved clear gold-rimmed glasses, with any display added in
+  editing.
+- Sheet 6 numbers the worlds as albums I to VI before the 48-song list
+  exists.
+
+The crew for EDO Fusion (owner, 17 Nov; not canon, which keeps the trio):
+
+| Singer | From | Part | Style on the card |
+|---|---|---|---|
+| EDO EDO BOY | Nigeria (Edo) | Lead rap and percussion; plays Kirtled (D8-24) | Edo-rooted low-register rap, stutter-rhythm attacks |
+| NIKA NIKA | Germany (canon: Germany and Greece) | German lines, synth and sequencing | German precision rap, crystalline alto, sharp triplets |
+| MEI MEI | China | Mandarin lines, erhu | Mandarin-English melodic rap |
+| SOL SOL | Mexico | Spanish hooks, jarana | Bilingual hook rap, warm alto |
+
+None of the new singers has a voice in the private voice map yet; their
+voices follow the same rule as the trio's (approved, with consent). The
+proposal's two first stress tests are the right ones: the instrument's
+geometry (the CAM-KIR stand-ins already draw it to canon) and continuous
+tracking across 1, 3 and 9 views with one "now".
+
 ## Owner decisions
 
 1. The slate order, starting with EDO V3, the Kirtled introduction and the trio
@@ -305,3 +355,12 @@ Decided on 15 Nov:
 - The name is 8th Street Bravados (ledger 8).
 - The Ocular Director camera grammar is adopted as an editing layer and proved
   on EDO first ([DANCE8_OCULAR_DIRECTOR.md](DANCE8_OCULAR_DIRECTOR.md)).
+
+Decided on 17 Nov:
+
+- Canon keeps the trio (D8-22 unchanged); the EDO Fusion albums use the
+  four-singer crew above.
+- Stuttr and EDO EDO BOY are two characters.
+- EDO EDO BOY plays Kirtled on camera (canon D8-24, closed in v1.15.0).
+- The season is six albums of 48 songs; the owner will share the list before
+  the six worlds are matched to albums.

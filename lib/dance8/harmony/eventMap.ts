@@ -13,6 +13,7 @@
 import type { HarmonyTimeline, Triad } from "../contracts/harmony";
 import type { KirtledArmId, KirtledEventMap, TriangleId } from "../contracts/instrument";
 import type { CueMap } from "../contracts/scene";
+import { KIRTLED_PLAYER } from "../../canon/vocab";
 import { kirtledArms } from "./arms";
 import { readChord } from "./chords";
 import { sameTriad, triadName } from "./lattice";
@@ -167,7 +168,8 @@ export function checkEventMap(
  * approve: one event on each chord change that has a triangle, played on the
  * chord's anchor; the left hand takes the left branch (arm B), the right hand
  * the right branch (arm C), and the stem (arm A) goes to the hand that did not
- * play last. The camera holds and the dancers step. Chords with no honest
+ * play last. The camera holds and the dancers step. The player is EDO EDO
+ * BOY (canon D8-24) unless `performer` says otherwise. Chords with no honest
  * triangle are left out and listed.
  */
 export function draftEventMap(
@@ -192,7 +194,7 @@ export function draftEventMap(
     });
   }
   return {
-    map: { id: o.id, schemaVersion: 1, trackId: o.trackId, harmonyTimelineId: timeline.id, source: "prerecorded", performer: o.performer ?? null, status: "draft", events },
+    map: { id: o.id, schemaVersion: 1, trackId: o.trackId, harmonyTimelineId: timeline.id, source: "prerecorded", performer: o.performer ?? KIRTLED_PLAYER, status: "draft", events },
     skipped,
   };
 }

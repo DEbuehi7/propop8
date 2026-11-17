@@ -40,7 +40,7 @@ export function kirtledEvents(c: Ctx, trackId: string, o: { performer?: string; 
   let skipped: EventMapResult["skipped"] = [];
   const drafted = !existsSync(file) || !!o.replace;
   if (drafted) {
-    const d = draftEventMap(timeline, { id: `${trackId}-kirtled-events`, trackId, performer: o.performer ?? null });
+    const d = draftEventMap(timeline, { id: `${trackId}-kirtled-events`, trackId, performer: o.performer });
     writeFileSync(file, JSON.stringify(d.map, null, 2) + "\n");
     skipped = d.skipped;
     log(`drafted ${basename(file)}: ${d.map.events.length} event${d.map.events.length === 1 ? "" : "s"} from the chord timeline; edit the hands and camera moves, then set status "approved" with approvedBy and approvedAt`);

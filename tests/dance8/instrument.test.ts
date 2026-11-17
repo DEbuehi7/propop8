@@ -53,6 +53,7 @@ test("draft: one event per chord with a triangle, on the chord's anchor; branche
   assert.deepEqual([...map.events[2].visual.lights].sort(), ["A1", "B6"], "Cmaj7 lights C and Em");
   assert.equal(map.status, "draft");
   assert.equal(map.source, "prerecorded");
+  assert.equal(map.performer, "EDO EDO BOY", "the seated player, canon D8-24");
   assert.ok(map.events.every((e) => e.camera.action === "hold"));
 });
 
