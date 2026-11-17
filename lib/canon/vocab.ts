@@ -609,6 +609,9 @@ export const KIRTLED_TRIO = [
   { name: "IARA IARA", role: "Rhythmic hook leader, improvisational rapper", origin: "Brazil", voice: "Commanding mezzo; agile", corner: "top", mapNote: "E", colour: "gold" },
 ] as const;
 
+/** Who plays the Kirtled instrument on camera (D8-24, decided by the owner 2026-11-17). */
+export const KIRTLED_PLAYER = "EDO EDO BOY";
+
 /** Expansions of AIM and EDO seen on concept boards; none is used (TRI-14). */
 export const RETIRED_EXPANSIONS = [
   "Artificial-Intelligence-Mediated Evolutionary Design Optimization",

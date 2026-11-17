@@ -56,7 +56,7 @@ export interface KirtledEventMap {
   harmonyTimelineId: string;
   /** The song exists before the performance; the map is authored, not captured. */
   source: "prerecorded";
-  /** The cast id of the player, once decided (canon D8-24 is open). */
+  /** Who plays: EDO EDO BOY (canon D8-24, KIRTLED_PLAYER), unless a map names another cast id. */
   performer: string | null;
   status: "draft" | "approved";
   approvedBy?: string;

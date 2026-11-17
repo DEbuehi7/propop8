@@ -150,9 +150,16 @@ After a check of fifteen Kirtled concept images (the visual system check of 10 N
 
 - **D8-25** (SPEC): the visual reaction layer, NEW-1 of the EDO three-concept stress test. Genome Loom, Algorithmic Cypher and Resonance Chamber are drawn as silent overlays from a feature track Stuttr saves; energy peaks are light, never beats; beats, chord changes, move words and lyric chops wait for a named person's verification (HOLD until then); there is always a reduced-motion version. Built offline in `lib/dance8/reaction/` and explained in `docs/DANCE8_REACTION_LAYER.md`; the in-app toggle is not built. It is SPEC until the owner reviews the EDO proof, then it can be locked.
 
+## Decided by the owner (v1.15.0, 17 Nov 2026)
+
+After a check of the EDO Fusion "six cinematic worlds" sheets and four crew cards:
+
+- **D8-24** (closed): EDO EDO BOY is the seated Kirtled player, on camera, on the poster, in Live Motion and in the Kirtled Loop, in his artist card's look. Stuttr is a separate character and keeps his own look.
+- **D8-22** unchanged: canon keeps the trio. The EDO Fusion albums use their own four-singer crew (EDO EDO BOY, NIKA NIKA, MEI MEI, SOL SOL), recorded in `docs/DANCE8_SERIES.md`, not in canon.
+
 ## Still open
 
-P8O-08 recert price, P8O-09 L.E.T. page content, D8-24 the seated Kirtled player, B5R-31
+P8O-08 recert price, P8O-09 L.E.T. page content, B5R-31
 revenue threshold, data sources and binding thresholds, STU-04 Stuttr storage
 and rights, PL8-07 Plate8 public or
 admin-only, PUR-02 Pure permissions, VIS-03 amber and green hex values, VIS-09
@@ -184,3 +191,4 @@ condition for robotics hardware; EDO-M0 still waits on the H14 approval.
 - 1.12.0, 2026-11-10: D8-20 (the six-move table), D8-22 (the trio), D8-23 (album names) and TRI-14 (no AIM or EDO expansions) added and locked by the owner; D8-21 (the three-arm instrument, a conceptual spec, its arithmetic built in `lib/dance8/harmony/arms.ts`) added; D8-24 (the seated player) left open; a note on D8-10. No existing rule changed.
 - 1.13.0, 2026-11-11: GOV-31 (design continuity) added and locked by the owner, built in `lib/b5r/continuity/`; "Artificial Intelligence Multifamily" added to `RETIRED_EXPANSIONS` under TRI-14. No existing rule changed. The AIM-OCULAR boards (AIMV-101, 102) were checked against canon in `docs/aim-b5r/AIM_OCULAR.md`; they are concept art and add nothing to canon.
 - 1.14.0, 2026-11-11: D8-25 (the visual reaction layer, owner-approved NEW-1) added as SPEC, built offline in `lib/dance8/reaction/` with Stuttr's feature track in `lib/stuttr/visualFeatures.ts`. No existing rule changed.
+- 1.15.0, 2026-11-17: D8-24 closed by the owner (EDO EDO BOY is the seated Kirtled player; Stuttr stays a separate character), with `KIRTLED_PLAYER` added to the vocabulary and used as the event map's default performer. D8-22 unchanged. No other rule changed.
