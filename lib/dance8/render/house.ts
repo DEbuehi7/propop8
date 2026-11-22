@@ -293,12 +293,23 @@ export function grade(f: Img, k: number): void {
   let grains = GRAINS.get(key);
   if (!grains) {
     const rand = rng(1121);
+    // Film-like grain: Gaussian noise softened by a 3 x 3 binomial blur, so it reads as grain, not
+    // as per-pixel static (which also makes the encoded file several times larger).
     grains = Array.from({ length: 6 }, () => {
       const g = new Float32Array(f.w * f.h);
       for (let i = 0; i < g.length; i += 2) {
         const u = Math.max(1e-9, rand()), v = rand(), m = Math.sqrt(-2 * Math.log(u)) * 0.03;
         g[i] = m * Math.cos(2 * Math.PI * v);
         if (i + 1 < g.length) g[i + 1] = m * Math.sin(2 * Math.PI * v);
+      }
+      const t = new Float32Array(g.length), W = f.w, H = f.h;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        t[i] = (g[i - (x > 0 ? 1 : 0)] + 2 * g[i] + g[i + (x < W - 1 ? 1 : 0)]) / 4;
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        g[i] = (t[i - (y > 0 ? W : 0)] + 2 * t[i] + t[i + (y < H - 1 ? W : 0)]) / 4;
       }
       return g;
     });
