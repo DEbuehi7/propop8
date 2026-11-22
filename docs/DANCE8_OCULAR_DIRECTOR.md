@@ -468,11 +468,15 @@ content list says what it shows when:
   triangle further out each beat of the verified grid, as bright as the body
   moved on that beat; a ring where a foot comes down, B left and C right; the
   hips' side-to-side position across the hub). Rhythm only: no chord is lit.
-- `trace`: Dance8's reading of a take's measured body, framed exactly like
-  the dancer's own view: skeleton (left side cyan, right magenta), the feet's
-  and the torso centre's paths over the last 1.2 s, footfall rings, the hips'
-  orbit in the plane of the shoulders and the centre's travel, and along the
-  bottom a tick per beat with the body's energy on each beat. A take gets
+- `trace`: Dance8's reading of a take's measured body, framed like the
+  dancer's own view (scaled to the upper four-fifths of the cell): skeleton
+  (left side cyan, right magenta), the feet's and the torso centre's paths
+  over the last 1.2 s, footprints where a foot came down in the last bar, the
+  hips' orbit in the plane of the shoulders and the centre's travel. Along the
+  bottom, the pulse strip puts the last bar on one time axis: the song's
+  measured low (gold) and high (cyan) band energy from Stuttr's saved feature
+  track, the beats of the verified grid with the body's energy on each
+  (magenta), and the footfalls. A take gets
   body points with `"motion": "<take id>"`, read from
   `<song>/dance8/moves/` (D8-17). Move words are not drawn until the take's
   move track is approved.
