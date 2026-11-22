@@ -106,7 +106,8 @@ export interface GridPlan {
 /** A lyric file timed to the song (<song>/dance8/<song>.lyrics.json): what a lyrics cell shows. */
 export interface LyricTiming {
   status: "draft" | "approved";
-  lines: { text: string; start: number; end: number; section?: string; timing?: string }[];
+  /** words: forced-alignment word times (timing "aligned"); edit lists light each word as it is sung. */
+  lines: { text: string; start: number; end: number; section?: string; timing?: string; words?: { w: string; start: number; end: number }[] }[];
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -233,10 +234,11 @@ const isolatedBy = (c: VisualClip): string | undefined => (c.instrument ? KIRTLE
  * significant object of the song has an approved view of its own before a
  * multi-camera composition is approved, so nothing important (Kirtled above
  * all) disappears behind the dance and the grid. For Kirtled that view is
- * CAM-KIR-01; CAM-KIR-02 is wanted too. A draft lists what is missing.
+ * CAM-KIR-01; CAM-KIR-02 is wanted too. A draft lists what is missing. Shared
+ * by grid plans and edit lists (render/edit.ts).
  */
-function checkCompleteness(
-  plan: GridPlan, library: VisualClipLibrary, maxDrift: number,
+export function checkPrincipals(
+  trackId: string, showsKirtled: boolean, library: VisualClipLibrary, maxDrift: number,
   o: { approved?: boolean; principals?: PrincipalList | null },
   err: (path: string, message: string) => void, warn: (path: string, message: string) => void,
 ): void {
@@ -247,13 +249,12 @@ function checkCompleteness(
     miss("principals", `the song has no principal list (<song>/dance8/<song>.principals.json); each principal needs a view of its own before a final${tail}`);
     return;
   }
-  if (list.schemaVersion !== 1 || list.trackId !== plan.trackId || !Array.isArray(list.principals)) {
-    err("principals", `the principal list must be schemaVersion 1 for "${plan.trackId}" with a principals list`);
+  if (list.schemaVersion !== 1 || list.trackId !== trackId || !Array.isArray(list.principals)) {
+    err("principals", `the principal list must be schemaVersion 1 for "${trackId}" with a principals list`);
     return;
   }
   const ok = (c: VisualClip) => c.approvalStatus === "approved" && c.drift.status === "known" && c.drift.driftScore !== null && c.drift.driftScore <= maxDrift + EPS;
   const ids = new Set(list.principals.map((x) => x.id));
-  const showsKirtled = plan.blocks.some((b) => (b.cells ?? []).some((c) => c.view === "kirtled" || c.view === "instrument" || library.clips.find((x) => x.id === c.clipId)?.instrument));
   if (showsKirtled && !ids.has(KIRTLED_PRINCIPAL)) err("principals", `the plan shows Kirtled, so the principal list must name it ("${KIRTLED_PRINCIPAL}", an instrument)`);
   for (const pr of list.principals) {
     if (pr.id === KIRTLED_PRINCIPAL) {
@@ -430,7 +431,8 @@ export function resolveGrid(
   });
 
   // Listed with the block problems, so a final's report is complete in one run.
-  checkCompleteness(plan, library, map.maxDriftScore, o, err, warn);
+  const showsKirtled = plan.blocks.some((b) => (b.cells ?? []).some((c) => c.view === "kirtled" || c.view === "instrument" || byId.get(c.clipId ?? "")?.instrument));
+  checkPrincipals(plan.trackId, showsKirtled, library, map.maxDriftScore, o, err, warn);
   if (errors.length) return fail();
   const totalFrames = blocks.reduce((n, b) => n + b.frames, 0);
   return { ok: true, errors, warnings, blocks, width, height, fps: o.fps, totalFrames, transitionFrames: fadeFrames, audioOffsetSec: round6(blocks[0].startSec + origin) };
