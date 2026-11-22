@@ -148,9 +148,16 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
       const pd = join(dir, id, `${s.id}_${t3(s.songIn)}-${t3(s.songOut)}`);
       mkdirSync(pd, { recursive: true });
       // The motion reference: the stand-in alone on flat grey (its own matte), silent, exactly the piece's span.
-      ff(["-ss", t3(s.takeIn), "-t", t3(s.lengthSec), "-i", src, "-filter_complex",
-        `[0:v]crop=${w}:${h}:0:0[p];[0:v]crop=${w}:${h}:${w}:0,format=gray[m];[p][m]alphamerge[a];color=c=0x4a4a4a:s=${w}x${h}:r=${Math.round(z.fps)}[g];[g][a]overlay=shortest=1,format=yuv420p[v]`,
+      // Where the piece runs past either end of the take (a handle at the song's start or end), the take's
+      // first or last frame is held, so the reference, and so Kling's result, is always the piece's length.
+      const from = Math.max(0, s.takeIn), lead = from - s.takeIn, have = Math.min(s.takeOut, z.duration) - from;
+      if (!(have > 0.5)) throw new Error(`${s.id}: the take ${tk.file} has no picture for song ${t3(s.songIn)}-${t3(s.songOut)} s (take ${t3(s.takeIn)}-${t3(s.takeOut)} s, the file runs ${z.duration.toFixed(2)} s)`);
+      const tail = Math.max(0, s.lengthSec - lead - have);
+      const hold = lead > 0.01 || tail > 0.01 ? `,tpad=start_mode=clone:start_duration=${t3(lead)}:stop_mode=clone:stop_duration=${t3(tail + 0.2)}` : "";
+      ff(["-ss", t3(from), "-t", t3(have), "-i", src, "-filter_complex",
+        `[0:v]crop=${w}:${h}:0:0[p];[0:v]crop=${w}:${h}:${w}:0,format=gray[m];[p][m]alphamerge[a];color=c=0x4a4a4a:s=${w}x${h}:r=${Math.round(z.fps)}[g];[g][a]overlay=shortest=1${hold},format=yuv420p[v]`,
         "-map", "[v]", "-an", "-t", t3(s.lengthSec), "-c:v", "libx264", "-crf", "18", "-preset", "medium", "-movflags", "+faststart", join(pd, "reference.mp4")]);
+      const held = [lead > 0.01 ? `the first ${lead.toFixed(2)} s hold the take's first frame` : "", tail > 0.01 ? `the last ${tail.toFixed(2)} s hold its last frame (the take ends there)` : ""].filter(Boolean);
       if (voiceFile) ff(["-ss", t3(s.songIn), "-t", t3(s.lengthSec), "-i", voiceFile, "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", join(pd, "voice.wav")]);
       const sung = lines.filter((l) => l.start < s.songOut && l.end > s.songIn).map((l) => `  ${l.start.toFixed(2)}-${l.end.toFixed(2)} s  ${l.text}${l.timing === "aligned" ? "" : `  (${l.timing ?? "estimated"} timing)`}`);
       writeFileSync(join(pd, "CARD.txt"), [
@@ -158,7 +165,7 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
         "",
         "1. Kling, Motion Control",
         `   Character image: ${imageShown}${tk.role === "singer" ? ", head and shoulders, mouth fully visible" : ", head to feet"}`,
-        "   Motion reference: reference.mp4 (this folder)",
+        `   Motion reference: reference.mp4 (this folder)${held.length ? `; ${held.join(", ")}` : ""}`,
         `   Orientation: ${plan.orientation === "video" ? "Video (follows the reference; up to 30 s)" : "Image (follows the character image; up to 10 s)"}`,
         `   Aspect ${aspectOf(w, h)}, 1080p (720p for a cheap test), sound off`,
         "   Prompt:",
