@@ -13,7 +13,7 @@
 //   dance8 takes-assemble <song> <edit.json> [--matte u2net|none] [--model <onnx>]
 //     puts the pieces back on the song clock (cross-fading where neighbours
 //     overlap), mattes the result like the stand-ins, writes a side-by-side check
-//     per piece, and writes "<edit id>-<character>.json": the same cut with the
+//     per piece, and writes "<edit id>-<characters>.json": the same cut with the
 //     generated takes in place. Render that with dance8 edit.
 //
 // The cells, crops, lyrics and timing of the cut stay exactly as checked: only the
@@ -296,7 +296,9 @@ export function takesAssemble(c: Ctx, trackId: string, editPath: string, o: { ma
     out[id] = pack;
     log(`take ${id}: ${tk.pieces.length} pieces -> ${rel}${matte === "none" ? " (preview: no matte)" : ""}`);
   }
-  next.id = `${edit.id}-${Object.values(plan.takes)[0]?.character ?? "generated"}`;
+  // Named after every character it now shows, singer first: ocular-v5-stuttr-siren.
+  const cast = [...new Set(Object.values(plan.takes).map((t) => t.character))];
+  next.id = `${edit.id}-${cast.length ? cast.join("-") : "generated"}`;
   const editOut = join(dirname(file), `${next.id}.json`);
   writeFileSync(editOut, JSON.stringify(next, null, 1) + "\n");
   const check = loadEdit(c, trackId, editOut, { fps: 24, approved: false }).res;

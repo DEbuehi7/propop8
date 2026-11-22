@@ -620,7 +620,8 @@ paid for by the code.
    their song times (cross-fading the shared seconds), mattes it like the
    stand-ins (`--matte none` for a quick preview), writes `check.mp4` per
    piece (the stand-in beside the generated piece, with the voice) and writes
-   `<edit id>-<character>.json`: the same cut with the generated takes. A
+   `<edit id>-<characters>.json` (for EDO, `ocular-v5-stuttr-siren.json`: Stuttr
+   sings, Siren dances): the same cut with the generated takes. A
    generated take stays out of a final until someone sets `"approved": true`
    after its checks.
 

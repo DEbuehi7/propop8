@@ -436,12 +436,20 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     writeFileSync(join(cast, "character.txt"), "name: Stuttr\nlook: a test look\n");
     assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=gray:s=64x64", "-frames:v", "1", join(cast, "face.png")]).status, 0);
     // The singer's take starts 8 s before the song here, so the last piece runs past the end of the 33 s take.
+    // The dancer is a stand-in too, to become another character (who has no image in this library yet).
     const kitEdit: EditList = JSON.parse(JSON.stringify({ ...v5, id: "kit" }));
     kitEdit.takes.sing.songAt0Sec = 8;
+    kitEdit.takes.dance.standIn = true;
+    kitEdit.takes.dance.character = "siren";
     const fk = join(p.dir, "edits", "kit.json");
     writeFileSync(fk, JSON.stringify(kitEdit));
     const kit = klingTakes(c, "edit-song", fk, { maxSec: 10 });
-    assert.deepEqual(Object.keys(kit.plan.takes), ["sing"], "only the stand-in take is generated");
+    assert.deepEqual(Object.keys(kit.plan.takes), ["sing", "dance"]);
+    const dance = kit.plan.takes.dance;
+    assert.equal(dance.image, null);
+    assert.match(dance.imageShown, /refs\/cast\/siren\/fullbody\.png \(not in this kit: upload it from there\)/);
+    assert.ok(dance.pieces.every((s) => !existsSync(join(kit.dir, s.dir, "voice.wav"))), "a dancer has no lip sync");
+    assert.match(readFileSync(join(kit.dir, dance.pieces[0].dir, "CARD.txt"), "utf8"), /Siren, exactly as in the character image, head to feet/);
     const sing = kit.plan.takes.sing;
     assert.equal(sing.image, "character/stuttr-face.png");
     assert.ok(existsSync(join(kit.dir, sing.image!)));
@@ -463,14 +471,14 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.match(readFileSync(join(kit.dir, last.dir, "CARD.txt"), "utf8"), /the last \d\.\d\d s hold its last frame \(the take ends there\)/);
     assert.match(readFileSync(join(kit.dir, "README.md"), "utf8"), /takes-assemble edit-song /);
     assert.throws(() => takesAssemble(c, "edit-song", fk, { matte: "none" }), /not ready to assemble:\n {2}sing-01: no stuttr\.mp4/);
-    for (const s of sing.pieces) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, DOWNLOAD));
+    for (const s of [...sing.pieces, ...dance.pieces]) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, DOWNLOAD));
     const asm = takesAssemble(c, "edit-song", fk, { matte: "none" });
     assert.ok(existsSync(asm.takes.sing));
     assert.ok(sing.pieces.every((s) => readdirSync(join(kit.dir, s.dir)).includes("check.mp4")));
     const swapped = JSON.parse(readFileSync(asm.edit, "utf8")) as EditList;
-    assert.equal(swapped.id, "kit-stuttr");
+    assert.equal(swapped.id, "kit-stuttr-siren", "named after everyone it now shows");
     assert.deepEqual([swapped.takes.sing.standIn, swapped.takes.sing.approved, swapped.takes.sing.songAt0Sec, swapped.takes.sing.generated?.pieces], [false, false, 0, sing.pieces.length]);
-    assert.deepEqual(swapped.takes.dance, kitEdit.takes.dance, "the dancer's take is untouched");
+    assert.deepEqual([swapped.takes.dance.standIn, swapped.takes.dance.character, swapped.takes.dance.motion, swapped.takes.dance.generated?.pieces], [false, "siren", "take1", dance.pieces.length], "the trace still reads the stand-in's measured body");
     const pk = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", asm.takes.sing], { encoding: "utf8" });
     const pj = JSON.parse(pk.stdout);
     assert.deepEqual([pj.streams[0].width, pj.streams[0].height], [320, 160], "packed: picture and matte side by side");
