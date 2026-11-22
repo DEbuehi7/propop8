@@ -18,7 +18,7 @@ import { cover, coverRegion, grade, img, placePerformer, studio, toRgb24 } from 
 import type { LyricTiming, Rect } from "../../lib/dance8/render/grid";
 import { editRender, editScore, fontName } from "../../lib/dance8/editPipeline";
 import { songPaths } from "../../lib/dance8/pipeline";
-import { klingTakes, takesAssemble, DOWNLOAD } from "../../lib/dance8/klingTakesPipeline";
+import { klingTakes, takesAssemble, downloadName } from "../../lib/dance8/klingTakesPipeline";
 import { addSong, buildMaster, type Ctx } from "../../lib/stuttr/commands";
 
 const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
@@ -450,6 +450,7 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.match(dance.imageShown, /refs\/cast\/siren\/fullbody\.png \(not in this kit: upload it from there\)/);
     assert.ok(dance.pieces.every((s) => !existsSync(join(kit.dir, s.dir, "voice.wav"))), "a dancer has no lip sync");
     assert.match(readFileSync(join(kit.dir, dance.pieces[0].dir, "CARD.txt"), "utf8"), /Siren, exactly as in the character image, head to feet/);
+    assert.match(readFileSync(join(kit.dir, dance.pieces[0].dir, "CARD.txt"), "utf8"), /Save the final download in this folder as siren\.mp4/);
     const sing = kit.plan.takes.sing;
     assert.equal(sing.image, "character/stuttr-face.png");
     assert.ok(existsSync(join(kit.dir, sing.image!)));
@@ -471,7 +472,7 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.match(readFileSync(join(kit.dir, last.dir, "CARD.txt"), "utf8"), /the last \d\.\d\d s hold its last frame \(the take ends there\)/);
     assert.match(readFileSync(join(kit.dir, "README.md"), "utf8"), /takes-assemble edit-song /);
     assert.throws(() => takesAssemble(c, "edit-song", fk, { matte: "none" }), /not ready to assemble:\n {2}sing-01: no stuttr\.mp4/);
-    for (const s of [...sing.pieces, ...dance.pieces]) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, DOWNLOAD));
+    for (const [tk, s] of [...sing.pieces.map((x) => [sing, x] as const), ...dance.pieces.map((x) => [dance, x] as const)]) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, downloadName(tk.character)));
     const asm = takesAssemble(c, "edit-song", fk, { matte: "none" });
     assert.ok(existsSync(asm.takes.sing));
     assert.ok(sing.pieces.every((s) => readdirSync(join(kit.dir, s.dir)).includes("check.mp4")));

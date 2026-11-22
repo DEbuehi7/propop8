@@ -614,7 +614,8 @@ paid for by the code.
    `character.txt`, and its `face.png` or `fullbody.png` is copied into the
    kit.
 2. In Kling: Motion Control per piece, then Lip Sync with `voice.wav` for
-   the singer's pieces; save each download as `stuttr.mp4` in its folder.
+   the singer's pieces; save each download in its folder under the name of
+   the character it now shows (`stuttr.mp4`, `siren.mp4`).
 3. `npm run dance8 -- takes-assemble <song> <edit.json> --model <u2net onnx>`
    checks every download first, lays the pieces on one song-length canvas at
    their song times (cross-fading the shared seconds), mattes it like the

@@ -9,7 +9,7 @@
 //     the singer's isolated voice for lip sync, and a card with the settings and
 //     prompt. Nothing is uploaded or paid for here.
 //   (you generate each piece in Kling: Motion Control, then Lip Sync for the singer,
-//    and save the download as stuttr.mp4 in the piece's folder)
+//    and save the download in the piece's folder as <character>.mp4: stuttr.mp4, siren.mp4)
 //   dance8 takes-assemble <song> <edit.json> [--matte u2net|none] [--model <onnx>]
 //     puts the pieces back on the song clock (cross-fading where neighbours
 //     overlap), mattes the result like the stand-ins, writes a side-by-side check
@@ -34,8 +34,8 @@ import { loadCharacter, refsRoot, takeFor } from "./klingPipeline";
 import type { EditList } from "./contracts/edit";
 
 export const TAKES_PLAN_SCHEMA = "dance8.kling-takes.v1";
-/** The file name a piece's Kling download is saved as. */
-export const DOWNLOAD = "stuttr.mp4";
+/** The file name a piece's Kling download is saved as: the character it now shows (stuttr.mp4, siren.mp4). */
+export const downloadName = (character: string) => `${character.replace(/[^A-Za-z0-9._-]/g, "_")}.mp4`;
 
 export interface TakesPlan {
   schema: typeof TAKES_PLAN_SCHEMA;
@@ -172,7 +172,7 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
         `   ${promptFor(tk.role, ch.name, ch.look)}`,
         ...(voiceFile ? ["", "2. Kling, Lip Sync on the video from step 1", "   Audio: voice.wav (this folder): the voice alone, exactly this piece's span", "   Sung here:", ...(sung.length ? sung : ["  (no sung line: Lip Sync can be skipped)"])] : []),
         "",
-        `${voiceFile ? "3" : "2"}. Save the final download in this folder as ${DOWNLOAD}`,
+        `${voiceFile ? "3" : "2"}. Save the final download in this folder as ${downloadName(character)}`,
         "",
         ...(tk.role === "singer"
           ? ["Reject and redo if: the mouth is more than 2 frames off the voice on b, p and m; the face, hair, glasses or clothes drift;",
@@ -189,7 +189,7 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
   }
   writeFileSync(join(dir, "plan.json"), JSON.stringify(plan, null, 1) + "\n");
   writeFileSync(join(dir, "README.md"), readme(plan));
-  log(`${join(dir, "plan.json")}\nnext: generate each piece (its CARD.txt), save it as ${DOWNLOAD} in its folder, then: npm run dance8 -- takes-assemble ${trackId} ${plan.edit.shown}`);
+  log(`${join(dir, "plan.json")}\nnext: generate each piece (its CARD.txt), save it in its folder as <character>.mp4 (${Object.values(plan.takes).map((t) => downloadName(t.character)).filter((v, i, a) => a.indexOf(v) === i).join(", ")}), then: npm run dance8 -- takes-assemble ${trackId} ${plan.edit.shown}`);
   return { dir, plan };
 }
 
@@ -209,7 +209,7 @@ function readme(plan: TakesPlan): string {
     "",
     "1. Open CARD.txt. In Kling, Motion Control: the character image it names, reference.mp4 as the motion, the settings and the prompt it gives.",
     "2. Singer pieces: run Lip Sync on that result with voice.wav (the voice alone, cut to the piece).",
-    `3. Save the final download in the piece's folder as ${DOWNLOAD}.`,
+    `3. Save the final download in the piece's folder as ${Object.values(plan.takes).map((t) => `${downloadName(t.character)} (${t.role} pieces)`).join(", ")}.`,
     "",
     "Then, in the repo:",
     "",
@@ -227,8 +227,8 @@ function readme(plan: TakesPlan): string {
   ].join("\n");
 }
 
-function findDownload(dir: string): string | null {
-  const exact = join(dir, DOWNLOAD);
+function findDownload(dir: string, name: string): string | null {
+  const exact = join(dir, name);
   if (existsSync(exact)) return exact;
   const mp4 = readdirSync(dir).filter((n) => /\.(mp4|mov)$/i.test(n) && !/^(reference|check)\.mp4$/i.test(n)).map((n) => join(dir, n));
   return mp4.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0] ?? null;
@@ -249,8 +249,8 @@ export function takesAssemble(c: Ctx, trackId: string, editPath: string, o: { ma
   const problems: string[] = [];
   const downloads = new Map<string, string>();
   for (const tk of Object.values(plan.takes)) for (const s of tk.pieces) {
-    const f = findDownload(join(dir, s.dir));
-    if (!f) { problems.push(`${s.id}: no ${DOWNLOAD} in ${s.dir}`); continue; }
+    const f = findDownload(join(dir, s.dir), downloadName(tk.character));
+    if (!f) { problems.push(`${s.id}: no ${downloadName(tk.character)} in ${s.dir}`); continue; }
     const z = probe(f);
     if (!(z.duration >= s.lengthSec - 0.25)) problems.push(`${s.id}: ${basename(f)} runs ${z.duration.toFixed(2)} s, the piece needs ${s.lengthSec} s`);
     downloads.set(s.id, f);
