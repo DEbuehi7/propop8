@@ -54,18 +54,23 @@ export function resample(src: Uint8Array, sw: number, sh: number, ch: number, x0
   return out;
 }
 
-/** The region of a picture that fills a w x h cell ("cover"), from crop box `box` (fractions), pushed in `zoom` times. */
-export function coverRegion(sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1): [number, number, number, number] {
+/**
+ * The region of a picture that fills a w x h cell ("cover"), from crop box
+ * `box` (fractions), pushed in `zoom` times, centred on (fx, fy) of the box as
+ * far as the box allows (the middle by default).
+ */
+export function coverRegion(sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, fx = 0.5, fy = 0.5): [number, number, number, number] {
   const x0 = box[0] * sw, y0 = box[1] * sh, x1 = box[2] * sw, y1 = box[3] * sh;
   let rw = (x1 - x0) / zoom, rh = (y1 - y0) / zoom;
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   if (rw / rh > w / h) rw = rh * (w / h); else rh = rw / (w / h);
+  const cx = Math.min(Math.max(x0 + fx * (x1 - x0), x0 + rw / 2), x1 - rw / 2);
+  const cy = Math.min(Math.max(y0 + fy * (y1 - y0), y0 + rh / 2), y1 - rh / 2);
   return [Math.max(0, cx - rw / 2), Math.max(0, cy - rh / 2), rw, rh];
 }
 
 /** A picture (8-bit RGB) filling a w x h cell. */
-export function cover(src: Uint8Array, sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, stride = sw): Img {
-  const [x, y, rw, rh] = coverRegion(sw, sh, box, w, h, zoom);
+export function cover(src: Uint8Array, sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, stride = sw, fx = 0.5, fy = 0.5): Img {
+  const [x, y, rw, rh] = coverRegion(sw, sh, box, w, h, zoom, fx, fy);
   return { w, h, d: resample(src, sw, sh, 3, x, y, rw, rh, w, h, stride) };
 }
 
@@ -288,12 +293,23 @@ export function grade(f: Img, k: number): void {
   let grains = GRAINS.get(key);
   if (!grains) {
     const rand = rng(1121);
+    // Film-like grain: Gaussian noise softened by a 3 x 3 binomial blur, so it reads as grain, not
+    // as per-pixel static (which also makes the encoded file several times larger).
     grains = Array.from({ length: 6 }, () => {
       const g = new Float32Array(f.w * f.h);
       for (let i = 0; i < g.length; i += 2) {
         const u = Math.max(1e-9, rand()), v = rand(), m = Math.sqrt(-2 * Math.log(u)) * 0.03;
         g[i] = m * Math.cos(2 * Math.PI * v);
         if (i + 1 < g.length) g[i + 1] = m * Math.sin(2 * Math.PI * v);
+      }
+      const t = new Float32Array(g.length), W = f.w, H = f.h;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        t[i] = (g[i - (x > 0 ? 1 : 0)] + 2 * g[i] + g[i + (x < W - 1 ? 1 : 0)]) / 4;
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        g[i] = (t[i - (y > 0 ? W : 0)] + 2 * t[i] + t[i + (y < H - 1 ? W : 0)]) / 4;
       }
       return g;
     });
@@ -386,5 +402,214 @@ export function spriteFromRgba(rgba: Uint8Array, w: number, h: number, o: { shad
 export function toRgb24(f: Img, level = 1): Uint8Array {
   const out = new Uint8Array(f.d.length);
   for (let i = 0; i < f.d.length; i++) { const v = f.d[i] * level; out[i] = v <= 0 ? 0 : v >= 1 ? 255 : Math.round(v * 255); }
+  return out;
+}
+
+// ---------- Dance8 trace and the Kirtled floor ----------
+
+/**
+ * Where a point of a take's video (fractions of the frame) lands in a w x h
+ * cell that shows the take through `box` with `fit`, exactly as placePerformer
+ * places the picture, so a trace beside the dancer is framed like the dancer.
+ */
+export function viewMapper(box: readonly number[], fit: "stage" | "cover", pw: number, ph: number, w: number, h: number): (x: number, y: number) => [number, number] {
+  if (fit === "cover") {
+    const [x0, y0, rw, rh] = coverRegion(pw, ph, box, w, h);
+    return (x, y) => [((x * pw - x0) * w) / rw, ((y * ph - y0) * h) / rh];
+  }
+  const x0 = box[0] * pw, y0 = box[1] * ph, rw = (box[2] - box[0]) * pw, rh = (box[3] - box[1]) * ph;
+  const s = Math.min(w / rw, h / rh);
+  const dw = Math.max(2, Math.round(rw * s)), dh = Math.max(2, Math.round(rh * s));
+  const dx = Math.floor((w - dw) / 2), dy = h - dh;
+  return (x, y) => [(x * pw - x0) * s + dx, (y * ph - y0) * s + dy];
+}
+
+export interface TraceFrame {
+  /** The body now (33 points as video fractions with visibility), or null. */
+  body: { x: number; y: number; v: number }[] | null;
+  bones: readonly (readonly [number, number])[];
+  joints: readonly number[];
+  /** Recent positions, oldest first, with their age in seconds: each foot and the torso's centre. */
+  trails: { left: [number, number, number][]; right: [number, number, number][]; centre: [number, number, number][] };
+  trailSec: number;
+  /** Footfalls in the last half second: foot, where, seconds since. */
+  falls: { foot: "left" | "right"; x: number; y: number; ago: number }[];
+  /** Travel of the torso's centre over the last quarter second, in video fractions. */
+  travel: { dx: number; dy: number } | null;
+  /** Footprints: footfalls of the last bar, where they landed, seconds since (the footwork path). */
+  prints: { foot: "left" | "right"; x: number; y: number; ago: number }[];
+  /**
+   * The pulse strip along the bottom: the last `spanSec` of the song on one time axis, now at the right.
+   * The song's measured low and high band energy (0-1, from Stuttr's feature track; null without one),
+   * the verified grid's beats with the body's measured energy on each, and the footfalls.
+   */
+  strip: {
+    spanSec: number;
+    audio: { low: number; high: number }[] | null;
+    beats: { ago: number; down: boolean; energy: number | null }[];
+    falls: { ago: number; foot: "left" | "right" }[];
+  };
+  minVisibility: number;
+}
+
+const ringPts = (cx: number, cy: number, rx: number, ry: number, rot = 0, n = 32): [number, number][] =>
+  Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * 2 * Math.PI, x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+    return [cx + x * Math.cos(rot) - y * Math.sin(rot), cy + x * Math.sin(rot) + y * Math.cos(rot)];
+  });
+
+/** The Dance8 analysis cell: dark ground, the body's lines and paths as light (cyan left, magenta right, gold centre). */
+export function traceImage(w: number, h: number, f: TraceFrame, mapFull: (x: number, y: number) => [number, number]): Img {
+  // The body is drawn in the upper part of the cell, framed like the dancer's view scaled to fit; the pulse strip takes the rest.
+  const BODY = 0.8;
+  const map = (x: number, y: number): [number, number] => { const [X, Y] = mapFull(x, y); return [w / 2 + (X - w / 2) * BODY, Y * BODY]; };
+  const out = img(w, h), gr = gradient(w, h);
+  for (let i = 0; i < out.d.length; i++) out.d[i] = gr[i] * 0.22;
+  const buf = new LightBuffer(w, h);
+  const lw = Math.max(1, Math.min(w, h) / 200);
+  // A faint measuring grid, so the cell reads as an instrument and not as a picture.
+  const step = Math.max(12, Math.round(Math.min(w, h) / 8));
+  for (let x = step; x < w; x += step) buf.line(x, 0, x, h, 1, PALETTE.cyan, 0.05);
+  for (let y = step; y < h; y += step) buf.line(0, y, w, y, 1, PALETTE.cyan, 0.05);
+  const trail = (pts: [number, number, number][], c: RGB, width: number) => {
+    for (let i = 1; i < pts.length; i++) {
+      const a = Math.max(0, 1 - pts[i][2] / f.trailSec);
+      const [x0, y0] = map(pts[i - 1][0], pts[i - 1][1]), [x1, y1] = map(pts[i][0], pts[i][1]);
+      buf.line(x0, y0, x1, y1, width, c, 0.55 * a * a);
+    }
+  };
+  trail(f.trails.left, PALETTE.cyan, lw * 1.2);
+  trail(f.trails.right, PALETTE.magenta, lw * 1.2);
+  trail(f.trails.centre, PALETTE.gold, lw * 1.4);
+  // Footprints of the last bar: a sole (toe and heel) where each foot came down, fading as the bar moves on.
+  for (const x of f.prints) {
+    const [cx, cy] = map(x.x, x.y), sz = Math.max(3, h * 0.02), a = Math.max(0, 1 - x.ago / f.strip.spanSec), c = x.foot === "left" ? PALETTE.cyan : PALETTE.magenta;
+    const side = x.foot === "left" ? -1 : 1;
+    buf.polyline(ringPts(cx + side * sz * 0.1, cy - sz * 0.45, sz * 0.36, sz * 0.55, side * 0.12, 18), lw * 1.2, c, 0.75 * a, true, false);
+    buf.polyline(ringPts(cx, cy + sz * 0.5, sz * 0.28, sz * 0.3, 0, 14), lw * 1.2, c, 0.75 * a, true, false);
+  }
+  for (const x of f.falls) {
+    const [cx, cy] = map(x.x, x.y), r = (0.02 + 0.06 * Math.min(1, x.ago / 0.45)) * h;
+    buf.polyline(ringPts(cx, cy, r, r * 0.35), lw * 1.4, x.foot === "left" ? PALETTE.cyan : PALETTE.magenta, Math.max(0, 1 - x.ago / 0.45), true, true);
+  }
+  const b = f.body;
+  if (b) {
+    const ok = (i: number) => b[i].v >= f.minVisibility;
+    const at = (i: number) => map(b[i].x, b[i].y);
+    const mid = (i: number, j: number): [number, number] => { const [ax, ay] = at(i), [bx, by] = at(j); return [(ax + bx) / 2, (ay + by) / 2]; };
+    // The body drawn thick, as a lit figure of the dancer's own proportions: each limb a capsule as wide as a
+    // share of his torso length, left side cyan, right side magenta, torso and head white; overlaps add light,
+    // so the joints glow. Then a thin core line through each limb and a ring on each joint.
+    const torso = ok(11) && ok(12) && ok(23) && ok(24) ? Math.hypot(mid(11, 12)[0] - mid(23, 24)[0], mid(11, 12)[1] - mid(23, 24)[1]) : 0;
+    if (torso > 0) {
+      const sw = Math.hypot(at(11)[0] - at(12)[0], at(11)[1] - at(12)[1]);
+      const capsule = (a: [number, number], z: [number, number], k: number, c: RGB, al = 0.2) => { buf.line(a[0], a[1], z[0], z[1], torso * k, c, al); buf.line(a[0], a[1], z[0], z[1], torso * k * 0.55, c, al * 0.9); };
+      capsule(mid(11, 12), mid(23, 24), Math.max(0.5, (sw / torso) * 0.9), PALETTE.white, 0.12);
+      capsule(at(11), at(12), 0.2, PALETTE.white, 0.14);
+      capsule(at(23), at(24), 0.24, PALETTE.white, 0.14);
+      const LIMBS: [number, number, number][] = [[11, 13, 0.24], [13, 15, 0.18], [12, 14, 0.24], [14, 16, 0.18], [23, 25, 0.32], [25, 27, 0.24], [24, 26, 0.32], [26, 28, 0.24], [27, 31, 0.14], [28, 32, 0.14]];
+      for (const [i, j, k] of LIMBS) if (ok(i) && ok(j)) capsule(at(i), at(j), k, i % 2 === 1 ? PALETTE.cyan : PALETTE.magenta, 0.22);
+      if (ok(0)) {
+        const [nx, ny] = at(0), [sx, sy] = mid(11, 12);
+        capsule([nx, ny], [sx, sy], 0.16, PALETTE.white, 0.14);
+        const r = torso * 0.24;
+        buf.line(nx, ny - r * 0.35, nx, ny - r * 0.35, r * 2, PALETTE.white, 0.16);
+        buf.polyline(ringPts(nx, ny - r * 0.35, r, r * 1.12, 0, 28), lw * 1.2, PALETTE.white, 0.7, true, true);
+      }
+    }
+    for (const [i, j] of f.bones) {
+      if (!ok(i) || !ok(j)) continue;
+      const [x0, y0] = at(i), [x1, y1] = at(j);
+      const side = i % 2 === 1 && j % 2 === 1 ? PALETTE.cyan : i % 2 === 0 && j % 2 === 0 && i > 10 ? PALETTE.magenta : PALETTE.white;
+      buf.polyline([[x0, y0], [x1, y1]], lw * 1.3, side, 0.8, false, true);
+    }
+    for (const i of f.joints) if (ok(i) && i !== 0) { const [x, y] = at(i); const r = Math.max(lw * 2.2, torso * 0.07); buf.polyline(ringPts(x, y, r, r, 0, 16), lw * 1.2, PALETTE.gold, 0.9, true, true); }
+    // The orbit: a ring round the hips in the plane of the shoulders; the vector: where the centre is travelling.
+    const L = b[11], R = b[12], LH = b[23], RH = b[24];
+    if ([L, R, LH, RH].every((p) => p.v >= f.minVisibility)) {
+      const [hx, hy] = map((LH.x + RH.x) / 2, (LH.y + RH.y) / 2), [lx, ly] = map(L.x, L.y), [rx, ry] = map(R.x, R.y);
+      const rot = Math.atan2(ly - ry, lx - rx), sw = Math.hypot(lx - rx, ly - ry);
+      buf.polyline(ringPts(hx, hy, Math.max(sw * 0.9, lw * 8), Math.max(sw * 0.25, lw * 3), rot, 40), lw, PALETTE.gold, 0.6, true, true);
+      if (f.travel) {
+        const [ax, ay] = map((LH.x + RH.x) / 2 + f.travel.dx * 4, (LH.y + RH.y) / 2 + f.travel.dy * 4);
+        if (Math.hypot(ax - hx, ay - hy) > lw * 3) buf.polyline([[hx, hy], [ax, ay]], lw * 1.4, PALETTE.magenta, 0.8, false, true);
+      }
+    }
+  }
+  // The pulse strip: the song, the beat and the body on one time axis (the last spanSec, now at the right edge).
+  const y0 = h * (BODY + 0.03), y1 = h - Math.max(3, h * 0.025), ym = (y0 + y1) / 2, half = (y1 - y0) / 2;
+  const x0 = w * 0.04, x1 = w * 0.96, xAt = (ago: number) => x1 - ((x1 - x0) * ago) / f.strip.spanSec;
+  buf.line(x0, ym, x1, ym, 1, PALETTE.white, 0.18);
+  const au = f.strip.audio;
+  if (au && au.length > 1) au.forEach((v, i) => {
+    const x = x0 + ((x1 - x0) * i) / (au.length - 1);
+    if (v.low > 0.02) buf.line(x, ym, x, ym - v.low * half, Math.max(1, (x1 - x0) / au.length * 0.4), PALETTE.gold, 0.55);
+    if (v.high > 0.02) buf.line(x, ym, x, ym + v.high * half, Math.max(1, (x1 - x0) / au.length * 0.4), PALETTE.cyan, 0.55);
+  });
+  for (const bt of f.strip.beats) {
+    const x = xAt(bt.ago);
+    buf.line(x, y0, x, y1, lw * (bt.down ? 1.6 : 1), bt.down ? PALETTE.gold : PALETTE.white, bt.down ? 0.7 : 0.3);
+    if (bt.energy !== null) buf.polyline(ringPts(x, ym - (bt.energy - 0.5) * half * 1.6, lw * 2.4, lw * 2.4, 0, 12), lw * 1.4, PALETTE.magenta, 0.9, true, true);
+  }
+  for (const x of f.strip.falls) { const X = xAt(x.ago); buf.polyline([[X, y1], [X - lw * 3, y1 - lw * 4], [X + lw * 3, y1 - lw * 4]], lw, x.foot === "left" ? PALETTE.cyan : PALETTE.magenta, 0.9, true, false); }
+  buf.line(x1, y0, x1, y1, lw * 1.4, PALETTE.white, 0.6);
+  addLight(out, lightOf(buf, 1.6), w, h, 1);
+  return out;
+}
+
+export interface FloorFrame {
+  barPhase: number;
+  beatsPerBar: number;
+  /** The body's measured energy on the beat now (0-1, null when unreadable). */
+  energy: number | null;
+  /** Footfall lights near now (song seconds kept as seconds since). */
+  hits: { triangle: string; hand: "left" | "right"; ago: number }[];
+  /** Where the dancer's hips are across the frame now and over the last second, against the take's middle (fractions of the frame width; depth is not measured). */
+  hips?: { now: number; trail: [number, number][] } | null;
+}
+
+/**
+ * The Kirtled floor seen from above (the canonical Y of D8-21): on every beat
+ * of the verified grid one triangle further from the hub lights on each arm,
+ * as bright as the body moved on that beat; a footfall rings the triangle it
+ * lands on (B left, C right). Rhythm only: no chord is lit (harmony is HOLD).
+ */
+export function floorImage(w: number, h: number, f: FloorFrame): Img {
+  const out = img(w, h), gr = gradient(w, h);
+  for (let i = 0; i < out.d.length; i++) out.d[i] = gr[i] * 0.4;
+  const g = kirtledViewGeometry(w, h, "overhead");
+  const buf = new LightBuffer(w, h);
+  const lw = Math.max(1, Math.min(w, h) / 240);
+  const beats = f.barPhase * f.beatsPerBar, beatIn = Math.floor(beats), since = beats - beatIn;
+  const step = Math.floor((beatIn * 8) / f.beatsPerBar);
+  const strike = Math.exp(-since * 3) * (0.35 + 0.65 * (f.energy ?? 0.3));
+  const warm = Math.exp(-f.barPhase * f.beatsPerBar * 1.2);
+  buf.polyline(g.hub, lw * 1.6, PALETTE.gold, 0.45 + 0.4 * warm, true, warm > 0.2);
+  g.arms.forEach((arm) => arm.forEach((tri, k) => {
+    const on = k === step || k === step + 1;
+    buf.polyline(tri, lw * (on ? 1.2 + 1.4 * strike : 1), PALETTE.gold, on ? 0.35 + 0.65 * strike : 0.28, true, on && strike > 0.15);
+  }));
+  // The dancer on the stage: his hips' side-to-side position, measured, drawn across the hub (no depth is claimed).
+  if (f.hips) {
+    const [hx, hy] = [(g.hub[0][0] + g.hub[1][0] + g.hub[2][0]) / 3, (g.hub[0][1] + g.hub[1][1] + g.hub[2][1]) / 3];
+    const span = Math.min(w, h) * 0.9;
+    for (let i = 1; i < f.hips.trail.length; i++) {
+      const [a0, x0] = f.hips.trail[i - 1], [, x1] = f.hips.trail[i];
+      buf.line(hx + x0 * span, hy, hx + x1 * span, hy, lw * 1.6, PALETTE.magenta, 0.5 * (1 - a0));
+    }
+    const x = hx + f.hips.now * span;
+    buf.polyline(ringPts(x, hy, lw * 4, lw * 4, 0, 16), lw * 1.6, PALETTE.magenta, 0.95, true, true);
+  }
+  const ARM: Record<string, number> = { A: 0, B: 1, C: 2 };
+  for (const x of f.hits) {
+    const tri = g.arms[ARM[x.triangle[0]]]?.[Number(x.triangle.slice(1)) - 1];
+    if (!tri || x.ago < 0 || x.ago > 0.6) continue;
+    const a = 1 - x.ago / 0.6, c = x.hand === "left" ? PALETTE.cyan : PALETTE.magenta;
+    buf.polyline(tri, lw * (1.8 + a * 1.6), c, 0.5 + 0.5 * a, true, true);
+    const cx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, cy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
+    const side = Math.hypot(tri[1][0] - tri[0][0], tri[1][1] - tri[0][1]);
+    buf.polyline(ringPts(cx, cy, side * (0.3 + 0.25 * (1 - a)), side * (0.3 + 0.25 * (1 - a)), 0, 24), lw * 1.4, c, a, true, true);
+  }
+  addLight(out, lightOf(buf, 1.6), w, h, 1);
   return out;
 }

@@ -26,16 +26,35 @@ import type { AspectRatio } from "./scene";
  */
 export type EditTime = number | { bar: number; beat?: number } | { block: string; at?: "land" | "start" };
 
-export type EditLayout = "one" | "three" | "nine";
+export type EditLayout = "one" | "three" | "quad" | "eight" | "nine" | "inset";
 
-/** "one": full. "three": big, tr (top or left small cell), br. "nine": r0c0 .. r2c2, row by row. */
-export type EditSlot = "full" | "big" | "tr" | "br" | `r${0 | 1 | 2}c${0 | 1 | 2}`;
+/**
+ * "one": full. "three": big, tr (top or left small cell), br. "quad": q0 .. q3,
+ * a 2 x 2, row by row. "eight": the big cell of "three" and e0 .. e7 beside it
+ * (two columns of four in landscape). "nine": r0c0 .. r2c2, row by row.
+ * "inset": full, and pip, a tall panel on the right beside the dancer (a band along the bottom in portrait).
+ */
+export type EditSlot = "full" | "big" | "tr" | "br" | `q${0 | 1 | 2 | 3}` | `e${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}` | `r${0 | 1 | 2}c${0 | 1 | 2}` | "pip";
 
 /** Cells each layout has, in slot order. */
 export const EDIT_SLOTS: Record<EditLayout, readonly EditSlot[]> = {
   one: ["full"],
   three: ["big", "tr", "br"],
+  quad: ["q0", "q1", "q2", "q3"],
+  eight: ["big", "e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7"],
   nine: ["r0c0", "r0c1", "r0c2", "r1c0", "r1c1", "r1c2", "r2c0", "r2c1", "r2c2"],
+  inset: ["full", "pip"],
+};
+
+/**
+ * The Ocular Director's layout states by name: S1 one view (the singer's face
+ * while he sings, the dancer in a solo), S2 the singer and two related views,
+ * S3 the 2 x 2 explanatory grid (singer, dancer, Kirtled, Dance8 trace), S4 the
+ * singer anchoring eight related views, S5 nine views of one moment, D1 the
+ * dancer with one small technical inset.
+ */
+export const LAYOUT_STATE: Record<EditLayout, "S1" | "S2" | "S3" | "S4" | "S5" | "D1"> = {
+  one: "S1", three: "S2", quad: "S3", eight: "S4", nine: "S5", inset: "D1",
 };
 
 /**
@@ -71,16 +90,29 @@ export interface EditBlock {
 /** A crop of a frame, as fractions: [left, top, right, bottom]. */
 export type CropBox = [number, number, number, number];
 
-/** Story footage: a clip of the song's clip library, placed once on the song. */
+/** Where a still plate is looked at: the centre of the view (fractions of the frame) and how close (1 = the whole frame). */
+export interface StillView { x: number; y: number; zoom: number }
+
+/**
+ * Story footage, placed once on the song: a clip of the song's clip library,
+ * or a still plate (an image) that the camera moves across slowly.
+ */
 export interface EditSource {
-  clip: string;
-  /** Song time where the clip's inSec plays. */
+  /** A clip of the song's clip library. */
+  clip?: string;
+  /** Or a still plate: an image file (PNG, JPEG or WebP) relative to <song>/dance8/. */
+  still?: string;
+  /** Song time where the clip's inSec plays, or the still's move starts. */
   origin: EditTime;
-  /** Song time where its use ends. If the clip is shorter than its window it is slowed (frames repeat), at most 15%. */
+  /** Song time where its use ends. If a clip is shorter than its window it is slowed (frames repeat), at most 15%. */
   end: EditTime;
   inSec?: number;
   /** Keep part of the picture out (a watermark, an edge). */
   crop?: CropBox;
+  /** A still's move over its whole window, eased. Default: a slow push to the centre, zoom 1 to 1.06. */
+  move?: { from: StillView; to: StillView };
+  /** A still a person has approved for a final (clips carry their approval in the clip library). */
+  approved?: boolean;
 }
 
 /**
@@ -97,6 +129,22 @@ export interface EditTake {
   role: "singer" | "dancer";
   /** The owner's own take standing in for the character; a final refuses it. */
   standIn: boolean;
+  /**
+   * The same video read as body points (canon D8-17): a take id in
+   * <song>/dance8/moves/ (<id>.poses.json and <id>.moves.json, which holds its
+   * sync). Needed by trace cells and the Kirtled floor.
+   */
+  motion?: string;
+  /**
+   * The character a generated take must become (a refs/cast/<character>/ folder: face.png for the singer,
+   * fullbody.png for the dancer), and the voice whose approved take, or the song's vocal stem, drives its lip sync.
+   */
+  character?: string;
+  voice?: string;
+  /** A generated take (not a stand-in) still needs a person's approval before a final shows it. */
+  approved?: boolean;
+  /** Set by takes-assemble: the plan and pieces this take was put together from. */
+  generated?: { plan: string; planSha256: string; pieces: number };
 }
 
 /** A named view of a take: the crop, and whether it shows the face (counts as lip-sync) or the body. */
@@ -127,7 +175,20 @@ export type EditContent =
       viewFrom?: string;
       backdrop?: EditBackdrop;
     })
-  | (Span & { kind: "kirtled"; view: "studio" | "pattern" | "overhead" | "detail"; title?: { text: string; note?: string } })
+  | (Span & {
+      kind: "kirtled"; view: "studio" | "pattern" | "overhead" | "detail" | "floor"; title?: { text: string; note?: string };
+      /** floor: the take whose measured body lights the floor (its footfalls and its movement on each beat). */
+      take?: string;
+    })
+  | (Span & {
+      /**
+       * Dance8's reading of a take's measured body, on the analysis ground and
+       * framed like `view`: the skeleton, the path of the feet and the torso's
+       * centre, footfalls, and the body's turn and travel. Measurements only:
+       * no move word is drawn until the take's move track is approved.
+       */
+      kind: "trace"; take: string; view: string;
+    })
   | (Span & { kind: "lyrics" });
 
 export interface EditList {
@@ -147,7 +208,7 @@ export interface EditList {
   flares?: EditTime[];
   /** The title at the end: from `at`, the lyrics give way to it until the picture fades out. */
   endCard?: { text: string; at: EditTime };
-  /** Clip pairs too alike to appear in one edit. */
+  /** Clips or stills (by clip id or still file) too alike to appear in one edit. */
   similar?: [string, string][];
   /** Clips left out and why, for the record. */
   notUsed?: Record<string, string>;

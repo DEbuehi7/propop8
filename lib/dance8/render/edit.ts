@@ -27,7 +27,7 @@
 
 import type { CueMap, VisualClip, VisualClipLibrary } from "../contracts/scene";
 import { FRAME_SIZE } from "../contracts/scene";
-import type { CropBox, EditBackdrop, EditContent, EditLayout, EditList, EditSlot, EditTake, EditTime, EditTransition, TakeView } from "../contracts/edit";
+import type { CropBox, EditBackdrop, EditContent, EditLayout, EditList, EditSlot, EditTake, EditTime, EditTransition, StillView, TakeView } from "../contracts/edit";
 import { EDIT_SLOTS } from "../contracts/edit";
 import type { PrincipalList } from "../contracts/instrument";
 import { barToSec } from "../authoring/validateCueMap";
@@ -126,7 +126,22 @@ export function editSlots(width: number, height: number): Record<EditLayout, Par
   const ch = (height - 2 * m - 2 * g) / 3;
   const nine: Partial<Record<EditSlot, Rect>> = {};
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) nine[`r${r}c${c}` as EditSlot] = { x: m + c * (cw + g), y: m + r * (ch + g), w: cw, h: ch };
-  return { one: { full: { x: 0, y: 0, w: width, h: height } }, three, nine };
+  const qw = (width - 2 * m - g) / 2, qh = (height - 2 * m - g) / 2;
+  const quad: Partial<Record<EditSlot, Rect>> = {};
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) quad[`q${r * 2 + c}` as EditSlot] = { x: m + c * (qw + g), y: m + r * (qh + g), w: qw, h: qh };
+  // eight: the big cell of "three", and the space beside it as two columns of four (landscape) or two rows of four.
+  const big = three.big!, eight: Partial<Record<EditSlot, Rect>> = { big };
+  const side: Rect = width >= height ? { x: big.x + big.w + g, y: m, w: width - (big.x + big.w + g) - m, h: height - 2 * m } : { x: m, y: big.y + big.h + g, w: width - 2 * m, h: height - (big.y + big.h + g) - m };
+  const [cols, rows] = side.w >= side.h ? [4, 2] : [2, 4];
+  const ew = (side.w - (cols - 1) * g) / cols, eh = (side.h - (rows - 1) * g) / rows;
+  for (let k = 0; k < 8; k++) eight[`e${k}` as EditSlot] = { x: side.x + (k % cols) * (ew + g), y: side.y + Math.floor(k / cols) * (eh + g), w: ew, h: eh };
+  // inset: the whole frame, and beside the dancer a tall panel on the right, as in the Dance8 studio (landscape: 30% of
+  // the width, the frame's height inside the margins); in portrait a band along the bottom.
+  const pip: Rect = width >= height
+    ? { x: width - Math.round(width * 0.3) - 2 * m, y: 2 * m, w: Math.round(width * 0.3), h: height - 4 * m }
+    : { x: 2 * m, y: height - Math.round(height * 0.3) - 2 * m, w: width - 4 * m, h: Math.round(height * 0.3) };
+  const inset: Partial<Record<EditSlot, Rect>> = { full: { x: 0, y: 0, w: width, h: height }, pip };
+  return { one: { full: { x: 0, y: 0, w: width, h: height } }, three, quad, eight, nine, inset };
 }
 
 // ---------- resolved edit ----------
@@ -149,7 +164,12 @@ export interface ResolvedEditBlock {
 
 export interface ResolvedSource {
   id: string;
-  clip: VisualClip;
+  /** A clip of the clip library, or a still plate (its file, relative to <song>/dance8/). */
+  clip?: VisualClip;
+  still?: string;
+  /** A still's move over its window. */
+  move?: { from: StillView; to: StillView };
+  approved?: boolean;
   origin: number;
   end: number;
   inSec: number;
@@ -167,12 +187,15 @@ export interface EditMetrics {
   /** Share of sung time with the singer's face on screen, and with it filling at least a quarter of the frame. */
   faceOnScreenPct: number;
   faceQuarterFramePct: number;
+  /** Share of sung time with the singer's face the largest picture on screen (or as large as any other). */
+  faceLargestPct: number;
   bySection: Record<string, number>;
   layoutChanges: number;
   landings: number;
   landingsOnGrid: number;
   layoutChangesAtMusicalEdges: number;
   storyClipsUsed: number;
+  stillsUsed: number;
   maxStretch: number;
 }
 
@@ -295,6 +318,13 @@ export function framePlan(res: Pick<EditResolution, "blocks" | "content" | "slot
   return { kind: "geometry", layers: [{ alpha: 1, cells }], progress: s.progress, from: s.from, to: s.to };
 }
 
+/** Where the camera looks on a still at song second t: its move, eased over the source's whole window. */
+export function stillViewAt(src: Pick<ResolvedSource, "origin" | "end" | "move">, t: number): StillView {
+  const m = src.move ?? { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.06 } };
+  const e = ease((t - src.origin) / Math.max(1e-6, src.end - src.origin));
+  return { x: m.from.x + (m.to.x - m.from.x) * e, y: m.from.y + (m.to.y - m.from.y) * e, zoom: m.from.zoom + (m.to.zoom - m.from.zoom) * e };
+}
+
 /** How visible a take's performer is at t (its fade in and out). */
 export function performerAlpha(e: ResolvedContent, t: number): number {
   let m = 1;
@@ -415,7 +445,7 @@ export function resolveEdit(
     blockIds.add(b.id);
     const land = timeOf(b.land, `${p}.land`, false);
     if (land === null) return;
-    if (!(b.layout in EDIT_SLOTS)) { err(`${p}.layout`, "must be one, three or nine"); return; }
+    if (!(b.layout in EDIT_SLOTS)) { err(`${p}.layout`, "must be one, three, quad, eight, nine or inset"); return; }
     const slots = Object.values(b.cells ?? {});
     const want = EDIT_SLOTS[b.layout];
     if (slots.length !== want.length || want.some((s) => !slots.includes(s))) { err(`${p}.cells`, `a "${b.layout}" layout fills each of ${want.join(", ")} once`); return; }
@@ -458,6 +488,9 @@ export function resolveEdit(
     else phrases.push([l.start, l.end]);
   }
   for (const [a, b] of phrases) { edges.add(round6(a)); edges.add(round6(b)); }
+  // V5 (owner's brief, 21 Nov): a sung line's onset counts too when its timing was aligned to the voice, so a
+  // split or a merge can land on the line it serves. Estimated lines (spread by syllables) do not.
+  for (const l of sung) if (l.timing === "aligned") edges.add(round6(l.start));
   const sectionStart = new Map<string, number>();
   for (const l of sung) if (l.section && !sectionStart.has(l.section)) sectionStart.set(l.section, l.start);
   for (const v of sectionStart.values()) edges.add(round6(v));
@@ -492,25 +525,39 @@ export function resolveEdit(
   const clipOwner = new Map<string, string>();
   for (const [id, s] of Object.entries(edit.sources ?? {})) {
     const p = `sources.${id}`;
-    const clip = byId.get(s.clip);
-    if (!clip) { err(`${p}.clip`, `no clip "${s.clip}" in the clip library`); continue; }
-    if (clipOwner.has(s.clip)) { err(`${p}.clip`, `${s.clip} is already placed as "${clipOwner.get(s.clip)}"; a clip has one placement, so its frames never show twice`); continue; }
-    clipOwner.set(s.clip, id);
-    if (clip.approvalStatus === "retired") err(p, `${clip.id} is retired`);
-    const measured = clip.drift.status === "known" && clip.drift.driftScore !== null && clip.drift.driftScore <= map.maxDriftScore + EPS;
-    if (clip.approvalStatus !== "approved" || !measured) miss(p, `${clip.id} is ${clip.approvalStatus !== "approved" ? "not approved" : "unmeasured or over the drift limit"}; a final uses approved clips only${tail}`);
+    if (!!s.clip === !!s.still) { err(p, "names a clip or a still, not both and not neither"); continue; }
+    const key = (s.clip ?? s.still)!;
+    if (clipOwner.has(key)) { err(`${p}.${s.clip ? "clip" : "still"}`, `${key} is already placed as "${clipOwner.get(key)}"; ${s.clip ? "a clip" : "a still"} has one placement, so it never shows twice`); continue; }
+    clipOwner.set(key, id);
     const origin = timeOf(s.origin, `${p}.origin`, true);
     const end = timeOf(s.end, `${p}.end`, true);
     if (origin === null || end === null) continue;
+    if (!(end > origin)) { err(`${p}.end`, "must be after origin"); continue; }
+    const crop = s.crop ?? [0, 0, 1, 1];
+    if (!(crop.length === 4 && crop[0] >= 0 && crop[1] >= 0 && crop[2] <= 1 && crop[3] <= 1 && crop[2] > crop[0] && crop[3] > crop[1])) err(`${p}.crop`, "must be [left, top, right, bottom] fractions inside the frame");
+    if (s.still) {
+      if (!/\.(png|jpe?g|webp)$/i.test(s.still)) err(`${p}.still`, "must be a PNG, JPEG or WebP image");
+      if (s.inSec !== undefined) err(`${p}.inSec`, "a still has no in-point; its move covers the window");
+      const move = s.move ?? { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.06 } };
+      for (const [k, v] of Object.entries(move)) {
+        if (!(v && v.x >= 0 && v.x <= 1 && v.y >= 0 && v.y <= 1 && v.zoom >= 1 && v.zoom <= 3)) err(`${p}.move.${k}`, "needs x and y from 0 to 1 and a zoom from 1 to 3");
+      }
+      if (!s.approved) miss(p, `the still ${s.still} is not approved; a final uses approved stills only${tail}`);
+      sources[id] = { id, still: s.still, origin: round6(origin), end: round6(end), inSec: 0, stretch: 1, crop, move, approved: !!s.approved };
+      continue;
+    }
+    if (s.move !== undefined) err(`${p}.move`, "only a still has a move; a clip moves by itself (use push on its content)");
+    const clip = byId.get(s.clip!);
+    if (!clip) { err(`${p}.clip`, `no clip "${s.clip}" in the clip library`); continue; }
+    if (clip.approvalStatus === "retired") err(p, `${clip.id} is retired`);
+    const measured = clip.drift.status === "known" && clip.drift.driftScore !== null && clip.drift.driftScore <= map.maxDriftScore + EPS;
+    if (clip.approvalStatus !== "approved" || !measured) miss(p, `${clip.id} is ${clip.approvalStatus !== "approved" ? "not approved" : "unmeasured or over the drift limit"}; a final uses approved clips only${tail}`);
     const inSec = s.inSec ?? 0;
     if (!(inSec >= 0 && inSec < clip.durationSec)) { err(`${p}.inSec`, `must be from 0 to under ${clip.durationSec} s`); continue; }
-    if (!(end > origin)) { err(`${p}.end`, "must be after origin"); continue; }
     const stretch = round6(Math.max(1, (end - origin) / (clip.durationSec - inSec)));
     if (stretch > MAX_STRETCH + EPS) err(p, `${clip.id} has ${(clip.durationSec - inSec).toFixed(2)} s for a ${(end - origin).toFixed(2)} s window: it would play ${Math.round((stretch - 1) * 100)}% slow (at most ${Math.round((MAX_STRETCH - 1) * 100)}%); shorten the window or regenerate the clip longer`);
     else if (stretch > 1 + EPS) warn(p, `${clip.id} plays ${((stretch - 1) * 100).toFixed(1)}% slow to fill its window (frames repeat)`);
     if (clip.trick) err(p, `${clip.id} is a skate-trick clip; tricks land on their chord change and are never free footage (D8-16)`);
-    const crop = s.crop ?? [0, 0, 1, 1];
-    if (!(crop.length === 4 && crop[0] >= 0 && crop[1] >= 0 && crop[2] <= 1 && crop[3] <= 1 && crop[2] > crop[0] && crop[3] > crop[1])) err(`${p}.crop`, "must be [left, top, right, bottom] fractions inside the frame");
     sources[id] = { id, clip, origin: round6(origin), end: round6(end), inSec, stretch, crop };
   }
   for (const [a, b] of edit.similar ?? []) {
@@ -524,6 +571,7 @@ export function resolveEdit(
     if (!["singer", "dancer"].includes(tk.role)) err(`${p}.role`, "must be singer or dancer");
     if (!Number.isFinite(tk.songAt0Sec)) err(`${p}.songAt0Sec`, "must be the file second where song time 0 falls");
     if (tk.standIn) miss(p, `"${id}" is a stand-in take; a final shows the character's own performance${tail}`);
+    else if (tk.generated && !tk.approved) miss(p, `"${id}" is a generated take nobody has approved yet; set "approved": true after its checks${tail}`);
   }
   for (const [id, v] of Object.entries(edit.views ?? {})) {
     const c = v.box;
@@ -575,10 +623,21 @@ export function resolveEdit(
         backdropR = { source: bd.source, dim: bd.dim ?? 1, push: bd.push ?? 0, then };
       } else if (e.kind === "kirtled") {
         showsKirtled = true;
-        if (!["studio", "pattern", "overhead", "detail"].includes(e.view)) err(`${p}.view`, "must be studio, pattern, overhead or detail");
+        if (!["studio", "pattern", "overhead", "detail", "floor"].includes(e.view)) err(`${p}.view`, "must be studio, pattern, overhead, detail or floor");
         if (e.view === "overhead" || e.view === "detail") miss(p, `the Kirtled ${e.view} view here is a drawn stand-in; a final shows the instrument itself${tail}`);
+        if (e.view === "floor") {
+          const tk = e.take ? edit.takes?.[e.take] : undefined;
+          if (!tk) err(`${p}.take`, "the floor needs the take whose body lights it");
+          else if (!tk.motion) err(`${p}.take`, `take "${e.take}" has no motion (its body points in <song>/dance8/moves/)`);
+          miss(p, `the Kirtled floor here is drawn, not the built stage${tail}`);
+        }
+      } else if (e.kind === "trace") {
+        const tk = edit.takes?.[e.take];
+        if (!tk) err(`${p}.take`, `no take "${e.take}"`);
+        else if (!tk.motion) err(`${p}.take`, `take "${e.take}" has no motion (its body points in <song>/dance8/moves/)`);
+        if (!(e.view in (edit.views ?? {}))) err(`${p}.view`, `no view "${e.view}"`);
       } else if (e.kind === "lyrics") showsLyrics = true;
-      else { err(`${p}.kind`, "must be story, take, kirtled or lyrics"); return; }
+      else { err(`${p}.kind`, "must be story, take, kirtled, trace or lyrics"); return; }
       out.push({ ...(e as EditContent), t0: round6(t0), t1: round6(t1), fadeInSec, fadeOutSec, backdropR } as ResolvedContent);
     });
     content[cell] = out;
@@ -596,7 +655,7 @@ export function resolveEdit(
   const res: EditResolution = { ...base, endSec: round6(endSec), totalFrames: Math.round(endSec * o.fps), blocks, sources, content, accents, flares, vocalEdges, endCard };
   const empty = new Set<string>();
   const bySec: Record<string, [number, number]> = {};
-  let sungFrames = 0, faceFrames = 0, quarterFrames = 0;
+  let sungFrames = 0, faceFrames = 0, quarterFrames = 0, largestFrames = 0;
   const lines = lyrics?.lines ?? [];
   for (let k = 0; k < res.totalFrames; k++) {
     const t = k / o.fps;
@@ -610,18 +669,19 @@ export function resolveEdit(
     const sec = line.section ?? "";
     bySec[sec] ??= [0, 0];
     bySec[sec][0]++;
-    let area = -1;
+    let area = -1, other = 0;
     for (const layer of plan.layers) for (const c of layer.cells) {
       const e = c.entry;
-      if (!e || e.kind !== "take") continue;
-      const tk = edit.takes[e.take], v = edit.views[e.view];
-      if (tk?.role !== "singer" || v?.shows !== "face") continue;
-      if (c.alpha * layer.alpha * performerAlpha(e, t) < 0.5) continue;
       const r = c.clip ?? c.rect;
-      area = Math.max(area, (r.w * r.h) / (width * height));
+      const a = (r.w * r.h) / (width * height);
+      const face = !!e && e.kind === "take" && edit.takes[e.take]?.role === "singer" && edit.views[e.view]?.shows === "face";
+      if (!face) { if (c.alpha * layer.alpha >= 0.5) other = Math.max(other, a); continue; }
+      if (c.alpha * layer.alpha * performerAlpha(e as ResolvedContent, t) < 0.5) continue;
+      area = Math.max(area, a);
     }
     if (area >= 0) { faceFrames++; bySec[sec][1]++; }
     if (area >= 0.25) quarterFrames++;
+    if (area >= 0 && area >= other - 1e-3) largestFrames++;
   }
   if (lyrics && sungFrames > 0 && faceFrames / sungFrames < MIN_LIP_SYNC - EPS) {
     const gaps = lines.filter((l) => { const mid = (l.start + l.end) / 2; return !framePlan(res, mid).layers.some((ly) => ly.cells.some((c) => c.entry?.kind === "take" && edit.takes[c.entry.take]?.role === "singer" && edit.views[c.entry.view]?.shows === "face")); });
@@ -632,12 +692,13 @@ export function resolveEdit(
   const pct = (a: number, b: number) => Math.round((1000 * a) / Math.max(1, b)) / 10;
   res.metrics = {
     sungSec: round6(sung.reduce((n, l) => n + (l.end - l.start), 0)),
-    faceOnScreenPct: pct(faceFrames, sungFrames), faceQuarterFramePct: pct(quarterFrames, sungFrames),
+    faceOnScreenPct: pct(faceFrames, sungFrames), faceQuarterFramePct: pct(quarterFrames, sungFrames), faceLargestPct: pct(largestFrames, sungFrames),
     bySection: Object.fromEntries(Object.entries(bySec).map(([k, [n, f]]) => [k, pct(f, n)])),
     layoutChanges, landings: blocks.length - 1,
     landingsOnGrid: blocks.slice(1).filter((b) => offGrid(map, b.land) <= 1e-3).length,
     layoutChangesAtMusicalEdges: atEdges,
-    storyClipsUsed: usedSources.size,
+    storyClipsUsed: [...usedSources].filter((id) => !sources[id]?.still).length,
+    stillsUsed: [...usedSources].filter((id) => !!sources[id]?.still).length,
     maxStretch: Math.max(1, ...Object.values(sources).map((s) => s.stretch)),
   };
   return { ...res, ok: true };
