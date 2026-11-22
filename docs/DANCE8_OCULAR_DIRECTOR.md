@@ -240,8 +240,8 @@ smooth switching. A cell can show a view instead of a clip:
 
 Not built yet: cell labels (GOV-23 keeps them a separate approved layer), the
 dancer diagram (it needs the dance take read as poses with `dance8 moves`),
-instrument footage (it waits for the approved Kirtled still, the player's
-identity under D8-24 and the go-ahead for new footage), and the glasses view:
+instrument footage (it waits for the approved Kirtled still and the go-ahead
+for new footage; the player is EDO EDO BOY, canon D8-24), and the glasses view:
 Stuttr's approved clear gold-rimmed glasses, with the display drawn in
 editing.
 

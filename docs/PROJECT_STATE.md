@@ -32,7 +32,7 @@ Every `export const …VERSION… = "…"` in `lib/`.
 | `API_VERSION` | 2023-06-01 | `lib/b5r/screen/claude.ts` |
 | `SCREEN_VERSION` | aim-b5r-photo-screen-1 | `lib/b5r/screen/report.ts` |
 | `WEATHERING_VERSION` | aim-weathering-0.1.0 | `lib/b5r/weathering/serviceLife.ts` |
-| `CANON_VERSION` | 1.14.0 | `lib/canon/index.ts` |
+| `CANON_VERSION` | 1.15.0 | `lib/canon/index.ts` |
 | `ENGINE_VERSION` | 1.1.0 | `lib/engineVersion.ts` |
 
 ## Pages
@@ -149,9 +149,9 @@ Names only, never values (CLAUDE.md rule 2). Where each one is read:
 
 ## Canon
 
-Version 1.14.0: 22 studies, 218 entries.
+Version 1.15.0: 22 studies, 218 entries.
 
-- By status: CONCEPT 9 · LOCKED 147 · OPEN 9 · PROPOSED 14 · RESEARCH 15 · SPEC 24
+- By status: CONCEPT 9 · LOCKED 148 · OPEN 8 · PROPOSED 14 · RESEARCH 15 · SPEC 24
 - By build state: built 57 · n/a 107 · not_built 29 · partial 19 · unchecked 6
 
 Locked or specified, but not fully built (what is still missing):

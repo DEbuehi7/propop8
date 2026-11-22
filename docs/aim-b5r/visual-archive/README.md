@@ -26,7 +26,7 @@ All indexed images are `TAGGED`; none is reviewed or approved yet.
 Technical: everything is `CONCEPT` except the three Fresno portal screenshots
 (`REQUIRES_VALIDATION`, provisional; no parcel was selected in them).
 
-110 images are indexed:
+116 images are indexed:
 
 - AIMV-001 to 046: received 7 to 9 Oct.
 - AIMV-047 to 072: received 11 Oct, daytime. Triadic Planet boards, EDO robots,
@@ -65,6 +65,14 @@ Technical: everything is `CONCEPT` except the three Fresno portal screenshots
   the one-path, five-camera poster (110). Fiction about a music video's
   cameras, not building surveillance. The check is in
   `docs/DANCE8_OCULAR_DIRECTOR.md`.
+- AIMV-111 to 116: received 17 Nov. Six contact sheets of the EDO Fusion
+  "six cinematic worlds" (MED-01), a ChatGPT proposal: the forge, the four
+  singers, the Kirtled instrument, the van on 8th, the building that dances
+  and the finale. Concept art: the instrument breaks D8-21, the hub mark is
+  not the AIM logo, and the building and route are fictional sets only. Four
+  crew cards came with them (EDO EDO BOY, NIKA NIKA, MEI MEI, SOL SOL); like
+  the trio's cards (D8-22) they stay with the owner and are not registered.
+  The check is in `docs/DANCE8_SERIES.md`.
 
 Duplicates and derivatives:
 
