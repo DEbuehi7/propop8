@@ -31,6 +31,12 @@
  *   npm run dance8 -- grid edo ~/StuttrLibrary/edo/dance8/grids/proof.json
  *     The Ocular Director grid (docs/DANCE8_OCULAR_DIRECTOR.md): one, three or nine approved clips
  *     on screen at once, one primary, layouts changing on bar lines, over the voice master.
+ *   npm run dance8 -- edit edo ~/StuttrLibrary/edo/dance8/edits/ocular-v2.json --check
+ *   npm run dance8 -- edit edo ~/StuttrLibrary/edo/dance8/edits/ocular-v2.json --height 720
+ *     An edit list (docs/DANCE8_OCULAR_DIRECTOR.md, "Edit lists"): the whole cut, cell by cell,
+ *     checked against the owner's rules (each clip placed once, layouts changing at musical
+ *     edges, the singer's face on screen while the voice sings), drawn in the house look.
+ *     --check reports only; --from/--to render part of it; --height draws a lighter draft.
  *   npm run dance8 -- kirtled-events edo                      (the Kirtled event map: which triangle, hand, chord, light
  *                                                            and camera move for each played event; drafted once from the
  *                                                            chord timeline for you to edit and approve, checked every run)
@@ -58,6 +64,7 @@ import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
 import { albumPreview } from "../../lib/stuttr/desk/desk";
 import { reactionInputsExist, renderReaction } from "../../lib/dance8/reactionPipeline";
 import { gridRender } from "../../lib/dance8/gridPipeline";
+import { editRender } from "../../lib/dance8/editPipeline";
 import { kirtledEvents } from "../../lib/dance8/instrumentPipeline";
 
 const argv = process.argv.slice(2);
@@ -66,7 +73,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha", "performer"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha", "performer", "from", "to", "height", "font", "display-font"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -86,6 +93,8 @@ const usage = `Dance8 (${ctx.library})
   album preview <albumId> [--short <cueId>] [--only <trackId,...>]   (local drafts for every eligible track; same as npm run stuttr -- album-preview)
   react <features.json> --windows <windows.csv|json> --out <folder> [--base <footage.mp4>] [--events <verified.json>] [--song <id>] [--expect-sha <audio sha256>]
   grid <trackId> <plan.json> [--approved] [--master en|suno] [--fps 24]   (camera grid: 1, 3 or 9 clips on bar lines, in <song>/dance8/renders/)
+  edit <trackId> <edit.json> [--check] [--approved] [--from <sec>] [--to <sec>] [--height 720] [--master en|suno] [--fps 24] [--font FILE] [--display-font FILE]
+                                                     (an edit list: the whole cut, checked against the owner's rules, in the house look)
   kirtled-events <trackId> [--performer <castId>] [--replace]   (the Kirtled event map: drafted from the chords once, then checked)`;
 
 async function checkMoves(trackId: string, ids: string[]) {
@@ -232,6 +241,21 @@ async function main() {
       const f = flag("fps");
       if (f !== undefined && !(Number.isInteger(Number(f)) && Number(f) > 0)) throw new Error("--fps must be a whole number");
       await gridRender(ctx, a1, expand(a2), { approved: has("approved"), master: flag("master"), fps: f === undefined ? undefined : Number(f) });
+      break;
+    }
+    case "edit": {
+      if (!a1 || !a2) throw new Error("edit needs a track id and an edit list file");
+      const num = (name: string, whole = false) => {
+        const v = flag(name);
+        if (v === undefined) return undefined;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0 || (whole && !Number.isInteger(n))) throw new Error(`--${name} must be ${whole ? "a whole number" : "a number of seconds"}`);
+        return n;
+      };
+      await editRender(ctx, a1, expand(a2), {
+        checkOnly: has("check"), approved: has("approved"), master: flag("master"), fps: num("fps", true), from: num("from"), to: num("to"), height: num("height", true),
+        font: flag("font") ? expand(flag("font")!) : undefined, displayFont: flag("display-font") ? expand(flag("display-font")!) : undefined,
+      });
       break;
     }
     case "kirtled-events": {

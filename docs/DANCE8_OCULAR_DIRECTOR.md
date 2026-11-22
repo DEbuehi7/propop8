@@ -247,14 +247,16 @@ editing.
 
 ### The playable page
 
-The same rules run live in a private page for the owner (not in this public
-repo, because it carries the song and the footage). It plays the song and
-switches between one view, a mix of three or nine, and an auto director that
-picks a layout for each two-bar phrase from the measured energy and the sung
-lines. Every change, including the viewer's, lands on the next bar line with a
-half-beat glide. Each viewing gets a new variation; the time of day picks a
-night or day cut; from the third visit the grid opens more often. The page's
-auto director keeps the rejected V3 instrument shots (6 and 17) off screen.
+A private page for the owner (not in this public repo, because it carries the
+song and the footage). Since 21 Nov it plays the approved EDO v2 cut live in
+the browser: the edit list is resolved by `render/edit.ts` and drawn with the
+same blocks, split and collapse geometry, studio, mattes and grade as the
+edit renderer (WebGL for the picture, a type layer over it). Under the stage
+the cut's timeline shows each block by layout, each landing and each sung
+line, and says why the current block is there; the viewer can scrub, and turn
+the lyrics, labels and grade off to look at the picture. The first version,
+an auto director that chose a layout for every two bars, gave way to the cut
+the owner approved.
 
 ## Instrument cameras
 
@@ -370,6 +372,146 @@ anywhere must name it as a principal. A draft lists the same gaps as
 warnings. The rule is built into Dance8; adding it to the canon register
 waits for the owner (it changes the canon lock and its version).
 
+## Edit lists
+
+Built on 21 Nov 2026, after the owner approved the EDO v2 cut. A grid plan
+lays clips into bar-long blocks; an edit list is the whole cut, written by a
+person: what every cell shows at every moment, and why each layout change
+happens. `lib/dance8/contracts/edit.ts` (the format),
+`lib/dance8/render/edit.ts` (the check and the frame plan, pure),
+`lib/dance8/render/house.ts` (the look, pure pixels) and
+`lib/dance8/editPipeline.ts` (the render), tested in
+`tests/dance8/edit.test.ts`.
+
+```
+npm run dance8 -- edit edo ~/StuttrLibrary/edo/dance8/edits/ocular-v2.json --check
+npm run dance8 -- edit edo ~/StuttrLibrary/edo/dance8/edits/ocular-v2.json --height 720
+npm run dance8 -- edit edo ~/StuttrLibrary/edo/dance8/edits/ocular-v2.json --from 68 --to 84
+```
+
+`--check` reports and renders nothing; `--height` draws a lighter draft;
+`--from` and `--to` render part of the song; `--approved` makes a final.
+
+### What the check holds an edit to
+
+The rules came from the owner's notes on the first grid draft (scenes
+repeating, no shared look, little lip-sync, splits unconnected to the music
+or to each other, unmotivated changes between one screen and many):
+
+1. **Each story clip is placed once.** A source names a clip of the song's
+   clip library and one mapping from song time to clip time, so no frame of it
+   can show twice. A clip listed twice is refused, and nothing may show a
+   source outside its placement. Clips named `similar` (too alike, such as two
+   renders of the same set) never both appear.
+2. **Slow, not stretched thin.** A clip shorter than its window is slowed, at
+   most 15% (frames repeat). Past that, shorten the window or make the clip
+   longer.
+3. **On the grid.** Every landing sits on the eighth-note grid of the cue map.
+   A geometric change takes half a beat and a dissolve one beat, both ending on
+   the landing.
+4. **Layouts change at musical edges.** A change of layout lands within one
+   beat of the voice entering or leaving (lyric phrases, section starts, sung
+   cues) or where a cue section starts. Every block says why in `why`.
+5. **The singer is seen singing.** While the voice sings, a take whose role is
+   singer, in a view that shows the face, is on screen at least 95% of the
+   time.
+6. **Light within limits.** The gold triangle at each landing never comes more
+   than three times a second (D8-25); a frame pulses on the downbeat only.
+7. **Finals.** `--approved` refuses draft or unmeasured clips, draft lyric
+   timing (GOV-23), stand-in takes and the drawn Kirtled stand-ins, and runs
+   the completeness rule. A draft lists them as warnings.
+
+### The format
+
+```json
+{
+  "id": "proof", "schemaVersion": 1, "trackId": "song", "aspect": "16:9",
+  "sources": { "street": { "clip": "street-wide", "origin": 0, "end": { "bar": 2 } } },
+  "takes": { "sing": { "file": "takes/sing_pack.mp4", "songAt0Sec": 0.9, "role": "singer", "standIn": true } },
+  "views": { "face": { "box": [0, 0, 1, 1], "shows": "face" } },
+  "blocks": [
+    { "id": "intro", "land": 0, "layout": "one", "cells": { "world": "full" } },
+    { "id": "verse", "land": { "bar": 2 }, "layout": "three", "cells": { "face": "big", "world": "tr", "body": "br" },
+      "primary": "world", "lyrics": "band", "why": "the voice enters" }
+  ],
+  "content": {
+    "world": [{ "kind": "story", "source": "street", "from": 0, "to": { "bar": 2 } }],
+    "face": [{ "kind": "take", "take": "sing", "view": "face", "from": { "block": "verse", "at": "start" }, "to": { "bar": 6 } }]
+  }
+}
+```
+
+Times are song seconds, a bar and beat of the cue map (`{ "bar": 3, "beat":
+2.5 }`), or a block's landing or the start of the transition into it
+(`{ "block": "verse", "at": "start" }`). Layouts are `one` (`full`), `three`
+(`big`, `tr`, `br`: a square primary on the left in landscape, on top in
+portrait) and `nine` (`r0c0` to `r2c2`). A cell keeps its id across blocks,
+and its content list says what it shows when:
+
+- `story`: a source, with an optional slow push-in.
+- `take`: a performance with a matte, locked to the song, in a named view
+  (a crop that shows the face or the body), standing in the cell (`stage`) or
+  filling it (`cover`), with fades in beats and a backdrop: the studio, or a
+  story source darkened behind the performer.
+- `kirtled`: the studio (the beat light as a backdrop, optionally with a title
+  card), the beat light itself, or the drawn overhead and detail stand-ins.
+- `lyrics`: the lyric cell of a nine-view.
+
+A block arrives by `geometry` (the primary carries the picture to its new
+place; new cells open from the edge they share with it; cells that leave are
+covered), `dissolve`, `content` (same cells, new content) or `cut`. A
+nine-view block may move the light between cells with `now`; the others dim.
+The sung line is set under the singer (`band`), large across the frame
+(`hook`) or in the lyric cell (`cell`), each word lit as it is sung where the
+lyric file has word times; `acrostic` names a section whose capital words
+spell a word, shown letter by letter.
+
+### The look
+
+One grade over everything: shadows toward teal, highlights toward gold, a
+little less saturation, a soft S-curve, a vignette and grain from a fixed
+seed. Performers stand in a deep teal studio with the Kirtled beat light
+(D8-21 geometry, the pattern view) drawn larger than the cell behind them,
+and a gold rim on their matte. Grid cells have gold hairline frames; the
+lead cell's brightens on the downbeat. A gold triangle opens at each landing.
+Type and labels are a separate layer drawn after the grade (GOV-23): stand-in
+takes and drawn instrument views are labelled in the frame, and a draft
+carries a line saying it is not for release.
+
+### Takes and mattes
+
+A take is packed side by side: the picture on the left half, the matte on
+the right (white is the performer), so the two can never drift apart.
+`scripts/dance8/alpha_pack.py` makes one from a video with the
+u2net_human_seg model, on the computer, nothing uploaded:
+
+```
+python3 -I scripts/dance8/alpha_pack.py ~/StuttrLibrary/edo/dance8/takes/singing.mp4 ~/StuttrLibrary/edo/dance8/takes/sing_pack.mp4 ~/StuttrLibrary/models/u2net_human_seg.onnx --size 720x720
+```
+
+The owner's own takes stand in for the characters until Kling Motion Control
+replaces them (`standIn: true`; a final refuses them). The character's
+performance, matted the same way, takes their place.
+
+### EDO v2
+
+The approved cut, re-rendered on 21 Nov 2026 through the repo from a scratch
+copy of the library (the edit list lives with the song, not in this public
+repo): 14 blocks over 125.92 s, 3022 frames at 24 fps, rendered at 720p in
+11 minutes. The check reports the same numbers as the approved draft:
+
+| Measure | First grid draft | EDO v2 |
+|---|---|---|
+| Story clips shown more than once | 9 of 13 (the V3 cut 11 times) | none; 14 clips, each placed once |
+| Singer's face on screen while sung | 7% | 98.8% (79.4% at a quarter of the frame or more) |
+| Layout changes | 13 | 8, all at musical edges |
+| Landings on the grid | | 13 of 13 |
+| Slowest clip | | 10.4% slow |
+
+Left out, with the reason kept in the edit list: V3 shot 02 (the same tree as
+21), 19 (the same lone dancer as 11), 06 and 17 (rejected instrument shots),
+07 (a Kling watermark) and 18 (on hold).
+
 ## The EDO proof
 
 Rendered 15 Nov 2026 from a scratch copy of the library, not the owner's:
@@ -423,3 +565,8 @@ Decided on 15 Nov:
    and every principal performer, instrument and significant object needs a
    view of its own before a multi-camera composition is approved. See
    [Instrument cameras](#instrument-cameras).
+
+Decided on 21 Nov:
+
+7. The EDO v2 cut is approved: its rules and its look become edit lists
+   ([Edit lists](#edit-lists)), and the playable page follows the same cut.
