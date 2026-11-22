@@ -154,9 +154,11 @@ export function buildScore(inp: ScoreInput) {
   }
   for (const l of lines) {
     const bb = barBeat(res, l.start);
-    const ev: Evidence = l.timing === "aligned" ? "draft" : "estimated";
+    // "aligned": word-level forced alignment; "measured": the line's edges read off the vocal stem's onsets; anything else was spread by syllables.
+    const ev: Evidence = l.timing === "aligned" || l.timing === "measured" ? "draft" : "estimated";
+    const how = l.timing === "aligned" ? "forced alignment to the vocal stem" : l.timing === "measured" ? "edges measured from the vocal stem" : "spread by syllables";
     events.push({ songSec: r3(l.start), ...bb, kind: "vocal_line", evidence: ev, draws: "lyric", confidence: null,
-      detail: `${l.section ?? ""}: line to ${r3(l.end)} s (${l.timing === "aligned" ? "forced alignment to the vocal stem" : "spread by syllables"}; lyric timing ${lyrics?.status ?? "none"})` });
+      detail: `${l.section ?? ""}: line to ${r3(l.end)} s (${how}; lyric timing ${lyrics?.status ?? "none"})` });
   }
   for (const [take, m] of Object.entries(inp.motion ?? {})) {
     for (const f of m.footfalls) {

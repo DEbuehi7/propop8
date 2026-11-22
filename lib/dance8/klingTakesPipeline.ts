@@ -50,6 +50,8 @@ export interface TakesPlan {
     character: string;
     /** The character image copied into the kit (relative to it), or null when the library has none yet. */
     image: string | null;
+    /** Where the card tells the owner to take the character image from. */
+    imageShown: string;
     voice: string | null;
     voiceSource: string | null;
     size: { w: number; h: number };
@@ -120,7 +122,7 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
     const image = tk.role === "singer" ? ch.face : ch.fullbody;
     const imageName = tk.role === "singer" ? "face.png" : "fullbody.png";
     // The character image travels with the kit, so every upload is in one folder.
-    let imageShown = `${shownPath(c, join(ch.dir, imageName))} (not there yet: add it before generating)`;
+    let imageShown = `${shownPath(c, join(ch.dir, imageName))} (not in this kit: upload it from there)`;
     if (image) {
       const kept = join(dir, "character", `${character}-${tk.role === "singer" ? "face" : "fullbody"}${extname(image)}`);
       mkdirSync(dirname(kept), { recursive: true });
@@ -165,13 +167,16 @@ export function klingTakes(c: Ctx, trackId: string, editPath: string, o: { maxSe
         "",
         `${voiceFile ? "3" : "2"}. Save the final download in this folder as ${DOWNLOAD}`,
         "",
-        "Reject and redo if: the mouth is more than 2 frames off the voice on b, p and m; a limb bends wrongly or vanishes;",
-        "the face, costume or proportions drift; anything covers the mouth; text, a logo or a watermark appears;",
-        "the clip is shorter than this piece.",
+        ...(tk.role === "singer"
+          ? ["Reject and redo if: the mouth is more than 2 frames off the voice on b, p and m; the face, hair, glasses or clothes drift;",
+            "anything covers the mouth; headphones or a microphone appear; text, a logo or a watermark appears; the clip is shorter than this piece."]
+          : ["Reject and redo if: a step, pause or held pose lands more than 2 frames off the reference; a limb bends wrongly or vanishes;",
+            "a foot slides while it should be planted; the face, costume or proportions drift; a turn, jump or spin appears that the",
+            "reference does not have; text, a logo or a watermark appears; the clip is shorter than this piece."]),
       ].join("\n") + "\n");
       out.push({ ...s, dir: pd.slice(dir.length + 1) });
     }
-    plan.takes[id] = { role: tk.role, character, image: image ? `character/${character}-${tk.role === "singer" ? "face" : "fullbody"}${extname(image)}` : null, voice: tk.voice ?? null, voiceSource, size: { w, h }, aspect: aspectOf(w, h), fps: Math.round(z.fps), pieces: out };
+    plan.takes[id] = { role: tk.role, character, image: image ? `character/${character}-${tk.role === "singer" ? "face" : "fullbody"}${extname(image)}` : null, imageShown, voice: tk.voice ?? null, voiceSource, size: { w, h }, aspect: aspectOf(w, h), fps: Math.round(z.fps), pieces: out };
     const secs = out.reduce((a, s) => a + s.lengthSec, 0);
     log(`take ${id} (${tk.role} -> ${character}): ${out.length} pieces, ${secs} s to generate, from ${windows.length} shown span${windows.length > 1 ? "s" : ""}`);
   }
@@ -191,7 +196,7 @@ function readme(plan: TakesPlan): string {
     `${n} pieces: ${n} Motion Control generations and ${ls} Lip Sync passes. Every piece is one continuous span of the song the cut shows,`,
     `at most ${plan.maxSec} s (${plan.orientation === "video" ? "Motion Control with video orientation" : "Motion Control with image orientation"}), and goes back at exactly that time.`,
     "",
-    ...Object.values(plan.takes).map((t) => `${t.role === "singer" ? "Singer" : "Dancer"} character image: ${t.image ?? `none yet: add refs/cast/${t.character}/${t.role === "singer" ? "face.png" : "fullbody.png"} to the library and run kling-takes again`}`),
+    ...Object.values(plan.takes).map((t) => `${t.role === "singer" ? "Singer" : "Dancer"} character image: ${t.imageShown}`),
     "",
     "For each piece, in its folder:",
     "",

@@ -190,6 +190,11 @@ test("the visual score: one clock, states named, the draft harmony held and conv
   const csv = scoreCsv(s).trim().split("\n");
   assert.equal(csv[0], "song_sec,bar,beat,row,layout_state,block,transition,cells,kind,evidence,draws,confidence,detail");
   assert.equal(csv.length, 1 + s.states.length + s.events.length);
+  // A line whose edges were measured from the vocal stem is draft evidence, not an estimate.
+  const measured: LyricTiming = { ...lyrics("aligned"), lines: lyrics("aligned").lines.map((l, i) => ({ ...l, timing: i === 0 ? "measured" : "estimated" })) };
+  const sm = buildScore({ edit: e, editSha256: "", res, library, lyrics: measured });
+  assert.deepEqual(sm.events.filter((x) => x.kind === "vocal_line").map((x) => x.evidence), ["draft", "estimated", "estimated"]);
+  assert.match(sm.events.find((x) => x.kind === "vocal_line")!.detail, /edges measured from the vocal stem/);
   // Without a verified grid the beats draw nothing.
   const s2 = buildScore({ edit: e, editSha256: "", res, library, lyrics: null });
   assert.ok(s2.events.filter((x) => x.kind === "beat").every((x) => x.draws === "nothing" && x.evidence === "hold"));
