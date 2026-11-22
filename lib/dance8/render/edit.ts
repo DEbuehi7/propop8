@@ -126,7 +126,19 @@ export function editSlots(width: number, height: number): Record<EditLayout, Par
   const ch = (height - 2 * m - 2 * g) / 3;
   const nine: Partial<Record<EditSlot, Rect>> = {};
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) nine[`r${r}c${c}` as EditSlot] = { x: m + c * (cw + g), y: m + r * (ch + g), w: cw, h: ch };
-  return { one: { full: { x: 0, y: 0, w: width, h: height } }, three, nine };
+  const qw = (width - 2 * m - g) / 2, qh = (height - 2 * m - g) / 2;
+  const quad: Partial<Record<EditSlot, Rect>> = {};
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) quad[`q${r * 2 + c}` as EditSlot] = { x: m + c * (qw + g), y: m + r * (qh + g), w: qw, h: qh };
+  // eight: the big cell of "three", and the space beside it as two columns of four (landscape) or two rows of four.
+  const big = three.big!, eight: Partial<Record<EditSlot, Rect>> = { big };
+  const side: Rect = width >= height ? { x: big.x + big.w + g, y: m, w: width - (big.x + big.w + g) - m, h: height - 2 * m } : { x: m, y: big.y + big.h + g, w: width - 2 * m, h: height - (big.y + big.h + g) - m };
+  const [cols, rows] = side.w >= side.h ? [4, 2] : [2, 4];
+  const ew = (side.w - (cols - 1) * g) / cols, eh = (side.h - (rows - 1) * g) / rows;
+  for (let k = 0; k < 8; k++) eight[`e${k}` as EditSlot] = { x: side.x + (k % cols) * (ew + g), y: side.y + Math.floor(k / cols) * (eh + g), w: ew, h: eh };
+  // inset: the whole frame, and a small cell in the lower right, a quarter of the frame's width.
+  const pw = Math.round(width * 0.25), ph = Math.round(Math.min(height * 0.36, pw * 1.05));
+  const inset: Partial<Record<EditSlot, Rect>> = { full: { x: 0, y: 0, w: width, h: height }, pip: { x: width - pw - 2 * m, y: height - ph - 2 * m, w: pw, h: ph } };
+  return { one: { full: { x: 0, y: 0, w: width, h: height } }, three, quad, eight, nine, inset };
 }
 
 // ---------- resolved edit ----------
@@ -172,6 +184,8 @@ export interface EditMetrics {
   /** Share of sung time with the singer's face on screen, and with it filling at least a quarter of the frame. */
   faceOnScreenPct: number;
   faceQuarterFramePct: number;
+  /** Share of sung time with the singer's face the largest picture on screen (or as large as any other). */
+  faceLargestPct: number;
   bySection: Record<string, number>;
   layoutChanges: number;
   landings: number;
@@ -428,7 +442,7 @@ export function resolveEdit(
     blockIds.add(b.id);
     const land = timeOf(b.land, `${p}.land`, false);
     if (land === null) return;
-    if (!(b.layout in EDIT_SLOTS)) { err(`${p}.layout`, "must be one, three or nine"); return; }
+    if (!(b.layout in EDIT_SLOTS)) { err(`${p}.layout`, "must be one, three, quad, eight, nine or inset"); return; }
     const slots = Object.values(b.cells ?? {});
     const want = EDIT_SLOTS[b.layout];
     if (slots.length !== want.length || want.some((s) => !slots.includes(s))) { err(`${p}.cells`, `a "${b.layout}" layout fills each of ${want.join(", ")} once`); return; }
@@ -471,6 +485,9 @@ export function resolveEdit(
     else phrases.push([l.start, l.end]);
   }
   for (const [a, b] of phrases) { edges.add(round6(a)); edges.add(round6(b)); }
+  // V5 (owner's brief, 21 Nov): a sung line's onset counts too when its timing was aligned to the voice, so a
+  // split or a merge can land on the line it serves. Estimated lines (spread by syllables) do not.
+  for (const l of sung) if (l.timing === "aligned") edges.add(round6(l.start));
   const sectionStart = new Map<string, number>();
   for (const l of sung) if (l.section && !sectionStart.has(l.section)) sectionStart.set(l.section, l.start);
   for (const v of sectionStart.values()) edges.add(round6(v));
@@ -602,10 +619,21 @@ export function resolveEdit(
         backdropR = { source: bd.source, dim: bd.dim ?? 1, push: bd.push ?? 0, then };
       } else if (e.kind === "kirtled") {
         showsKirtled = true;
-        if (!["studio", "pattern", "overhead", "detail"].includes(e.view)) err(`${p}.view`, "must be studio, pattern, overhead or detail");
+        if (!["studio", "pattern", "overhead", "detail", "floor"].includes(e.view)) err(`${p}.view`, "must be studio, pattern, overhead, detail or floor");
         if (e.view === "overhead" || e.view === "detail") miss(p, `the Kirtled ${e.view} view here is a drawn stand-in; a final shows the instrument itself${tail}`);
+        if (e.view === "floor") {
+          const tk = e.take ? edit.takes?.[e.take] : undefined;
+          if (!tk) err(`${p}.take`, "the floor needs the take whose body lights it");
+          else if (!tk.motion) err(`${p}.take`, `take "${e.take}" has no motion (its body points in <song>/dance8/moves/)`);
+          miss(p, `the Kirtled floor here is drawn, not the built stage${tail}`);
+        }
+      } else if (e.kind === "trace") {
+        const tk = edit.takes?.[e.take];
+        if (!tk) err(`${p}.take`, `no take "${e.take}"`);
+        else if (!tk.motion) err(`${p}.take`, `take "${e.take}" has no motion (its body points in <song>/dance8/moves/)`);
+        if (!(e.view in (edit.views ?? {}))) err(`${p}.view`, `no view "${e.view}"`);
       } else if (e.kind === "lyrics") showsLyrics = true;
-      else { err(`${p}.kind`, "must be story, take, kirtled or lyrics"); return; }
+      else { err(`${p}.kind`, "must be story, take, kirtled, trace or lyrics"); return; }
       out.push({ ...(e as EditContent), t0: round6(t0), t1: round6(t1), fadeInSec, fadeOutSec, backdropR } as ResolvedContent);
     });
     content[cell] = out;
@@ -623,7 +651,7 @@ export function resolveEdit(
   const res: EditResolution = { ...base, endSec: round6(endSec), totalFrames: Math.round(endSec * o.fps), blocks, sources, content, accents, flares, vocalEdges, endCard };
   const empty = new Set<string>();
   const bySec: Record<string, [number, number]> = {};
-  let sungFrames = 0, faceFrames = 0, quarterFrames = 0;
+  let sungFrames = 0, faceFrames = 0, quarterFrames = 0, largestFrames = 0;
   const lines = lyrics?.lines ?? [];
   for (let k = 0; k < res.totalFrames; k++) {
     const t = k / o.fps;
@@ -637,18 +665,19 @@ export function resolveEdit(
     const sec = line.section ?? "";
     bySec[sec] ??= [0, 0];
     bySec[sec][0]++;
-    let area = -1;
+    let area = -1, other = 0;
     for (const layer of plan.layers) for (const c of layer.cells) {
       const e = c.entry;
-      if (!e || e.kind !== "take") continue;
-      const tk = edit.takes[e.take], v = edit.views[e.view];
-      if (tk?.role !== "singer" || v?.shows !== "face") continue;
-      if (c.alpha * layer.alpha * performerAlpha(e, t) < 0.5) continue;
       const r = c.clip ?? c.rect;
-      area = Math.max(area, (r.w * r.h) / (width * height));
+      const a = (r.w * r.h) / (width * height);
+      const face = !!e && e.kind === "take" && edit.takes[e.take]?.role === "singer" && edit.views[e.view]?.shows === "face";
+      if (!face) { if (c.alpha * layer.alpha >= 0.5) other = Math.max(other, a); continue; }
+      if (c.alpha * layer.alpha * performerAlpha(e as ResolvedContent, t) < 0.5) continue;
+      area = Math.max(area, a);
     }
     if (area >= 0) { faceFrames++; bySec[sec][1]++; }
     if (area >= 0.25) quarterFrames++;
+    if (area >= 0 && area >= other - 1e-3) largestFrames++;
   }
   if (lyrics && sungFrames > 0 && faceFrames / sungFrames < MIN_LIP_SYNC - EPS) {
     const gaps = lines.filter((l) => { const mid = (l.start + l.end) / 2; return !framePlan(res, mid).layers.some((ly) => ly.cells.some((c) => c.entry?.kind === "take" && edit.takes[c.entry.take]?.role === "singer" && edit.views[c.entry.view]?.shows === "face")); });
@@ -659,7 +688,7 @@ export function resolveEdit(
   const pct = (a: number, b: number) => Math.round((1000 * a) / Math.max(1, b)) / 10;
   res.metrics = {
     sungSec: round6(sung.reduce((n, l) => n + (l.end - l.start), 0)),
-    faceOnScreenPct: pct(faceFrames, sungFrames), faceQuarterFramePct: pct(quarterFrames, sungFrames),
+    faceOnScreenPct: pct(faceFrames, sungFrames), faceQuarterFramePct: pct(quarterFrames, sungFrames), faceLargestPct: pct(largestFrames, sungFrames),
     bySection: Object.fromEntries(Object.entries(bySec).map(([k, [n, f]]) => [k, pct(f, n)])),
     layoutChanges, landings: blocks.length - 1,
     landingsOnGrid: blocks.slice(1).filter((b) => offGrid(map, b.land) <= 1e-3).length,
