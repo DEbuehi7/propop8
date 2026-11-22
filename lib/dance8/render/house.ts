@@ -54,18 +54,23 @@ export function resample(src: Uint8Array, sw: number, sh: number, ch: number, x0
   return out;
 }
 
-/** The region of a picture that fills a w x h cell ("cover"), from crop box `box` (fractions), pushed in `zoom` times. */
-export function coverRegion(sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1): [number, number, number, number] {
+/**
+ * The region of a picture that fills a w x h cell ("cover"), from crop box
+ * `box` (fractions), pushed in `zoom` times, centred on (fx, fy) of the box as
+ * far as the box allows (the middle by default).
+ */
+export function coverRegion(sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, fx = 0.5, fy = 0.5): [number, number, number, number] {
   const x0 = box[0] * sw, y0 = box[1] * sh, x1 = box[2] * sw, y1 = box[3] * sh;
   let rw = (x1 - x0) / zoom, rh = (y1 - y0) / zoom;
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   if (rw / rh > w / h) rw = rh * (w / h); else rh = rw / (w / h);
+  const cx = Math.min(Math.max(x0 + fx * (x1 - x0), x0 + rw / 2), x1 - rw / 2);
+  const cy = Math.min(Math.max(y0 + fy * (y1 - y0), y0 + rh / 2), y1 - rh / 2);
   return [Math.max(0, cx - rw / 2), Math.max(0, cy - rh / 2), rw, rh];
 }
 
 /** A picture (8-bit RGB) filling a w x h cell. */
-export function cover(src: Uint8Array, sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, stride = sw): Img {
-  const [x, y, rw, rh] = coverRegion(sw, sh, box, w, h, zoom);
+export function cover(src: Uint8Array, sw: number, sh: number, box: readonly number[], w: number, h: number, zoom = 1, stride = sw, fx = 0.5, fy = 0.5): Img {
+  const [x, y, rw, rh] = coverRegion(sw, sh, box, w, h, zoom, fx, fy);
   return { w, h, d: resample(src, sw, sh, 3, x, y, rw, rh, w, h, stride) };
 }
 

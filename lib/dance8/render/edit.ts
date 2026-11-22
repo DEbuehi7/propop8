@@ -27,7 +27,7 @@
 
 import type { CueMap, VisualClip, VisualClipLibrary } from "../contracts/scene";
 import { FRAME_SIZE } from "../contracts/scene";
-import type { CropBox, EditBackdrop, EditContent, EditLayout, EditList, EditSlot, EditTake, EditTime, EditTransition, TakeView } from "../contracts/edit";
+import type { CropBox, EditBackdrop, EditContent, EditLayout, EditList, EditSlot, EditTake, EditTime, EditTransition, StillView, TakeView } from "../contracts/edit";
 import { EDIT_SLOTS } from "../contracts/edit";
 import type { PrincipalList } from "../contracts/instrument";
 import { barToSec } from "../authoring/validateCueMap";
@@ -149,7 +149,12 @@ export interface ResolvedEditBlock {
 
 export interface ResolvedSource {
   id: string;
-  clip: VisualClip;
+  /** A clip of the clip library, or a still plate (its file, relative to <song>/dance8/). */
+  clip?: VisualClip;
+  still?: string;
+  /** A still's move over its window. */
+  move?: { from: StillView; to: StillView };
+  approved?: boolean;
   origin: number;
   end: number;
   inSec: number;
@@ -173,6 +178,7 @@ export interface EditMetrics {
   landingsOnGrid: number;
   layoutChangesAtMusicalEdges: number;
   storyClipsUsed: number;
+  stillsUsed: number;
   maxStretch: number;
 }
 
@@ -293,6 +299,13 @@ export function framePlan(res: Pick<EditResolution, "blocks" | "content" | "slot
   for (const c of Object.keys(b1.cells)) if (!(c in b0.cells)) { const R = rect(s.to, c); cells.push(make(s.to, c, R, openFrom(R, P ?? { x: R.x + R.w / 2, y: R.y + R.h / 2, w: 0, h: 0 }, e), 1)); }
   for (const c of Object.keys(b1.cells)) if (c in b0.cells) cells.push(make(s.to, c, lerpRect(rect(s.from, c), rect(s.to, c), e), null, 1));
   return { kind: "geometry", layers: [{ alpha: 1, cells }], progress: s.progress, from: s.from, to: s.to };
+}
+
+/** Where the camera looks on a still at song second t: its move, eased over the source's whole window. */
+export function stillViewAt(src: Pick<ResolvedSource, "origin" | "end" | "move">, t: number): StillView {
+  const m = src.move ?? { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.06 } };
+  const e = ease((t - src.origin) / Math.max(1e-6, src.end - src.origin));
+  return { x: m.from.x + (m.to.x - m.from.x) * e, y: m.from.y + (m.to.y - m.from.y) * e, zoom: m.from.zoom + (m.to.zoom - m.from.zoom) * e };
 }
 
 /** How visible a take's performer is at t (its fade in and out). */
@@ -492,25 +505,39 @@ export function resolveEdit(
   const clipOwner = new Map<string, string>();
   for (const [id, s] of Object.entries(edit.sources ?? {})) {
     const p = `sources.${id}`;
-    const clip = byId.get(s.clip);
-    if (!clip) { err(`${p}.clip`, `no clip "${s.clip}" in the clip library`); continue; }
-    if (clipOwner.has(s.clip)) { err(`${p}.clip`, `${s.clip} is already placed as "${clipOwner.get(s.clip)}"; a clip has one placement, so its frames never show twice`); continue; }
-    clipOwner.set(s.clip, id);
-    if (clip.approvalStatus === "retired") err(p, `${clip.id} is retired`);
-    const measured = clip.drift.status === "known" && clip.drift.driftScore !== null && clip.drift.driftScore <= map.maxDriftScore + EPS;
-    if (clip.approvalStatus !== "approved" || !measured) miss(p, `${clip.id} is ${clip.approvalStatus !== "approved" ? "not approved" : "unmeasured or over the drift limit"}; a final uses approved clips only${tail}`);
+    if (!!s.clip === !!s.still) { err(p, "names a clip or a still, not both and not neither"); continue; }
+    const key = (s.clip ?? s.still)!;
+    if (clipOwner.has(key)) { err(`${p}.${s.clip ? "clip" : "still"}`, `${key} is already placed as "${clipOwner.get(key)}"; ${s.clip ? "a clip" : "a still"} has one placement, so it never shows twice`); continue; }
+    clipOwner.set(key, id);
     const origin = timeOf(s.origin, `${p}.origin`, true);
     const end = timeOf(s.end, `${p}.end`, true);
     if (origin === null || end === null) continue;
+    if (!(end > origin)) { err(`${p}.end`, "must be after origin"); continue; }
+    const crop = s.crop ?? [0, 0, 1, 1];
+    if (!(crop.length === 4 && crop[0] >= 0 && crop[1] >= 0 && crop[2] <= 1 && crop[3] <= 1 && crop[2] > crop[0] && crop[3] > crop[1])) err(`${p}.crop`, "must be [left, top, right, bottom] fractions inside the frame");
+    if (s.still) {
+      if (!/\.(png|jpe?g|webp)$/i.test(s.still)) err(`${p}.still`, "must be a PNG, JPEG or WebP image");
+      if (s.inSec !== undefined) err(`${p}.inSec`, "a still has no in-point; its move covers the window");
+      const move = s.move ?? { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.06 } };
+      for (const [k, v] of Object.entries(move)) {
+        if (!(v && v.x >= 0 && v.x <= 1 && v.y >= 0 && v.y <= 1 && v.zoom >= 1 && v.zoom <= 3)) err(`${p}.move.${k}`, "needs x and y from 0 to 1 and a zoom from 1 to 3");
+      }
+      if (!s.approved) miss(p, `the still ${s.still} is not approved; a final uses approved stills only${tail}`);
+      sources[id] = { id, still: s.still, origin: round6(origin), end: round6(end), inSec: 0, stretch: 1, crop, move, approved: !!s.approved };
+      continue;
+    }
+    if (s.move !== undefined) err(`${p}.move`, "only a still has a move; a clip moves by itself (use push on its content)");
+    const clip = byId.get(s.clip!);
+    if (!clip) { err(`${p}.clip`, `no clip "${s.clip}" in the clip library`); continue; }
+    if (clip.approvalStatus === "retired") err(p, `${clip.id} is retired`);
+    const measured = clip.drift.status === "known" && clip.drift.driftScore !== null && clip.drift.driftScore <= map.maxDriftScore + EPS;
+    if (clip.approvalStatus !== "approved" || !measured) miss(p, `${clip.id} is ${clip.approvalStatus !== "approved" ? "not approved" : "unmeasured or over the drift limit"}; a final uses approved clips only${tail}`);
     const inSec = s.inSec ?? 0;
     if (!(inSec >= 0 && inSec < clip.durationSec)) { err(`${p}.inSec`, `must be from 0 to under ${clip.durationSec} s`); continue; }
-    if (!(end > origin)) { err(`${p}.end`, "must be after origin"); continue; }
     const stretch = round6(Math.max(1, (end - origin) / (clip.durationSec - inSec)));
     if (stretch > MAX_STRETCH + EPS) err(p, `${clip.id} has ${(clip.durationSec - inSec).toFixed(2)} s for a ${(end - origin).toFixed(2)} s window: it would play ${Math.round((stretch - 1) * 100)}% slow (at most ${Math.round((MAX_STRETCH - 1) * 100)}%); shorten the window or regenerate the clip longer`);
     else if (stretch > 1 + EPS) warn(p, `${clip.id} plays ${((stretch - 1) * 100).toFixed(1)}% slow to fill its window (frames repeat)`);
     if (clip.trick) err(p, `${clip.id} is a skate-trick clip; tricks land on their chord change and are never free footage (D8-16)`);
-    const crop = s.crop ?? [0, 0, 1, 1];
-    if (!(crop.length === 4 && crop[0] >= 0 && crop[1] >= 0 && crop[2] <= 1 && crop[3] <= 1 && crop[2] > crop[0] && crop[3] > crop[1])) err(`${p}.crop`, "must be [left, top, right, bottom] fractions inside the frame");
     sources[id] = { id, clip, origin: round6(origin), end: round6(end), inSec, stretch, crop };
   }
   for (const [a, b] of edit.similar ?? []) {
@@ -637,7 +664,8 @@ export function resolveEdit(
     layoutChanges, landings: blocks.length - 1,
     landingsOnGrid: blocks.slice(1).filter((b) => offGrid(map, b.land) <= 1e-3).length,
     layoutChangesAtMusicalEdges: atEdges,
-    storyClipsUsed: usedSources.size,
+    storyClipsUsed: [...usedSources].filter((id) => !sources[id]?.still).length,
+    stillsUsed: [...usedSources].filter((id) => !!sources[id]?.still).length,
     maxStretch: Math.max(1, ...Object.values(sources).map((s) => s.stretch)),
   };
   return { ...res, ok: true };

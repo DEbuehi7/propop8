@@ -71,16 +71,29 @@ export interface EditBlock {
 /** A crop of a frame, as fractions: [left, top, right, bottom]. */
 export type CropBox = [number, number, number, number];
 
-/** Story footage: a clip of the song's clip library, placed once on the song. */
+/** Where a still plate is looked at: the centre of the view (fractions of the frame) and how close (1 = the whole frame). */
+export interface StillView { x: number; y: number; zoom: number }
+
+/**
+ * Story footage, placed once on the song: a clip of the song's clip library,
+ * or a still plate (an image) that the camera moves across slowly.
+ */
 export interface EditSource {
-  clip: string;
-  /** Song time where the clip's inSec plays. */
+  /** A clip of the song's clip library. */
+  clip?: string;
+  /** Or a still plate: an image file (PNG, JPEG or WebP) relative to <song>/dance8/. */
+  still?: string;
+  /** Song time where the clip's inSec plays, or the still's move starts. */
   origin: EditTime;
-  /** Song time where its use ends. If the clip is shorter than its window it is slowed (frames repeat), at most 15%. */
+  /** Song time where its use ends. If a clip is shorter than its window it is slowed (frames repeat), at most 15%. */
   end: EditTime;
   inSec?: number;
   /** Keep part of the picture out (a watermark, an edge). */
   crop?: CropBox;
+  /** A still's move over its whole window, eased. Default: a slow push to the centre, zoom 1 to 1.06. */
+  move?: { from: StillView; to: StillView };
+  /** A still a person has approved for a final (clips carry their approval in the clip library). */
+  approved?: boolean;
 }
 
 /**
@@ -147,7 +160,7 @@ export interface EditList {
   flares?: EditTime[];
   /** The title at the end: from `at`, the lyrics give way to it until the picture fades out. */
   endCard?: { text: string; at: EditTime };
-  /** Clip pairs too alike to appear in one edit. */
+  /** Clips or stills (by clip id or still file) too alike to appear in one edit. */
   similar?: [string, string][];
   /** Clips left out and why, for the record. */
   notUsed?: Record<string, string>;

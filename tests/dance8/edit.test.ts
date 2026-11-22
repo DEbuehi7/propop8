@@ -12,9 +12,9 @@ import { spawnSync } from "node:child_process";
 import { FRAME_SIZE, type AspectRatio, type CueMap, type VisualClip, type VisualClipLibrary } from "../../lib/dance8/contracts/scene";
 import type { EditList } from "../../lib/dance8/contracts/edit";
 import {
-  acrosticOf, editSlots, framePlan, gridSec, MAX_STRETCH, offGrid, openFrom, performerAlpha, resolveEdit, tokenTimes, type EditMap,
+  acrosticOf, editSlots, framePlan, gridSec, MAX_STRETCH, offGrid, openFrom, performerAlpha, resolveEdit, stillViewAt, tokenTimes, type EditMap,
 } from "../../lib/dance8/render/edit";
-import { cover, grade, img, placePerformer, studio, toRgb24 } from "../../lib/dance8/render/house";
+import { cover, coverRegion, grade, img, placePerformer, studio, toRgb24 } from "../../lib/dance8/render/house";
 import type { LyricTiming, Rect } from "../../lib/dance8/render/grid";
 import { editRender, fontName } from "../../lib/dance8/editPipeline";
 import { songPaths } from "../../lib/dance8/pipeline";
@@ -121,6 +121,7 @@ test("a valid edit checks out: each clip placed once, layouts at musical edges, 
   assert.equal(m.landings, 6);
   assert.equal(m.landingsOnGrid, 6);
   assert.equal(m.storyClipsUsed, 4);
+  assert.equal(m.stillsUsed, 0);
   assert.deepEqual(r.blocks.map((b) => [b.id, b.start, b.land, b.transition]), [
     ["intro", 0, 0, null], ["verse", 4.25, 4.5, "geometry"], ["hook", 12.25, 12.5, "geometry"], ["break", 16, 16.5, "dissolve"],
     ["verse2", 20.25, 20.5, "geometry"], ["after", 24.5, 24.75, "geometry"], ["outro", 28.25, 28.5, "geometry"],
@@ -161,6 +162,36 @@ test("a short clip may be slowed at most 15%", () => {
   assert.equal(ok.sources.s1.stretch, 1.125);
   assert.ok(ok.sources.s1.stretch <= MAX_STRETCH);
   assert.ok(ok.warnings.some((w) => /plays 12\.5% slow/.test(w.message)));
+});
+
+test("still plates: placed once, moved across their window, approved before a final", () => {
+  const withStill = (src: Partial<EditList["sources"][string]>) => { const e = edit(); e.sources.s4 = { origin: B(12, 0.5), end: 32, ...src } as EditList["sources"][string]; return e; };
+  const move = { from: { x: 0.3, y: 0.5, zoom: 1 }, to: { x: 0.7, y: 0.4, zoom: 1.2 } };
+  const r = check(withStill({ still: "plates/harbour.png", move }));
+  assert.ok(r.ok, errorsOf(r));
+  assert.equal(r.sources.s4.still, "plates/harbour.png");
+  assert.equal(r.sources.s4.stretch, 1, "a still is never slowed");
+  assert.equal(r.metrics!.storyClipsUsed, 3);
+  assert.equal(r.metrics!.stillsUsed, 1);
+  const near = (a: { x: number; y: number; zoom: number }, b: { x: number; y: number; zoom: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.zoom - b.zoom) < 1e-9;
+  assert.ok(near(stillViewAt(r.sources.s4, r.sources.s4.origin), move.from));
+  assert.ok(near(stillViewAt(r.sources.s4, r.sources.s4.end), move.to));
+  assert.ok(near(stillViewAt({ origin: 0, end: 10 }, 10), { x: 0.5, y: 0.5, zoom: 1.06 }), "the default move is a slow push to the centre");
+  assert.ok(r.warnings.some((w) => /the still plates\/harbour\.png is not approved/.test(w.message)));
+  assert.match(errorsOf(check(withStill({ still: "plates/harbour.png" }), { approved: true })), /the still plates\/harbour\.png is not approved; a final uses approved stills only/);
+  const twice = edit();
+  twice.sources.s4 = { still: "plates/harbour.png", origin: B(12, 0.5), end: 32 };
+  twice.sources.again = { still: "plates/harbour.png", origin: 31, end: 32 };
+  assert.match(errorsOf(check(twice)), /plates\/harbour\.png is already placed as "s4"; a still has one placement/);
+  assert.match(errorsOf(check(withStill({ still: "plates/harbour.png", move: { from: { x: 0.5, y: 0.5, zoom: 0.5 }, to: move.to } }))), /move\.from: needs x and y from 0 to 1 and a zoom from 1 to 3/);
+  assert.match(errorsOf(check(withStill({ still: "plates/harbour.png", inSec: 1 }))), /a still has no in-point/);
+  assert.match(errorsOf(check(withStill({ still: "plates/harbour.gif" }))), /must be a PNG, JPEG or WebP image/);
+  assert.match(errorsOf(check(withStill({ clip: "w4", still: "plates/harbour.png" }))), /names a clip or a still, not both and not neither/);
+  assert.match(errorsOf(check(withStill({ still: "plates/harbour.png" }), {})), /^$/, "a draft takes an unapproved still");
+  // The view's centre moves the region, kept inside the frame.
+  assert.deepEqual(coverRegion(200, 100, [0, 0, 1, 1], 100, 100, 1, 0, 0.5), [0, 0, 100, 100]);
+  assert.deepEqual(coverRegion(200, 100, [0, 0, 1, 1], 100, 100, 1, 1, 0.5), [100, 0, 100, 100]);
+  assert.deepEqual(coverRegion(200, 100, [0, 0, 1, 1], 100, 100, 2, 0.5, 0), [75, 0, 50, 50]);
 });
 
 test("landings sit on the eighth-note grid, and a layout changes only at a musical edge or where a cue starts", () => {
@@ -337,8 +368,12 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
       assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", `color=c=${col}:s=160x160:r=24:d=33`, "-f", "lavfi", "-i", "color=c=white:s=160x160:r=24:d=33",
         "-filter_complex", "[0][1]hstack=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", join(p.dir, "takes", `${name}.mp4`)]).status, 0);
     }
+    mkdirSync(join(p.dir, "plates"), { recursive: true });
+    assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=320x180", "-frames:v", "1", join(p.dir, "plates", "harbour.png")]).status, 0);
+    const proof = { ...edit(), trackId: "edit-song" };
+    proof.sources.s4 = { still: "plates/harbour.png", origin: B(12, 0.5), end: 32, move: { from: { x: 0.4, y: 0.5, zoom: 1 }, to: { x: 0.6, y: 0.5, zoom: 1.1 } } };
     const file = join(p.dir, "edits", "proof.json");
-    writeFileSync(file, JSON.stringify({ ...edit(), trackId: "edit-song" }));
+    writeFileSync(file, JSON.stringify(proof));
     const checked = await editRender(c, "edit-song", file, { checkOnly: true });
     assert.equal(checked.out, null);
     assert.ok(lines.some((l) => /^checked: 5 layout changes, all at musical edges; the singer's face covers 100% of the sung time/.test(l)));
@@ -353,7 +388,9 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.equal(man.schema, "dance8.edit-render.v1");
     assert.equal(man.metrics.faceOnScreenPct, 100);
     assert.equal(man.totalFrames, 48);
-    assert.deepEqual(man.sources.map((s: { clip: string }) => s.clip), ["w1", "w2", "w3", "w4"]);
+    assert.deepEqual(man.sources.map((s: { clip?: string; still?: string }) => s.clip ?? s.still), ["w1", "w2", "w3", "plates/harbour.png"]);
+    const still = await editRender(c, "edit-song", file, { from: 29, to: 29.5, height: 144 });
+    assert.ok(still.out && existsSync(still.out), "a still renders");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

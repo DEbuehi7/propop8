@@ -448,7 +448,11 @@ Times are song seconds, a bar and beat of the cue map (`{ "bar": 3, "beat":
 portrait) and `nine` (`r0c0` to `r2c2`). A cell keeps its id across blocks,
 and its content list says what it shows when:
 
-- `story`: a source, with an optional slow push-in.
+- `story`: a source, with an optional slow push-in. A source is a clip of the
+  clip library or a still plate (`"still": "plates/harbour.png"`), which the
+  camera moves across over its whole window (`move`, from one centre and zoom
+  to another, eased; a slow push by default). A still is placed once like a
+  clip, is never slowed, and needs `"approved": true` for a final.
 - `take`: a performance with a matte, locked to the song, in a named view
   (a crop that shows the face or the body), standing in the cell (`stage`) or
   filling it (`cover`), with fades in beats and a backdrop: the studio, or a
@@ -511,6 +515,19 @@ repo): 14 blocks over 125.92 s, 3022 frames at 24 fps, rendered at 720p in
 Left out, with the reason kept in the edit list: V3 shot 02 (the same tree as
 21), 19 (the same lone dancer as 11), 06 and 17 (rejected instrument shots),
 07 (a Kling watermark) and 18 (on hold).
+
+**v2.1** (21 Nov) adds four still plates from the owner's image package: the
+Lagos waterfront from night to dawn in verse 1, cut on the sung lines
+(navigation, daybreak, dawn skyline), in place of the street shot, and the
+Ghost's view through his penthouse glass at bar 17, between the Ghost at the
+window and the close-up. The other fifteen plates stay out, each with its
+reason in the edit list: most are stills of footage already in the cut (a
+frame match of 0.94 to 1.00 against the V3 shots), three are grid and
+dissolve frames the compositor draws live, one is the same harbour as the
+window view, and the two Kirtled studies draw separate triangles meeting at
+corners rather than one strip per arm, with a disc in the hub (D8-21). The
+check: the same 98.8% face coverage and 8 layout changes, 13 clips and 4
+stills each placed once, slowest clip 9.4%.
 
 ## The EDO proof
 

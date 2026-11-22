@@ -20,7 +20,7 @@ import type { PrincipalList } from "./contracts/instrument";
 import type { CueMap, VisualClipLibrary } from "./contracts/scene";
 import { songPaths, withCast } from "./pipeline";
 import { AI_DISCLOSURE } from "./render/disclosure";
-import { ACCENT_SEC, acrosticOf, barLength, barPhase, beatSec, framePlan, isCaps, lyricAt, performerAlpha, resolveEdit, tokenTimes, type EditResolution, type PlannedCell, type ResolvedContent } from "./render/edit";
+import { ACCENT_SEC, acrosticOf, barLength, barPhase, beatSec, framePlan, isCaps, lyricAt, performerAlpha, resolveEdit, stillViewAt, tokenTimes, type EditResolution, type PlannedCell, type ResolvedContent } from "./render/edit";
 import { gridMuxArgs, type GridIssue, type LyricTiming } from "./render/grid";
 import {
   addLight, blit, cover, dim, frameRect, gradient, grade, img, kirtledLight, paste, placePerformer, shade, spriteFromRgba, studio, toRgb24, triangleBurst,
@@ -191,14 +191,14 @@ export async function editRender(c: Ctx, trackId: string, editPath: string, r: E
   for (const w of res.warnings) log(`warning: ${w.path}: ${w.message}`);
   if (!res.ok) throw new Error(`the edit list does not check out:\n${res.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n")}`);
   const m = res.metrics!;
-  log(`checked: ${m.layoutChanges} layout changes, all at musical edges; the singer's face covers ${m.faceOnScreenPct}% of the sung time (${m.faceQuarterFramePct}% at a quarter of the frame or more); ${m.storyClipsUsed} story clips, each placed once; slowest ${((m.maxStretch - 1) * 100).toFixed(1)}%`);
+  log(`checked: ${m.layoutChanges} layout changes, all at musical edges; the singer's face covers ${m.faceOnScreenPct}% of the sung time (${m.faceQuarterFramePct}% at a quarter of the frame or more); ${m.storyClipsUsed} story clips${m.stillsUsed ? ` and ${m.stillsUsed} still${m.stillsUsed === 1 ? "" : "s"}` : ""}, each placed once; slowest ${((m.maxStretch - 1) * 100).toFixed(1)}%`);
   if (r.checkOnly) return { out: null, manifest: null, resolution: res, warnings: res.warnings };
 
   // Files.
   const takeFile = (id: string) => join(p.dir, edit.takes[id].file);
   for (const id of Object.keys(edit.takes)) if (!existsSync(takeFile(id))) throw new Error(`take "${id}" is missing: ${takeFile(id)}`);
-  const clipFile = (sid: string) => join(p.clipDir, res.sources[sid].clip.file);
-  for (const sid of Object.keys(res.sources)) if (!existsSync(clipFile(sid))) throw new Error(`clip file missing in ${p.clipDir}: ${res.sources[sid].clip.file}`);
+  const sourceFile = (sid: string) => { const s = res.sources[sid]; return s.still ? join(p.dir, s.still) : join(p.clipDir, s.clip!.file); };
+  for (const sid of Object.keys(res.sources)) if (!existsSync(sourceFile(sid))) throw new Error(`${res.sources[sid].still ? "still" : "clip file"} missing: ${sourceFile(sid)}`);
   const pick = pickMaster(t, { final: !!r.approved, key: r.master, extraProblem: (x) => castDrift(c, x) });
   if ("error" in pick) throw new Error(pick.error);
   if (pick.warning) log(`warning: ${pick.warning}`);
@@ -223,12 +223,29 @@ export async function editRender(c: Ctx, trackId: string, editPath: string, r: E
   const readers = new Map<string, FrameReader>();
   const sizes = new Map<string, { w: number; h: number }>();
   const sizeOf = (f: string) => { let s = sizes.get(f); if (!s) { s = probe(f); sizes.set(f, s); } return s; };
-  const storyFrame = async (sid: string, tt: number) => {
+  const stills = new Map<string, { data: Uint8Array; w: number; h: number }>();
+  const stillOf = (sid: string) => {
+    let st = stills.get(sid);
+    if (!st) {
+      const f = sourceFile(sid), z = probe(f);
+      const r = spawnSync("ffmpeg", ["-v", "error", "-i", f, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: z.w * z.h * 3 + 1024 });
+      if (r.status !== 0 || r.stdout.length < z.w * z.h * 3) throw new Error(`could not read the still ${basename(f)}`);
+      st = { data: new Uint8Array(r.stdout.buffer, r.stdout.byteOffset, z.w * z.h * 3), w: z.w, h: z.h };
+      stills.set(sid, st);
+    }
+    return st;
+  };
+  /** A story source filling a w x h cell at song second tt: a clip's frame, or a still where its move has reached. */
+  const storyImage = async (sid: string, tt: number, w: number, h: number, zoom: number): Promise<Img> => {
     const s = res.sources[sid];
+    if (s.still) {
+      const st = stillOf(sid), v = stillViewAt(s, tt);
+      return cover(st.data, st.w, st.h, s.crop, w, h, zoom * v.zoom, st.w, v.x, v.y);
+    }
     const sec = s.inSec + (tt - s.origin) / s.stretch;
     let rd = readers.get(sid);
-    if (!rd) { const f = clipFile(sid); const z = sizeOf(f); rd = new FrameReader(f, sec, z.w, z.h, fps); readers.set(sid, rd); }
-    return { data: await rd.at(sec), w: rd.w, h: rd.h, crop: s.crop };
+    if (!rd) { const f = sourceFile(sid); const z = sizeOf(f); rd = new FrameReader(f, sec, z.w, z.h, fps); readers.set(sid, rd); }
+    return cover(await rd.at(sec), rd.w, rd.h, s.crop, w, h, zoom);
   };
   const takeFrame = async (id: string, tt: number) => {
     const tk = edit.takes[id], sec = tt + tk.songAt0Sec;
@@ -243,8 +260,7 @@ export async function editRender(c: Ctx, trackId: string, editPath: string, r: E
       if (!src) return studio(w, h, barPhase(res, tt));
       const s = res.sources[src];
       const z = 1 + push * Math.max(0, Math.min(1, (tt - s.origin) / (s.end - s.origin)));
-      const f = await storyFrame(src, tt);
-      const im = cover(f.data, f.w, f.h, f.crop, w, h, z);
+      const im = await storyImage(src, tt, w, h, z);
       const dd = 1 - (1 - d) * perf;
       for (let i = 0; i < im.d.length; i++) im.d[i] *= dd;
       return im;
@@ -262,10 +278,8 @@ export async function editRender(c: Ctx, trackId: string, editPath: string, r: E
     const e = cell.entry;
     if (!e) { const g = img(w, h); g.d.set(gradient(w, h)); return g; }
     if (e.kind === "story") {
-      const s = res.sources[e.source];
       const z = 1 + (e.push ?? 0) * Math.max(0, Math.min(1, (tt - e.t0) / (e.t1 - e.t0)));
-      const f = await storyFrame(e.source, tt);
-      return cover(f.data, f.w, f.h, s.crop, w, h, z);
+      return storyImage(e.source, tt, w, h, z);
     }
     if (e.kind === "take") {
       const perf = performerAlpha(e, tt);
@@ -475,7 +489,9 @@ export async function editRender(c: Ctx, trackId: string, editPath: string, r: E
     trackId, final: !!r.approved, fps, width: W, height: H, fromSec: from, toSec: to, totalFrames: total,
     metrics: res.metrics,
     blocks: res.blocks.map((x) => ({ id: x.id, land: x.land, start: x.start, layout: x.layout, transition: x.transition, cells: x.cells, why: x.why })),
-    sources: Object.values(res.sources).map((s) => ({ id: s.id, clip: s.clip.id, approvalStatus: s.clip.approvalStatus, origin: s.origin, end: s.end, inSec: s.inSec, stretch: s.stretch })),
+    sources: Object.values(res.sources).map((s) => (s.still
+      ? { id: s.id, still: s.still, approved: !!s.approved, origin: s.origin, end: s.end, move: s.move, sha256: sha256File(sourceFile(s.id)) }
+      : { id: s.id, clip: s.clip!.id, approvalStatus: s.clip!.approvalStatus, origin: s.origin, end: s.end, inSec: s.inSec, stretch: s.stretch })),
     notUsed: edit.notUsed ?? {},
     takes: Object.entries(edit.takes).map(([id, x]) => ({ id, file: x.file, role: x.role, standIn: x.standIn, songAt0Sec: x.songAt0Sec })),
     lyrics: lyrics ? { file: basename(lyricsFile), status: lyrics.status, sha256: sha256File(lyricsFile) } : null,
