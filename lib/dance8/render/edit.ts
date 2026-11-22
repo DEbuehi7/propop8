@@ -135,9 +135,12 @@ export function editSlots(width: number, height: number): Record<EditLayout, Par
   const [cols, rows] = side.w >= side.h ? [4, 2] : [2, 4];
   const ew = (side.w - (cols - 1) * g) / cols, eh = (side.h - (rows - 1) * g) / rows;
   for (let k = 0; k < 8; k++) eight[`e${k}` as EditSlot] = { x: side.x + (k % cols) * (ew + g), y: side.y + Math.floor(k / cols) * (eh + g), w: ew, h: eh };
-  // inset: the whole frame, and a small cell in the lower right, a quarter of the frame's width.
-  const pw = Math.round(width * 0.25), ph = Math.round(Math.min(height * 0.36, pw * 1.05));
-  const inset: Partial<Record<EditSlot, Rect>> = { full: { x: 0, y: 0, w: width, h: height }, pip: { x: width - pw - 2 * m, y: height - ph - 2 * m, w: pw, h: ph } };
+  // inset: the whole frame, and beside the dancer a tall panel on the right, as in the Dance8 studio (landscape: 30% of
+  // the width, the frame's height inside the margins); in portrait a band along the bottom.
+  const pip: Rect = width >= height
+    ? { x: width - Math.round(width * 0.3) - 2 * m, y: 2 * m, w: Math.round(width * 0.3), h: height - 4 * m }
+    : { x: 2 * m, y: height - Math.round(height * 0.3) - 2 * m, w: width - 4 * m, h: Math.round(height * 0.3) };
+  const inset: Partial<Record<EditSlot, Rect>> = { full: { x: 0, y: 0, w: width, h: height }, pip };
   return { one: { full: { x: 0, y: 0, w: width, h: height } }, three, quad, eight, nine, inset };
 }
 
@@ -568,6 +571,7 @@ export function resolveEdit(
     if (!["singer", "dancer"].includes(tk.role)) err(`${p}.role`, "must be singer or dancer");
     if (!Number.isFinite(tk.songAt0Sec)) err(`${p}.songAt0Sec`, "must be the file second where song time 0 falls");
     if (tk.standIn) miss(p, `"${id}" is a stand-in take; a final shows the character's own performance${tail}`);
+    else if (tk.generated && !tk.approved) miss(p, `"${id}" is a generated take nobody has approved yet; set "approved": true after its checks${tail}`);
   }
   for (const [id, v] of Object.entries(edit.views ?? {})) {
     const c = v.box;

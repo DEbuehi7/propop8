@@ -32,7 +32,7 @@ export type EditLayout = "one" | "three" | "quad" | "eight" | "nine" | "inset";
  * "one": full. "three": big, tr (top or left small cell), br. "quad": q0 .. q3,
  * a 2 x 2, row by row. "eight": the big cell of "three" and e0 .. e7 beside it
  * (two columns of four in landscape). "nine": r0c0 .. r2c2, row by row.
- * "inset": full, and pip, a small cell in the lower right corner.
+ * "inset": full, and pip, a tall panel on the right beside the dancer (a band along the bottom in portrait).
  */
 export type EditSlot = "full" | "big" | "tr" | "br" | `q${0 | 1 | 2 | 3}` | `e${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}` | `r${0 | 1 | 2}c${0 | 1 | 2}` | "pip";
 
@@ -135,6 +135,16 @@ export interface EditTake {
    * sync). Needed by trace cells and the Kirtled floor.
    */
   motion?: string;
+  /**
+   * The character a generated take must become (a refs/cast/<character>/ folder: face.png for the singer,
+   * fullbody.png for the dancer), and the voice whose approved take, or the song's vocal stem, drives its lip sync.
+   */
+  character?: string;
+  voice?: string;
+  /** A generated take (not a stand-in) still needs a person's approval before a final shows it. */
+  approved?: boolean;
+  /** Set by takes-assemble: the plan and pieces this take was put together from. */
+  generated?: { plan: string; planSha256: string; pieces: number };
 }
 
 /** A named view of a take: the crop, and whether it shows the face (counts as lip-sync) or the body. */

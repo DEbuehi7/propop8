@@ -449,7 +449,8 @@ Times are song seconds, a bar and beat of the cue map (`{ "bar": 3, "beat":
 (`big`, `tr`, `br`: a square primary on the left in landscape, on top in
 portrait), `quad` (`q0` to `q3`, a 2 x 2), `eight` (the `big` cell of
 `three` and `e0` to `e7` beside it), `nine` (`r0c0` to `r2c2`) and `inset`
-(`full`, and `pip` in the lower right). By state name (`LAYOUT_STATE`) they
+(`full`, and `pip`: a tall panel down the right side in landscape, a band
+across the bottom in portrait, so a standing body fits it). By state name (`LAYOUT_STATE`) they
 are S1, S2, S3, S4, S5 and D1. A cell keeps its id across blocks, and its
 content list says what it shows when:
 
@@ -584,6 +585,51 @@ matters.
   bar 0, which is why they read 0.075 s early against EDO's song time; the
   renderers add the first downbeat, and the score converts through
   `gridSec`, so nothing draws early.
+- **The thick trace.** The trace draws the body as Dance8's UI does beside
+  the original dance: capsules for the torso and limbs sized from the
+  measured torso length, a head disc, then the thin bones and joint rings on
+  top, left side cyan and right side magenta. Footprints and the pulse strip
+  stay as they were.
+
+### Replacing the stand-ins with a character
+
+Added 22 Nov 2026 so a checked cut can swap the owner's stand-in takes for
+Stuttr (or any `refs/cast` character) without changing a cell, crop or
+landing. Two commands and one round trip to Kling; nothing is uploaded or
+paid for by the code.
+
+1. `npm run dance8 -- kling-takes <song> <edit.json> [--max 30]` finds every
+   span the cut shows of each stand-in take (its own cells, plus the trace and
+   floor cells drawn from it; half a second of handle each side; gaps under
+   3 s merged) and cuts it into pieces Kling Motion Control can perform:
+   whole seconds, 3 s at least, at most 30 s (the reference video's
+   orientation) or 10 s (`--max 10`, the character image's orientation).
+   Long spans are cut where a sung line starts or ends (singer) or on a
+   downbeat (dancer), neighbours sharing half a second. Each piece folder
+   holds `reference.mp4` (the stand-in alone on flat grey, from its own
+   matte), `voice.wav` for the singer (the approved voice take, else the
+   song's vocal stem, cut to the piece) and `CARD.txt` (settings, the
+   character image, the prompt, the Lip Sync step, the sung lines, what to
+   reject). The character's look in the prompt comes from its own
+   `character.txt`, and its `face.png` or `fullbody.png` is copied into the
+   kit.
+2. In Kling: Motion Control per piece, then Lip Sync with `voice.wav` for
+   the singer's pieces; save each download as `stuttr.mp4` in its folder.
+3. `npm run dance8 -- takes-assemble <song> <edit.json> --model <u2net onnx>`
+   checks every download first, lays the pieces on one song-length canvas at
+   their song times (cross-fading the shared seconds), mattes it like the
+   stand-ins (`--matte none` for a quick preview), writes `check.mp4` per
+   piece (the stand-in beside the generated piece, with the voice) and writes
+   `<edit id>-<character>.json`: the same cut with the generated takes. A
+   generated take stays out of a final until someone sets `"approved": true`
+   after its checks.
+
+Why not one generation for the whole song: Motion Control takes one
+continuous reference of at most 30 s, Lip Sync at most 60 s, and Kling's
+extend feature does not apply to Motion Control, so a 2-minute performance
+is always several pieces. The trace keeps drawing the owner's measured body
+points (the dancer's moves the generated dancer copies); body data stays out
+of the repo (D8-17).
 
 ## The EDO proof
 

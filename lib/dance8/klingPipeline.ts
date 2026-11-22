@@ -127,7 +127,8 @@ function loadScene(dir: string, id: string): SceneRefs {
   };
 }
 
-function loadCharacter(dir: string, slug: string, fallbackName: string): CharacterRefs {
+/** A character's folder: its name and look from character.txt, and its face and full-body images when present. */
+export function loadCharacter(dir: string, slug: string, fallbackName: string): CharacterRefs {
   const text = join(dir, CHARACTER_TEXT);
   const { fields } = existsSync(text) ? parseFields(readFileSync(text, "utf8")) : { fields: {} as Record<string, string> };
   return { id: slug, dir, name: fields.name ?? fallbackName, look: fields.look ?? null, face: imageIn(dir, "face"), fullbody: imageIn(dir, "fullbody") };

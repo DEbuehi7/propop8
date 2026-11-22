@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -18,6 +18,7 @@ import { cover, coverRegion, grade, img, placePerformer, studio, toRgb24 } from 
 import type { LyricTiming, Rect } from "../../lib/dance8/render/grid";
 import { editRender, editScore, fontName } from "../../lib/dance8/editPipeline";
 import { songPaths } from "../../lib/dance8/pipeline";
+import { klingTakes, takesAssemble, DOWNLOAD } from "../../lib/dance8/klingTakesPipeline";
 import { addSong, buildMaster, type Ctx } from "../../lib/stuttr/commands";
 
 const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
@@ -427,6 +428,48 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.deepEqual(sc.score.states.at(-1)!.cells.map((x) => x.role), ["kirtled", "story", "dance8 trace"]);
     assert.ok(sc.score.events.some((e) => e.kind === "footfall" && e.draws === "ring"));
     assert.ok(lines.some((l) => /no feature track at .*energy peaks left out/.test(l)));
+
+    // Replacing the stand-in singer: the kit (references, voice, cards), the "generated" pieces (here the
+    // references themselves), the assembly back on the song clock, and the new cut that a final still refuses.
+    const cast = join(c.library, "refs", "cast", "stuttr");
+    mkdirSync(cast, { recursive: true });
+    writeFileSync(join(cast, "character.txt"), "name: Stuttr\nlook: a test look\n");
+    assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=gray:s=64x64", "-frames:v", "1", join(cast, "face.png")]).status, 0);
+    const kit = klingTakes(c, "edit-song", f5, { maxSec: 10 });
+    assert.deepEqual(Object.keys(kit.plan.takes), ["sing"], "only the stand-in take is generated");
+    const sing = kit.plan.takes.sing;
+    assert.equal(sing.image, "character/stuttr-face.png");
+    assert.ok(existsSync(join(kit.dir, sing.image!)));
+    assert.equal(kit.plan.orientation, "image");
+    assert.ok(sing.pieces.length >= 3 && sing.pieces.every((s) => s.lengthSec <= 10 && s.lengthSec >= 3 && Number.isInteger(s.lengthSec)));
+    for (const s of sing.pieces) {
+      const pd = join(kit.dir, s.dir);
+      const ref = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", join(pd, "reference.mp4")], { encoding: "utf8" });
+      const j = JSON.parse(ref.stdout);
+      assert.deepEqual([j.streams[0].width, j.streams[0].height], [160, 160], "the picture half of the packed take");
+      assert.ok(Math.abs(Number(j.format.duration) - s.lengthSec) < 0.1);
+      assert.ok(existsSync(join(pd, "voice.wav")), "the voice alone, for Lip Sync");
+      const card = readFileSync(join(pd, "CARD.txt"), "utf8");
+      assert.match(card, /Stuttr \(a test look\), exactly as in the character image/);
+      assert.match(card, /Save the final download in this folder as stuttr\.mp4/);
+    }
+    assert.match(readFileSync(join(kit.dir, "README.md"), "utf8"), /takes-assemble edit-song /);
+    assert.throws(() => takesAssemble(c, "edit-song", f5, { matte: "none" }), /not ready to assemble:\n {2}sing-01: no stuttr\.mp4/);
+    for (const s of sing.pieces) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, DOWNLOAD));
+    const asm = takesAssemble(c, "edit-song", f5, { matte: "none" });
+    assert.ok(existsSync(asm.takes.sing));
+    assert.ok(sing.pieces.every((s) => readdirSync(join(kit.dir, s.dir)).includes("check.mp4")));
+    const swapped = JSON.parse(readFileSync(asm.edit, "utf8")) as EditList;
+    assert.equal(swapped.id, "v5-stuttr");
+    assert.deepEqual([swapped.takes.sing.standIn, swapped.takes.sing.approved, swapped.takes.sing.songAt0Sec, swapped.takes.sing.generated?.pieces], [false, false, 0, sing.pieces.length]);
+    assert.deepEqual(swapped.takes.dance, v5.takes.dance, "the dancer's take is untouched");
+    const pk = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", asm.takes.sing], { encoding: "utf8" });
+    const pj = JSON.parse(pk.stdout);
+    assert.deepEqual([pj.streams[0].width, pj.streams[0].height], [320, 160], "packed: picture and matte side by side");
+    assert.ok(Math.abs(Number(pj.format.duration) - 32) < 0.1, "one file on the song clock");
+    const draftCut = await editRender(c, "edit-song", asm.edit, { from: 5, to: 5.5, height: 144 });
+    assert.ok(draftCut.out && existsSync(draftCut.out));
+    await assert.rejects(editRender(c, "edit-song", asm.edit, { from: 5, to: 5.5, height: 144, approved: true }), /"sing" is a generated take nobody has approved yet/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

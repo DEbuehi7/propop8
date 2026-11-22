@@ -495,14 +495,35 @@ export function traceImage(w: number, h: number, f: TraceFrame, mapFull: (x: num
   const b = f.body;
   if (b) {
     const ok = (i: number) => b[i].v >= f.minVisibility;
+    const at = (i: number) => map(b[i].x, b[i].y);
+    const mid = (i: number, j: number): [number, number] => { const [ax, ay] = at(i), [bx, by] = at(j); return [(ax + bx) / 2, (ay + by) / 2]; };
+    // The body drawn thick, as a lit figure of the dancer's own proportions: each limb a capsule as wide as a
+    // share of his torso length, left side cyan, right side magenta, torso and head white; overlaps add light,
+    // so the joints glow. Then a thin core line through each limb and a ring on each joint.
+    const torso = ok(11) && ok(12) && ok(23) && ok(24) ? Math.hypot(mid(11, 12)[0] - mid(23, 24)[0], mid(11, 12)[1] - mid(23, 24)[1]) : 0;
+    if (torso > 0) {
+      const sw = Math.hypot(at(11)[0] - at(12)[0], at(11)[1] - at(12)[1]);
+      const capsule = (a: [number, number], z: [number, number], k: number, c: RGB, al = 0.2) => { buf.line(a[0], a[1], z[0], z[1], torso * k, c, al); buf.line(a[0], a[1], z[0], z[1], torso * k * 0.55, c, al * 0.9); };
+      capsule(mid(11, 12), mid(23, 24), Math.max(0.5, (sw / torso) * 0.9), PALETTE.white, 0.12);
+      capsule(at(11), at(12), 0.2, PALETTE.white, 0.14);
+      capsule(at(23), at(24), 0.24, PALETTE.white, 0.14);
+      const LIMBS: [number, number, number][] = [[11, 13, 0.24], [13, 15, 0.18], [12, 14, 0.24], [14, 16, 0.18], [23, 25, 0.32], [25, 27, 0.24], [24, 26, 0.32], [26, 28, 0.24], [27, 31, 0.14], [28, 32, 0.14]];
+      for (const [i, j, k] of LIMBS) if (ok(i) && ok(j)) capsule(at(i), at(j), k, i % 2 === 1 ? PALETTE.cyan : PALETTE.magenta, 0.22);
+      if (ok(0)) {
+        const [nx, ny] = at(0), [sx, sy] = mid(11, 12);
+        capsule([nx, ny], [sx, sy], 0.16, PALETTE.white, 0.14);
+        const r = torso * 0.24;
+        buf.line(nx, ny - r * 0.35, nx, ny - r * 0.35, r * 2, PALETTE.white, 0.16);
+        buf.polyline(ringPts(nx, ny - r * 0.35, r, r * 1.12, 0, 28), lw * 1.2, PALETTE.white, 0.7, true, true);
+      }
+    }
     for (const [i, j] of f.bones) {
       if (!ok(i) || !ok(j)) continue;
-      const [x0, y0] = map(b[i].x, b[i].y), [x1, y1] = map(b[j].x, b[j].y);
+      const [x0, y0] = at(i), [x1, y1] = at(j);
       const side = i % 2 === 1 && j % 2 === 1 ? PALETTE.cyan : i % 2 === 0 && j % 2 === 0 && i > 10 ? PALETTE.magenta : PALETTE.white;
-      buf.polyline([[x0, y0], [x1, y1]], lw * 1.6, side, 0.85, false, true);
+      buf.polyline([[x0, y0], [x1, y1]], lw * 1.3, side, 0.8, false, true);
     }
-    if (ok(0) && ok(11) && ok(12)) { const [nx, ny] = map(b[0].x, b[0].y), [sx, sy] = map((b[11].x + b[12].x) / 2, (b[11].y + b[12].y) / 2); buf.polyline([[nx, ny], [sx, sy]], lw * 1.2, PALETTE.white, 0.6, false, true); }
-    for (const i of f.joints) if (ok(i)) { const [x, y] = map(b[i].x, b[i].y); buf.polyline(ringPts(x, y, lw * 2.2, lw * 2.2, 0, 12), lw, PALETTE.white, 0.9, true, false); }
+    for (const i of f.joints) if (ok(i) && i !== 0) { const [x, y] = at(i); const r = Math.max(lw * 2.2, torso * 0.07); buf.polyline(ringPts(x, y, r, r, 0, 16), lw * 1.2, PALETTE.gold, 0.9, true, true); }
     // The orbit: a ring round the hips in the plane of the shoulders; the vector: where the centre is travelling.
     const L = b[11], R = b[12], LH = b[23], RH = b[24];
     if ([L, R, LH, RH].every((p) => p.v >= f.minVisibility)) {

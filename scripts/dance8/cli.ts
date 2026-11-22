@@ -64,6 +64,7 @@ import { FRAME_SIZE, type AspectRatio } from "../../lib/dance8/contracts/scene";
 import { albumPreview } from "../../lib/stuttr/desk/desk";
 import { reactionInputsExist, renderReaction } from "../../lib/dance8/reactionPipeline";
 import { gridRender } from "../../lib/dance8/gridPipeline";
+import { klingTakes, takesAssemble } from "../../lib/dance8/klingTakesPipeline";
 import { editRender, editScore } from "../../lib/dance8/editPipeline";
 import { kirtledEvents } from "../../lib/dance8/instrumentPipeline";
 
@@ -73,7 +74,7 @@ const flag = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const has = (name: string) => argv.includes(`--${name}`);
-const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha", "performer", "from", "to", "height", "font", "display-font", "features", "plan-fps"];
+const VALUE_FLAGS = ["library", "key", "aspect", "drift", "skate", "landing", "offset", "fps", "dance", "crew", "short", "seed", "punch", "master", "budget", "model", "variation", "only", "windows", "out", "base", "events", "song", "expect-sha", "performer", "from", "to", "height", "font", "display-font", "features", "plan-fps", "max", "matte"];
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--") && VALUE_FLAGS.includes(argv[i - 1].slice(2))));
 const expand = (p: string) => resolve(p.replace(/^~(?=$|\/)/, homedir()));
 const ctx: Ctx = { library: expand(flag("library") ?? process.env.STUTTR_LIBRARY ?? join(homedir(), "StuttrLibrary")) };
@@ -95,6 +96,9 @@ const usage = `Dance8 (${ctx.library})
   grid <trackId> <plan.json> [--approved] [--master en|suno] [--fps 24]   (camera grid: 1, 3 or 9 clips on bar lines, in <song>/dance8/renders/)
   edit <trackId> <edit.json> [--check] [--approved] [--calm] [--from <sec>] [--to <sec>] [--height 720] [--master en|suno] [--fps 24] [--font FILE] [--display-font FILE]
                                                      (an edit list: the whole cut, checked against the owner's rules, in the house look; --calm: the reduced-flash version)
+  kling-takes <trackId> <edit.json> [--max 30]      (the stand-in takes an edit shows, cut into pieces for Kling Motion Control and Lip Sync: reference, voice and card per piece; --max 10 for image orientation)
+  takes-assemble <trackId> <edit.json> [--model <u2net_human_seg.onnx>] [--matte u2net|none]
+                                                     (the Kling pieces back on the song clock, matted, with a check video per piece; writes the cut with the generated takes)
   score <trackId> <edit.json> [--fps 24] [--features <features.json>] [--plan-fps 24]   (the visual score: every layout state, cell, transition and event of the edit, with its evidence, as JSON and CSV in <song>/dance8/scores/)
   kirtled-events <trackId> [--performer <castId>] [--replace]   (the Kirtled event map: drafted from the chords once, then checked)`;
 
@@ -257,6 +261,19 @@ async function main() {
         checkOnly: has("check"), approved: has("approved"), master: flag("master"), fps: num("fps", true), from: num("from"), to: num("to"), height: num("height", true), calm: has("calm"),
         font: flag("font") ? expand(flag("font")!) : undefined, displayFont: flag("display-font") ? expand(flag("display-font")!) : undefined,
       });
+      break;
+    }
+    case "kling-takes": {
+      if (!a1 || !a2) throw new Error("kling-takes needs a track id and an edit list file");
+      const m = flag("max");
+      klingTakes(ctx, a1, expand(a2), { maxSec: m === undefined ? undefined : Number(m) });
+      break;
+    }
+    case "takes-assemble": {
+      if (!a1 || !a2) throw new Error("takes-assemble needs a track id and an edit list file");
+      const mt = flag("matte");
+      if (mt !== undefined && mt !== "u2net" && mt !== "none") throw new Error("--matte takes u2net or none");
+      takesAssemble(ctx, a1, expand(a2), { matte: mt as "u2net" | "none" | undefined, model: flag("model") ? expand(flag("model")!) : undefined });
       break;
     }
     case "score": {

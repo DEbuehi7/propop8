@@ -16,6 +16,8 @@ import { bodyAt, buildTrace, floorHits, footfalls, songSecOf } from "../../lib/d
 import { bodySeries } from "../../lib/dance8/moves/body";
 import { buildScore, scoreCsv } from "../../lib/dance8/render/score";
 import { viewMapper } from "../../lib/dance8/render/house";
+import { splitWindows, takeWindows, type TakeSegment } from "../../lib/dance8/render/takeSegments";
+import { promptFor } from "../../lib/dance8/klingTakesPipeline";
 
 const clip = (id: string, durationSec: number): VisualClip => ({
   id, schemaVersion: 1, sceneId: "street", camera: "wide", durationSec, aspect: "16:9", file: `${id}.mp4`,
@@ -191,4 +193,70 @@ test("the visual score: one clock, states named, the draft harmony held and conv
   // Without a verified grid the beats draw nothing.
   const s2 = buildScore({ edit: e, editSha256: "", res, library, lyrics: null });
   assert.ok(s2.events.filter((x) => x.kind === "beat").every((x) => x.draws === "nothing" && x.evidence === "hold"));
+});
+
+test("take windows: where a take is on screen, its own cells and the trace and floor drawn from its body, with handles, short gaps merged", () => {
+  const e = edit(true);
+  const res = resolveEdit(e, map, library, { fps: 24, lyrics: lyrics("aligned") });
+  assert.ok(res.ok, errorsOf(res));
+  // The face runs from the start of the transition into the verse (4.25 s) to the solo's landing (10.5 s): half a second of handle each side.
+  assert.deepEqual(takeWindows(res, e, "sing"), [{ from: 3.75, to: 11 }]);
+  // The dancer leaves at the merge (8.5 s) and returns before the solo: a gap under 3 s, so one span, clamped at the end.
+  const dance = takeWindows(res, e, "dance");
+  assert.equal(dance.length, 1);
+  assert.deepEqual([dance[0].from, dance[0].to], [3.75, 16]);
+  // Without handles and with a 1 s merge gap the two appearances stay apart: out at the merge, back as the dissolve into the solo starts.
+  const apart = takeWindows(res, e, "dance", { handleSec: 0, mergeGapSec: 1 });
+  assert.equal(apart.length, 2, JSON.stringify(apart));
+  assert.equal(apart[0].to, 8.5);
+  assert.deepEqual(takeWindows(res, e, "nobody"), []);
+});
+
+const covers = (segs: TakeSegment[], from: number, to: number) => {
+  let reach = from;
+  for (const s of segs) { assert.ok(s.songIn <= reach + 1e-9, `a hole before ${s.id}`); reach = Math.max(reach, s.songOut); }
+  assert.ok(reach >= to - 1e-9, `ends at ${reach}, not ${to}`);
+};
+
+test("split windows: pieces of whole seconds, never over the limit nor under 3 s, neighbours sharing what they overlap", () => {
+  const long = splitWindows([{ from: 0, to: 70 }], "dance", 1.5, 200, { maxSec: 30 });
+  assert.deepEqual(long.map((s) => [s.id, s.songIn, s.songOut, s.lengthSec, s.overlapSec]), [
+    ["dance-01", 0, 30, 30, 0], ["dance-02", 29.5, 59.5, 30, 0.5], ["dance-03", 59, 70, 11, 0.5],
+  ]);
+  assert.ok(long.every((s) => Number.isInteger(s.lengthSec) && s.lengthSec <= 30 && s.lengthSec >= 3));
+  assert.deepEqual([long[1].takeIn, long[1].takeOut], [31, 61], "the take's own seconds: song + songAt0Sec, applied once");
+  covers(long, 0, 70);
+
+  // A cut snaps to the latest preferred time that fits (the end of a sung line), and the shared seconds follow the rounding.
+  const snapped = splitWindows([{ from: 0, to: 40 }], "sing", 0, 200, { maxSec: 30, cuts: [12, 20.25, 31] });
+  assert.equal(snapped[1].songIn, 20.25);
+  assert.equal(snapped[0].songOut, 21);
+  assert.equal(snapped[1].overlapSec, 0.75);
+  covers(snapped, 0, 40);
+
+  // The last piece is never shorter than 3 s; a short span grows to 3 s; at the song's end it grows backwards.
+  const tail = splitWindows([{ from: 0, to: 31 }], "x", 0, 200, { maxSec: 30 });
+  assert.ok(tail.at(-1)!.lengthSec >= 3 && tail.every((s) => s.lengthSec <= 30));
+  covers(tail, 0, 31);
+  assert.deepEqual(splitWindows([{ from: 5, to: 6 }], "x", 0, 200, { maxSec: 10 }).map((s) => [s.songIn, s.songOut]), [[5, 8]]);
+  assert.deepEqual(splitWindows([{ from: 60, to: 61.5 }], "x", 0, 62, { maxSec: 10 }).map((s) => [s.songIn, s.songOut]), [[59, 62]]);
+
+  // Two spans number on from each other, and the second span's first piece shares nothing.
+  const two = splitWindows([{ from: 0, to: 8 }, { from: 20, to: 33 }], "y", 0, 200, { maxSec: 10 });
+  assert.deepEqual(two.map((s) => s.id), ["y-01", "y-02", "y-03"]);
+  assert.equal(two[1].overlapSec, 0);
+  assert.ok(two[2].overlapSec > 0);
+  covers(two.slice(1), 20, 33);
+
+  // Image orientation: 10 s at most.
+  assert.ok(splitWindows([{ from: 0, to: 70 }], "z", 0, 200, { maxSec: 10 }).every((s) => s.lengthSec <= 10));
+  assert.throws(() => splitWindows([{ from: 0, to: 9 }], "z", 0, 200, { maxSec: 3 }), /at least minSec \+ overlapSec/);
+});
+
+test("the Motion Control prompt takes the character's look from its own folder and keeps the mouth clear", () => {
+  const sing = promptFor("singer", "Stuttr", "round glasses, green coat");
+  assert.match(sing, /^Stuttr \(round glasses, green coat\), exactly as in the character image/);
+  assert.match(sing, /No headphones, no microphone, nothing in front of the mouth/);
+  assert.doesNotMatch(promptFor("singer", "Mo", null), /\(/);
+  assert.match(promptFor("dancer", "Stuttr", null), /foot contacts and held poses land on the same frames/);
 });

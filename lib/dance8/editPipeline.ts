@@ -182,7 +182,7 @@ const GOLDT: RGB = [0.98, 0.76, 0.3];
 // ---------- the render ----------
 
 /** The song, the edit list and everything the check needs, read from the library and checked. */
-function loadEdit(c: Ctx, trackId: string, editPath: string, o: { fps: number; approved: boolean }) {
+export function loadEdit(c: Ctx, trackId: string, editPath: string, o: { fps: number; approved: boolean }) {
   const t = loadManifest(c).tracks.find((x) => x.trackId === trackId);
   if (!t) throw new Error(`no song "${trackId}" in ${c.library}`);
   const p = songPaths(c, trackId);
