@@ -411,7 +411,9 @@ or to each other, unmotivated changes between one screen and many):
    the landing.
 4. **Layouts change at musical edges.** A change of layout lands within one
    beat of the voice entering or leaving (lyric phrases, section starts, sung
-   cues) or where a cue section starts. Every block says why in `why`.
+   cues), of a sung line's onset when its timing was aligned to the voice
+   (added for V5, so a split or merge can land on the line it serves), or
+   where a cue section starts. Every block says why in `why`.
 5. **The singer is seen singing.** While the voice sings, a take whose role is
    singer, in a view that shows the face, is on screen at least 95% of the
    time.
@@ -445,8 +447,12 @@ Times are song seconds, a bar and beat of the cue map (`{ "bar": 3, "beat":
 2.5 }`), or a block's landing or the start of the transition into it
 (`{ "block": "verse", "at": "start" }`). Layouts are `one` (`full`), `three`
 (`big`, `tr`, `br`: a square primary on the left in landscape, on top in
-portrait) and `nine` (`r0c0` to `r2c2`). A cell keeps its id across blocks,
-and its content list says what it shows when:
+portrait), `quad` (`q0` to `q3`, a 2 x 2), `eight` (the `big` cell of
+`three` and `e0` to `e7` beside it), `nine` (`r0c0` to `r2c2`) and `inset`
+(`full`, and `pip`: a tall panel down the right side in landscape, a band
+across the bottom in portrait, so a standing body fits it). By state name (`LAYOUT_STATE`) they
+are S1, S2, S3, S4, S5 and D1. A cell keeps its id across blocks, and its
+content list says what it shows when:
 
 - `story`: a source, with an optional slow push-in. A source is a clip of the
   clip library or a still plate (`"still": "plates/harbour.png"`), which the
@@ -458,8 +464,24 @@ and its content list says what it shows when:
   filling it (`cover`), with fades in beats and a backdrop: the studio, or a
   story source darkened behind the performer.
 - `kirtled`: the studio (the beat light as a backdrop, optionally with a title
-  card), the beat light itself, or the drawn overhead and detail stand-ins.
-- `lyrics`: the lyric cell of a nine-view.
+  card), the beat light itself, the drawn overhead and detail stand-ins, or
+  `floor`: the canonical Y seen from above, lit by a take's measured body (one
+  triangle further out each beat of the verified grid, as bright as the body
+  moved on that beat; a ring where a foot comes down, B left and C right; the
+  hips' side-to-side position across the hub). Rhythm only: no chord is lit.
+- `trace`: Dance8's reading of a take's measured body, framed like the
+  dancer's own view (scaled to the upper four-fifths of the cell): skeleton
+  (left side cyan, right magenta), the feet's and the torso centre's paths
+  over the last 1.2 s, footprints where a foot came down in the last bar, the
+  hips' orbit in the plane of the shoulders and the centre's travel. Along the
+  bottom, the pulse strip puts the last bar on one time axis: the song's
+  measured low (gold) and high (cyan) band energy from Stuttr's saved feature
+  track, the beats of the verified grid with the body's energy on each
+  (magenta), and the footfalls. A take gets
+  body points with `"motion": "<take id>"`, read from
+  `<song>/dance8/moves/` (D8-17). Move words are not drawn until the take's
+  move track is approved.
+- `lyrics`: the lyric cell of a nine-view or an eight-view.
 
 A block arrives by `geometry` (the primary carries the picture to its new
 place; new cells open from the edge they share with it; cells that leave are
@@ -529,6 +551,86 @@ corners rather than one strip per arm, with a disc in the hub (D8-21). The
 check: the same 98.8% face coverage and 8 layout changes, 13 clips and 4
 stills each placed once, slowest clip 9.4%.
 
+### V5: one grammar, one score
+
+Built 21 Nov 2026 from the owner's V5 brief: every subdivision is another
+view of the same musical moment, and the film teaches its system by
+repeating one sentence, singer full frame, then the singer with connected
+views, then the singer, the dancer, the Kirtled floor his body lights and
+Dance8's trace of that body, then back to the singer on the next line that
+matters.
+
+- **Layout states** S1 to S5 and D1 (above). The check adds one measure:
+  how much of the sung time the singer's face is the largest picture on
+  screen (`faceLargestPct`); the 2 x 2 counts, since its cells are equal.
+- **The trace and the floor** read the owner's take as body points, the same
+  D8-17 record `dance8 moves` writes, with the take's capture seconds turned
+  into song seconds in one place (`lib/dance8/moves/trace.ts`). Footfalls are
+  measured (a foot back on its own floor line after a lift), not move words.
+- **Calm version.** `--calm` renders without the landing triangles, flares or
+  downbeat pulses and softens the floor; every render now measures the most
+  flashes per second in any part of the frame and writes it to the manifest,
+  warning above three.
+- **The visual score.** `npm run dance8 -- score edo <edit.json>` writes
+  `<song>/dance8/scores/<edit id>.score.json` and `.csv`: every layout state
+  with its cells, roles, sources and approvals, and every event on the song
+  clock with its evidence and what it may draw: the owner-verified beat grid
+  (pulses), energy peaks from Stuttr's saved feature track (light, never a
+  beat, D8-25), sung lines (draft timing), footfalls (rings), move words and
+  chords (HOLD, nothing drawn, until approved). `--plan-fps` adds what is on
+  screen frame by frame, so a player draws the render's own geometry instead
+  of re-deriving it.
+- **One clock.** Score times are song seconds from the master's first sample.
+  The Kirtled plan (`edo.kirtled.json`) keeps its `startSec` and `atSec` from
+  bar 0, which is why they read 0.075 s early against EDO's song time; the
+  renderers add the first downbeat, and the score converts through
+  `gridSec`, so nothing draws early.
+- **The thick trace.** The trace draws the body as Dance8's UI does beside
+  the original dance: capsules for the torso and limbs sized from the
+  measured torso length, a head disc, then the thin bones and joint rings on
+  top, left side cyan and right side magenta. Footprints and the pulse strip
+  stay as they were.
+
+### Replacing the stand-ins with a character
+
+Added 22 Nov 2026 so a checked cut can swap the owner's stand-in takes for
+Stuttr (or any `refs/cast` character) without changing a cell, crop or
+landing. Two commands and one round trip to Kling; nothing is uploaded or
+paid for by the code.
+
+1. `npm run dance8 -- kling-takes <song> <edit.json> [--max 30]` finds every
+   span the cut shows of each stand-in take (its own cells, plus the trace and
+   floor cells drawn from it; half a second of handle each side; gaps under
+   3 s merged) and cuts it into pieces Kling Motion Control can perform:
+   whole seconds, 3 s at least, at most 30 s (the reference video's
+   orientation) or 10 s (`--max 10`, the character image's orientation).
+   Long spans are cut where a sung line starts or ends (singer) or on a
+   downbeat (dancer), neighbours sharing half a second. Each piece folder
+   holds `reference.mp4` (the stand-in alone on flat grey, from its own
+   matte), `voice.wav` for the singer (the approved voice take, else the
+   song's vocal stem, cut to the piece) and `CARD.txt` (settings, the
+   character image, the prompt, the Lip Sync step, the sung lines, what to
+   reject). The character's look in the prompt comes from its own
+   `character.txt`, and its `face.png` or `fullbody.png` is copied into the
+   kit.
+2. In Kling: Motion Control per piece, then Lip Sync with `voice.wav` for
+   the singer's pieces; save each download as `stuttr.mp4` in its folder.
+3. `npm run dance8 -- takes-assemble <song> <edit.json> --model <u2net onnx>`
+   checks every download first, lays the pieces on one song-length canvas at
+   their song times (cross-fading the shared seconds), mattes it like the
+   stand-ins (`--matte none` for a quick preview), writes `check.mp4` per
+   piece (the stand-in beside the generated piece, with the voice) and writes
+   `<edit id>-<character>.json`: the same cut with the generated takes. A
+   generated take stays out of a final until someone sets `"approved": true`
+   after its checks.
+
+Why not one generation for the whole song: Motion Control takes one
+continuous reference of at most 30 s, Lip Sync at most 60 s, and Kling's
+extend feature does not apply to Motion Control, so a 2-minute performance
+is always several pieces. The trace keeps drawing the owner's measured body
+points (the dancer's moves the generated dancer copies); body data stays out
+of the repo (D8-17).
+
 ## The EDO proof
 
 Rendered 15 Nov 2026 from a scratch copy of the library, not the owner's:
@@ -587,3 +689,8 @@ Decided on 21 Nov:
 
 7. The EDO v2 cut is approved: its rules and its look become edit lists
    ([Edit lists](#edit-lists)), and the playable page follows the same cut.
+8. The V5 brief: layout states S1 to S5 and D1, splits and merges on the
+   lines they serve, the dancer, the Kirtled floor and Dance8's trace of the
+   same movement, and one score for the page and the render. Built for
+   review ([V5](#v5-one-grammar-one-score)); nothing generated, merged or
+   released.

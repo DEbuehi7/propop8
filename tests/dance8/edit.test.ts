@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -16,8 +16,9 @@ import {
 } from "../../lib/dance8/render/edit";
 import { cover, coverRegion, grade, img, placePerformer, studio, toRgb24 } from "../../lib/dance8/render/house";
 import type { LyricTiming, Rect } from "../../lib/dance8/render/grid";
-import { editRender, fontName } from "../../lib/dance8/editPipeline";
+import { editRender, editScore, fontName } from "../../lib/dance8/editPipeline";
 import { songPaths } from "../../lib/dance8/pipeline";
+import { klingTakes, takesAssemble, DOWNLOAD } from "../../lib/dance8/klingTakesPipeline";
 import { addSong, buildMaster, type Ctx } from "../../lib/stuttr/commands";
 
 const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0;
@@ -391,6 +392,92 @@ test("end to end: an edit renders frame-exact over the voice master, with a mani
     assert.deepEqual(man.sources.map((s: { clip?: string; still?: string }) => s.clip ?? s.still), ["w1", "w2", "w3", "plates/harbour.png"]);
     const still = await editRender(c, "edit-song", file, { from: 29, to: 29.5, height: 144 });
     assert.ok(still.out && existsSync(still.out), "a still renders");
+
+    // V5: the dancer's take read as body points (an invented body, its left foot lifting each second) draws
+    // a trace cell and lights the Kirtled floor; the calm version renders; the score comes out beside the renders.
+    const mp = join(c.library, "edit-song", "dance8", "moves");
+    mkdirSync(mp, { recursive: true });
+    const frames = Array.from({ length: 33 * 24 }, (_, k) => {
+      const pts = Array.from({ length: 33 }, () => [0.5, 0.5, 0, 0.9]);
+      const set = (i: number, x: number, y: number) => { pts[i] = [x, y, 0, 0.95]; };
+      const lift = k % 24 < 8 ? 0.04 * Math.sin((Math.PI * (k % 24)) / 8) : 0;
+      set(0, 0.5, 0.2); set(11, 0.55, 0.3); set(12, 0.45, 0.3); set(23, 0.54, 0.55); set(24, 0.46, 0.55); set(25, 0.54, 0.72); set(26, 0.46, 0.72);
+      set(27, 0.54, 0.88 - lift); set(29, 0.53, 0.9 - lift); set(31, 0.56, 0.9 - lift); set(28, 0.46, 0.88); set(30, 0.45, 0.9); set(32, 0.47, 0.9);
+      return { t: k / 24, image: pts.flat(), world: null };
+    });
+    writeFileSync(join(mp, "take1.poses.json"), JSON.stringify({ schemaVersion: 1, takeId: "take1", video: { file: "dance.mp4", sha256: "0".repeat(64), width: 160, height: 160, durationSec: 33, videoStartSec: 0, audioStartSec: 0 },
+      fps: 24, model: { id: "synthetic", sha256: "0".repeat(64), library: "none", delegate: "CPU" }, capturedAt: "2026-11-21T00:00:00Z", frames }));
+    writeFileSync(join(mp, "take1.moves.json"), JSON.stringify({ schemaVersion: 1, analyzer: "synthetic", trackId: "edit-song", takeId: "take1", source: "owner_take",
+      sync: { method: "manual", songAtCapture0: 0, r: null, rNext: null, driftMs: null, overlapSec: null, status: "manual", checkedAt: "" },
+      beats: [], words: [], coverage: { fromBar: 0, toBar: 16, beats: 0, knownBeats: 0 }, approvalStatus: "draft", createdAt: "" }));
+    const v5: EditList = JSON.parse(JSON.stringify({ ...proof, id: "v5" }));
+    v5.takes.dance.motion = "take1";
+    v5.content.face[2] = { kind: "kirtled", view: "floor", take: "dance", from: start("outro"), to: 32 };
+    v5.content.body[2] = { kind: "trace", take: "dance", view: "upper", from: start("outro"), to: 32 };
+    const f5 = join(p.dir, "edits", "v5.json");
+    writeFileSync(f5, JSON.stringify(v5));
+    const r5 = await editRender(c, "edit-song", f5, { from: 29, to: 29.5, height: 144, calm: true });
+    assert.ok(r5.out && /-calm-144p-29\.0-29\.5\.mp4$/.test(r5.out), r5.out ?? "");
+    const m5 = JSON.parse(readFileSync(r5.manifest!, "utf8"));
+    assert.equal(m5.calm, true);
+    assert.ok(Number.isInteger(m5.flashesPerSecondMax));
+    assert.equal(m5.takes.find((t: { id: string }) => t.id === "dance").moves.approvalStatus, "draft");
+    assert.ok(m5.takes.find((t: { id: string }) => t.id === "dance").moves.footfalls >= 30, "a footfall each second");
+    const sc = editScore(c, "edit-song", f5, { planFps: 2 });
+    assert.ok(existsSync(sc.json) && existsSync(sc.csv));
+    assert.deepEqual(sc.score.states.at(-1)!.cells.map((x) => x.role), ["kirtled", "story", "dance8 trace"]);
+    assert.ok(sc.score.events.some((e) => e.kind === "footfall" && e.draws === "ring"));
+    assert.ok(lines.some((l) => /no feature track at .*energy peaks left out/.test(l)));
+
+    // Replacing the stand-in singer: the kit (references, voice, cards), the "generated" pieces (here the
+    // references themselves), the assembly back on the song clock, and the new cut that a final still refuses.
+    const cast = join(c.library, "refs", "cast", "stuttr");
+    mkdirSync(cast, { recursive: true });
+    writeFileSync(join(cast, "character.txt"), "name: Stuttr\nlook: a test look\n");
+    assert.equal(spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=gray:s=64x64", "-frames:v", "1", join(cast, "face.png")]).status, 0);
+    // The singer's take starts 8 s before the song here, so the last piece runs past the end of the 33 s take.
+    const kitEdit: EditList = JSON.parse(JSON.stringify({ ...v5, id: "kit" }));
+    kitEdit.takes.sing.songAt0Sec = 8;
+    const fk = join(p.dir, "edits", "kit.json");
+    writeFileSync(fk, JSON.stringify(kitEdit));
+    const kit = klingTakes(c, "edit-song", fk, { maxSec: 10 });
+    assert.deepEqual(Object.keys(kit.plan.takes), ["sing"], "only the stand-in take is generated");
+    const sing = kit.plan.takes.sing;
+    assert.equal(sing.image, "character/stuttr-face.png");
+    assert.ok(existsSync(join(kit.dir, sing.image!)));
+    assert.equal(kit.plan.orientation, "image");
+    assert.ok(sing.pieces.length >= 3 && sing.pieces.every((s) => s.lengthSec <= 10 && s.lengthSec >= 3 && Number.isInteger(s.lengthSec)));
+    for (const s of sing.pieces) {
+      const pd = join(kit.dir, s.dir);
+      const ref = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", join(pd, "reference.mp4")], { encoding: "utf8" });
+      const j = JSON.parse(ref.stdout);
+      assert.deepEqual([j.streams[0].width, j.streams[0].height], [160, 160], "the picture half of the packed take");
+      assert.ok(Math.abs(Number(j.format.duration) - s.lengthSec) < 0.1);
+      assert.ok(existsSync(join(pd, "voice.wav")), "the voice alone, for Lip Sync");
+      const card = readFileSync(join(pd, "CARD.txt"), "utf8");
+      assert.match(card, /Stuttr \(a test look\), exactly as in the character image/);
+      assert.match(card, /Save the final download in this folder as stuttr\.mp4/);
+    }
+    const last = sing.pieces.at(-1)!;
+    assert.ok(last.takeOut > 33, "the last piece runs past the take");
+    assert.match(readFileSync(join(kit.dir, last.dir, "CARD.txt"), "utf8"), /the last \d\.\d\d s hold its last frame \(the take ends there\)/);
+    assert.match(readFileSync(join(kit.dir, "README.md"), "utf8"), /takes-assemble edit-song /);
+    assert.throws(() => takesAssemble(c, "edit-song", fk, { matte: "none" }), /not ready to assemble:\n {2}sing-01: no stuttr\.mp4/);
+    for (const s of sing.pieces) copyFileSync(join(kit.dir, s.dir, "reference.mp4"), join(kit.dir, s.dir, DOWNLOAD));
+    const asm = takesAssemble(c, "edit-song", fk, { matte: "none" });
+    assert.ok(existsSync(asm.takes.sing));
+    assert.ok(sing.pieces.every((s) => readdirSync(join(kit.dir, s.dir)).includes("check.mp4")));
+    const swapped = JSON.parse(readFileSync(asm.edit, "utf8")) as EditList;
+    assert.equal(swapped.id, "kit-stuttr");
+    assert.deepEqual([swapped.takes.sing.standIn, swapped.takes.sing.approved, swapped.takes.sing.songAt0Sec, swapped.takes.sing.generated?.pieces], [false, false, 0, sing.pieces.length]);
+    assert.deepEqual(swapped.takes.dance, kitEdit.takes.dance, "the dancer's take is untouched");
+    const pk = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", asm.takes.sing], { encoding: "utf8" });
+    const pj = JSON.parse(pk.stdout);
+    assert.deepEqual([pj.streams[0].width, pj.streams[0].height], [320, 160], "packed: picture and matte side by side");
+    assert.ok(Math.abs(Number(pj.format.duration) - 32) < 0.1, "one file on the song clock");
+    const draftCut = await editRender(c, "edit-song", asm.edit, { from: 5, to: 5.5, height: 144 });
+    assert.ok(draftCut.out && existsSync(draftCut.out));
+    await assert.rejects(editRender(c, "edit-song", asm.edit, { from: 5, to: 5.5, height: 144, approved: true }), /"sing" is a generated take nobody has approved yet/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
